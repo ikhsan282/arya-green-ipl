@@ -7,12 +7,18 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 - MySQLi with prepared statements
 - Bootstrap 5.3 + Bootstrap Icons (CDN)
 - MySQL / MariaDB
+- PWA-ready (manifest.json + service worker)
 
 ## Instalasi
 
 ### 1. Import Database
 ```sql
 mysql -u root -p < database/schema.sql
+```
+
+Atau jalankan migration incremental:
+```bash
+php migrate.php
 ```
 
 ### 2. Konfigurasi Database
@@ -50,13 +56,16 @@ define('MAIL_FROM', 'noreply@aryagreen.id');
 arya-green-ipl/
 ├── .htaccess                  # Apache config, security headers
 ├── index.php                  # Entry point → redirect
+├── manifest.json              # PWA manifest
+├── sw.js                      # Service worker (PWA offline)
+├── migrate.php                # CLI migration runner
 ├── config/
 │   ├── database.php           # DB constants
 │   └── config.php             # App settings, session, upload config
 ├── includes/
 │   ├── auth.php               # Login, logout, RBAC, email verify
 │   ├── functions.php          # Helpers: CSRF, flash, paginate, e(), idr()
-│   ├── header.php             # HTML head + navbar
+│   ├── header.php             # HTML head + navbar + PWA meta
 │   ├── sidebar.php            # Sidebar navigasi (permission-aware)
 │   └── footer.php             # Scripts, closing tags
 ├── assets/
@@ -69,19 +78,38 @@ arya-green-ipl/
 │   └── verify-email.php
 ├── pages/
 │   ├── dashboard.php          # Statistik unit, tagihan, pembayaran terbaru
+│   ├── portal.php             # Portal warga (PWA entry point)
 │   ├── units/                 # index, form (create/edit)
 │   ├── residents/             # index, form (create/edit)
 │   ├── billing/               # index, detail (generate & kelola tagihan)
 │   ├── payments/              # index, form, verify (catat & verifikasi bayar)
-    ├── reports/               # Laporan tagihan & pembayaran
-    ├── cashbook/              # Buku kas pemasukan & pengeluaran
-    ├── users/                 # index, form (CRUD user)
-    ├── roles/                 # index (permission editor per role)
-    └── 403.php                # Halaman akses ditolak
+│   ├── reports/               # Laporan tagihan & pembayaran
+│   ├── cashbook/              # Buku kas pemasukan & pengeluaran
+│   ├── kas/                   # Kas operasional tambahan
+│   ├── expense/               # Pengeluaran / belanja
+│   ├── inventory/             # Inventaris aset perumahan
+│   ├── complaints/            # Pengaduan warga (index, detail)
+│   ├── events/                # Agenda & kegiatan warga (index, detail)
+│   ├── letters/               # Surat keterangan & print
+│   ├── onboarding/            # Import warga massal via template
+│   ├── polls/                 # Voting & survei warga
+│   ├── environments/          # Manajemen lingkungan / cluster
+│   ├── wa/                    # Broadcast & template WhatsApp
+│   ├── users/                 # index, form (CRUD user)
+│   ├── roles/                 # index (permission editor per role)
+│   ├── public/
+│   │   └── kas.php            # Halaman publik rekap kas
+│   └── 403.php                # Halaman akses ditolak
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/
-    └── schema.sql             # DDL + seed data
+    ├── schema.sql             # DDL + seed data (v1)
+    ├── schema_v2.sql          # DDL lengkap (v2, semua modul)
+    └── migrations/            # Migration incremental
+        ├── 001_*.sql
+        ├── 002_*.sql
+        ├── 003_*.sql
+        └── 004_environments_permissions.sql
 ```
 
 ## Peran Default (RBAC)
@@ -89,43 +117,63 @@ arya-green-ipl/
 |---|---|
 | Super Admin | Semua fitur |
 | Admin | Semua kecuali hapus user & edit role |
-| Bendahara | Tagihan, pembayaran, laporan |
+| Bendahara | Tagihan, pembayaran, laporan, kas |
 | Viewer | Read-only semua |
 
 ## Fitur
 
 ### Dashboard
-- Statistik real-time: total unit, total warga aktif, jumlah belum bayar (belum + terlambat), total terkumpul bulan ini
-- Progress bar lunas vs belum vs terlambat untuk periode berjalan, plus nominal terkumpul & tunggakan
-- Tabel 8 tagihan terlambat (urut jatuh tempo) dengan link ke billing
-- Tabel 8 pembayaran terbaru dengan status badge
+- Statistik real-time: total unit, total warga aktif, jumlah belum bayar, total terkumpul bulan ini
+- Progress bar lunas vs belum vs terlambat untuk periode berjalan
+- Tabel 8 tagihan terlambat + 8 pembayaran terbaru
 
 ### Master Data
 - **Unit** — CRUD; nomor unit, blok, tipe unit; status dihuni/kosong
 - **Tipe Unit** — CRUD; nama tipe, nominal IPL per bulan
 - **Warga / Penghuni** — CRUD; nama, telepon, email, unit; status aktif/nonaktif
+- **Lingkungan / Cluster** — CRUD; manajemen area/cluster perumahan beserta permission
 
 ### Tagihan IPL
-- **Generate tagihan** per periode (tahun + bulan + jatuh tempo): otomatis buat tagihan untuk semua unit berstatus `dihuni`; unit yang sudah punya tagihan dilewati (idempotent)
-- Status tagihan diperbarui otomatis: `belum_bayar → terlambat` jika melewati jatuh tempo
-- Filter tagihan per periode, status (belum/lunas/terlambat), dan pencarian unit/warga
-- Ringkasan periode: total, lunas, belum, terlambat; nominal terkumpul & tunggakan
-- Denda (`fine_amount`) bisa diset manual di halaman detail tagihan
+- Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis buat tagihan semua unit `dihuni`; idempotent
+- Status otomatis: `belum_bayar → terlambat` jika melewati jatuh tempo
+- Filter per periode, status, pencarian unit/warga; denda manual di halaman detail
 - Pagination 15 baris per halaman
 
 ### Pembayaran
-- Catat pembayaran dari halaman tagihan atau menu pembayaran
-- Metode: tunai, transfer, QRIS, lainnya; field nomor referensi & nama bank
-- Upload bukti bayar (jpg/png/webp/pdf, maks 2 MB); file disimpan di `uploads/payment_proofs/`
-- Alur verifikasi: `pending → verified / rejected` oleh Admin/Bendahara
-- Filter daftar: status verifikasi, metode, pencarian unit/warga/referensi
+- Catat pembayaran dari tagihan atau menu pembayaran
+- Metode: tunai, transfer, QRIS, lainnya; nomor referensi & nama bank
+- Upload bukti bayar (jpg/png/webp/pdf, maks 2 MB)
+- Alur verifikasi: `pending → verified / rejected`
+
+### Keuangan
+- **Buku Kas** — pemasukan & pengeluaran kas utama
+- **Kas Operasional** — kas tambahan / petty cash
+- **Pengeluaran** — pencatatan belanja & realisasi anggaran
+- **Rekap Kas Publik** — halaman publik rekap kas tanpa login
+
+### Inventaris
+- Pencatatan aset perumahan: nama, kategori, kondisi, lokasi
+
+### Warga & Komunitas
+- **Pengaduan** — pengajuan & tracking keluhan warga (index + detail)
+- **Agenda / Events** — kegiatan & event perumahan (index + detail)
+- **Polling / Survei** — voting & survei warga
+- **Surat Keterangan** — cetak surat keterangan domisili/warga
+- **Onboarding** — import massal warga via template Excel/CSV
+
+### Komunikasi
+- **WhatsApp** — broadcast pesan & template WA ke warga
+
+### Portal Warga (PWA)
+- Entry point portal warga; dapat diinstall sebagai PWA di HP
+- Service worker untuk akses offline dasar
 
 ### Laporan
 - Laporan tagihan & rekap pembayaran dengan filter periode
 
 ### Manajemen User & Role
 - CRUD user; nama, username, email, peran
-- Permission editor per role: centang/uncentang permission individual dari halaman roles
+- Permission editor per role: centang/uncentang permission individual
 - Toggle aktif/nonaktif; reset password oleh Super Admin
 
 ## Keamanan
