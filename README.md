@@ -73,10 +73,11 @@ arya-green-ipl/
 │   ├── residents/             # index, form (create/edit)
 │   ├── billing/               # index, detail (generate & kelola tagihan)
 │   ├── payments/              # index, form, verify (catat & verifikasi bayar)
-│   ├── reports/               # Laporan tagihan & pembayaran
-│   ├── users/                 # index, form (CRUD user)
-│   ├── roles/                 # index (permission editor per role)
-│   └── 403.php                # Halaman akses ditolak
+    ├── reports/               # Laporan tagihan & pembayaran
+    ├── cashbook/              # Buku kas pemasukan & pengeluaran
+    ├── users/                 # index, form (CRUD user)
+    ├── roles/                 # index (permission editor per role)
+    └── 403.php                # Halaman akses ditolak
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/

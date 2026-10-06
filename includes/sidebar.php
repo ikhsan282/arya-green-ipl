@@ -70,6 +70,15 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
+    <?php if (can('cashbook.view')): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/cashbook/index.php"
+         class="nav-link text-white<?= nav_active('/cashbook') ?>">
+        <i class="bi bi-journal-text me-2"></i> Buku Kas
+      </a>
+    </li>
+    <?php endif; ?>
+
     <?php if (can('users.view')): ?>
     <li class="nav-item mt-2">
       <small class="text-white-50 px-2 text-uppercase" style="font-size:.7rem">Pengaturan</small>
