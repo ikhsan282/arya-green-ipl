@@ -133,6 +133,9 @@ include __DIR__ . '/../../includes/sidebar.php';
               <td class="small"><?= $r['purchase_price'] ? idr((float)$r['purchase_price']) : '—' ?></td>
               <?php if (can('inventory.manage')): ?>
               <td>
+                <a href="detail.php?id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-info py-0 px-2 me-1">
+                  <i class="bi bi-eye"></i>
+                </a>
                 <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1"
                         data-bs-toggle="modal" data-bs-target="#modalSave"
                         data-id="<?= $r['id'] ?>"
