@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../includes/functions.php';
-require_permission('users.create'); // hanya admin/super
+require_permission('users.create'); // hanya ketua/super
 
 $db  = db();
 $uid = auth_id();

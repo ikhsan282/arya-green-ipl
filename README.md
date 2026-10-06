@@ -131,9 +131,9 @@ arya-green-ipl/
 | Peran | Akses |
 |---|---|
 | Super Admin | Semua fitur |
-| Admin | Semua kecuali hapus user & edit role |
-| Bendahara | Tagihan, pembayaran, laporan, kas |
-| Viewer | Read-only semua |
+| Ketua | Semua kecuali hapus user & edit role |
+| Petugas | Tagihan, pembayaran, laporan, kas |
+| Warga | Read-only semua |
 
 ---
 

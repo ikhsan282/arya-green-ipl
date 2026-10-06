@@ -261,7 +261,7 @@ WHERE `name` IN (
   'letters.view','letters.manage','environments.manage'
 );
 
--- Admin: semua kecuali environments.manage
+-- Ketua: semua kecuali environments.manage
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions`
 WHERE `name` IN (

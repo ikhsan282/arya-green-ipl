@@ -6,8 +6,8 @@ require_permission('payments.verify');
 
 // Hanya Super Admin dan Admin yang boleh batalkan verifikasi
 $role = auth_user()['role'] ?? '';
-if (!in_array($role, ['super_admin', 'admin'])) {
-    flash('error', 'Hanya Super Admin atau Admin yang dapat membatalkan verifikasi.');
+if (!in_array($role, ['super_admin', 'ketua'])) {
+    flash('error', 'Hanya Super Admin atau Ketua yang dapat membatalkan verifikasi.');
     redirect(APP_URL . '/pages/payments/index.php');
 }
 

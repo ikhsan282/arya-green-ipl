@@ -149,14 +149,14 @@ function notify_payment_rejected(array $payment, string $email, string $name, st
     return $ok;
 }
 
-// ── 5. Notifikasi ke admin: ada pembayaran baru masuk ─────────────────────────
+// ── 5. Notifikasi ke ketua: ada pembayaran baru masuk ─────────────────────────
 function notify_admin_new_payment(array $payment, string $resident_name): void {
     $db   = db();
     // Kirim ke semua admin & super_admin yang punya email
     $res  = $db->query(
         'SELECT u.email, u.name FROM users u
          JOIN roles r ON r.id = u.role_id
-         WHERE r.name IN ("super_admin","admin") AND u.is_active=1 AND u.email IS NOT NULL'
+         WHERE r.name IN ("super_admin","ketua") AND u.is_active=1 AND u.email IS NOT NULL'
     );
     if (!$res) return;
 
@@ -184,9 +184,9 @@ function notify_admin_new_payment(array $payment, string $resident_name): void {
           </a>
         </p>";
 
-    while ($admin = $res->fetch_assoc()) {
-        $ok = send_mail($admin['email'], $subject, mail_template('Pembayaran Baru', $body));
-        log_email('payment_received', $admin['email'], $admin['name'], $subject, (int)$payment['id'], $ok);
+    while ($ketua = $res->fetch_assoc()) {
+        $ok = send_mail($ketua['email'], $subject, mail_template('Pembayaran Baru', $body));
+        log_email('payment_received', $ketua['email'], $ketua['name'], $subject, (int)$payment['id'], $ok);
     }
 }
 

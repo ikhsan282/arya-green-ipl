@@ -26,7 +26,7 @@ CREATE TABLE `roles` (
 
 INSERT INTO `roles` (`name`, `label`) VALUES
   ('super_admin', 'Super Admin'),
-  ('admin',       'Admin'),
+  ('ketua',       'Ketua'),
   ('petugas',     'Petugas'),
   ('warga',       'Warga');
 
@@ -93,7 +93,7 @@ CREATE TABLE `role_permissions` (
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, `id` FROM `permissions`;
 
--- Admin: all except roles.manage and users.delete
+-- Ketua: all except roles.manage and users.delete
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, `id` FROM `permissions`
 WHERE `name` NOT IN ('roles.manage','users.delete');

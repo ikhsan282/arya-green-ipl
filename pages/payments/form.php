@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upd2->bind_param('si', $payment_date, $sel_bill_id);
             $upd2->execute();
         } else {
-            // Notifikasi admin: ada pembayaran baru menunggu verifikasi
+            // Notifikasi ketua: ada pembayaran baru menunggu verifikasi
             $pay_info = [
                 'id'             => $pay_id,
                 'block'          => $bill['block'] ?? '',
