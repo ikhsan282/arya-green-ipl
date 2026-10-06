@@ -13,9 +13,11 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 ## Instalasi
 
 ### 1. Import Database
-```sql
-mysql -u root -p db_arya_green_ipl < database/schema_v2.sql
+```bash
+mysql -u root -p < database/schema.sql
 ```
+
+> Schema sudah lengkap di 1 file: 25 tabel, role `ketua`/`warga`, default user `superadmin` / `Admin@1234`.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:
