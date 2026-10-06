@@ -268,4 +268,15 @@ CREATE TABLE `activity_logs` (
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── Indexes ──────────────────────────────────────────────────────────────────
+ALTER TABLE `bills`
+  ADD INDEX `idx_bills_status`   (`status`),
+  ADD INDEX `idx_bills_due_date` (`due_date`);
+
+ALTER TABLE `payments`
+  ADD INDEX `idx_payments_status` (`status`);
+
+ALTER TABLE `activity_logs`
+  ADD INDEX `idx_activity_logs_created_at` (`created_at`);
+
 COMMIT;
