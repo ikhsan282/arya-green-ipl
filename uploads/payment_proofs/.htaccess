@@ -1,0 +1,5 @@
+# Deny direct access to uploads — serve files via PHP only
+<FilesMatch "\.(php|php3|php4|php5|phtml)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

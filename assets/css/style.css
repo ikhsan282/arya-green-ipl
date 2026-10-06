@@ -1,0 +1,98 @@
+/* Arya Green Pamulang — Custom Styles */
+:root {
+  --sidebar-width: 260px;
+  --sidebar-bg: #1a3c2e;
+  --sidebar-hover: #2d6a4f;
+  --topbar-height: 56px;
+}
+
+/* ── Layout ───────────────────────────────────── */
+body { background: #f5f7fa; font-size: .9rem; }
+
+.wrapper { min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-width);
+  min-height: 100vh;
+  background: var(--sidebar-bg);
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 1040;
+  transition: transform .25s ease;
+  overflow-y: auto;
+}
+
+.sidebar-brand { background: rgba(0,0,0,.2); }
+
+.sidebar .nav-link { border-radius: 6px; margin-bottom: 2px; font-size: .875rem; }
+.sidebar .nav-link:hover  { background: var(--sidebar-hover); }
+.sidebar .nav-link.active { background: #198754; }
+
+.content-wrapper {
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: var(--topbar-height);
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
+  position: sticky; top: 0; z-index: 1030;
+}
+
+.main-content { flex: 1; padding: 1.5rem; }
+
+/* ── Cards ────────────────────────────────────── */
+.card { border: 1px solid #e9ecef; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.card-header { background: #fff; border-bottom: 1px solid #e9ecef; font-weight: 600; }
+
+.stat-card { border-radius: 10px; }
+.stat-card .stat-icon {
+  width: 52px; height: 52px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Tables ───────────────────────────────────── */
+.table th { font-size: .78rem; text-transform: uppercase;
+            letter-spacing: .04em; color: #6c757d; font-weight: 600; }
+.table td { vertical-align: middle; }
+.table-hover tbody tr:hover { background: #f0faf5; }
+
+/* ── Badges ───────────────────────────────────── */
+.badge { font-size: .75rem; padding: .35em .65em; }
+
+/* ── Forms ────────────────────────────────────── */
+.form-label { font-weight: 500; font-size: .85rem; }
+.form-control:focus, .form-select:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 .2rem rgba(25,135,84,.2);
+}
+
+/* ── Auth pages ───────────────────────────────── */
+.auth-wrapper {
+  min-height: 100vh; background: linear-gradient(135deg, #1a3c2e 0%, #2d6a4f 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-card { border-radius: 14px; border: 0; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+.auth-logo  { font-size: 2rem; color: #198754; }
+
+/* ── Responsive sidebar ───────────────────────── */
+@media (max-width: 991.98px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.show { transform: translateX(0); }
+  .content-wrapper { margin-left: 0; width: 100%; }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 1039;
+  }
+  .sidebar-overlay.show { display: block; }
+}
+
+/* ── Misc ─────────────────────────────────────── */
+.cursor-pointer { cursor: pointer; }
+.fs-7 { font-size: .8rem; }
+.text-green { color: #198754; }
+.avatar-sm { width: 32px; height: 32px; }
