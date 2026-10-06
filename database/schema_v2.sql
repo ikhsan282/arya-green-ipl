@@ -52,23 +52,7 @@ CREATE TABLE `expense_requests` (
   FOREIGN KEY (`cash_book_id`)   REFERENCES `cash_book`(`id`)    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ------------------------------------------------------------
--- 3. WhatsApp reminder outbox
--- ------------------------------------------------------------
-CREATE TABLE `wa_messages` (
-  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `phone`       VARCHAR(20)  NOT NULL,
-  `resident_id` INT UNSIGNED DEFAULT NULL,
-  `bill_id`     INT UNSIGNED DEFAULT NULL,
-  `message`     TEXT NOT NULL,
-  `status`      ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
-  `sent_at`     DATETIME DEFAULT NULL,
-  `error_msg`   VARCHAR(255) DEFAULT NULL,
-  `created_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`resident_id`) REFERENCES `residents`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`bill_id`)     REFERENCES `bills`(`id`)     ON DELETE SET NULL,
-  INDEX `idx_wa_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ------------------------------------------------------------
 -- 4. Aduan warga
@@ -245,8 +229,6 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   -- Approval pengeluaran
   ('expense.request',      'Ajukan Pengeluaran',         'expense'),
   ('expense.approve',      'Setujui/Tolak Pengeluaran',  'expense'),
-  -- WhatsApp
-  ('wa.send',              'Kirim Reminder WA',          'wa'),
   -- Aduan
   ('complaints.view',      'Lihat Aduan',                'complaints'),
   ('complaints.manage',    'Kelola Aduan',               'complaints'),
@@ -272,7 +254,7 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, id FROM `permissions`
 WHERE `name` IN (
   'kas.view','kas.manage','expense.request','expense.approve',
-  'wa.send','complaints.view','complaints.manage',
+  'complaints.view','complaints.manage',
   'polls.view','polls.manage','polls.vote',
   'events.view','events.manage','events.attendance',
   'inventory.view','inventory.manage',
@@ -284,7 +266,7 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions`
 WHERE `name` IN (
   'kas.view','kas.manage','expense.request','expense.approve',
-  'wa.send','complaints.view','complaints.manage',
+  'complaints.view','complaints.manage',
   'polls.view','polls.manage','polls.vote',
   'events.view','events.manage','events.attendance',
   'inventory.view','inventory.manage',

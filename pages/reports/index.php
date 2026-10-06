@@ -103,11 +103,14 @@ include __DIR__ . '/../../includes/sidebar.php';
               <?php endfor; ?>
             </select>
           </div>
-          <div class="col-auto">
+          <div class="col-auto d-flex gap-2 flex-wrap">
             <button class="btn btn-sm btn-success"><i class="bi bi-search me-1"></i>Tampilkan</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
               <i class="bi bi-printer me-1"></i>Cetak
             </button>
+            <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>" class="btn btn-sm btn-outline-success">
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+            </a>
           </div>
         </form>
       </div>

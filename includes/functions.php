@@ -90,6 +90,26 @@ function idr(float $v): string {
     return 'Rp ' . number_format($v, 0, ',', '.');
 }
 
+function terbilang(float $n): string {
+    $n = (int)round($n);
+    if ($n === 0) return 'nol';
+    $s = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan',
+          'sepuluh','sebelas','dua belas','tiga belas','empat belas','lima belas',
+          'enam belas','tujuh belas','delapan belas','sembilan belas'];
+    $r = function(int $n) use (&$r, $s): string {
+        if ($n === 0)        return '';
+        if ($n < 20)         return $s[$n];
+        if ($n < 100)        return $s[(int)($n/10)].' puluh'.($n%10 ? ' '.$s[$n%10] : '');
+        if ($n < 200)        return 'seratus'.($n%100 ? ' '.$r($n%100) : '');
+        if ($n < 1000)       return $s[(int)($n/100)].' ratus'.($n%100 ? ' '.$r($n%100) : '');
+        if ($n < 2000)       return 'seribu'.($n%1000 ? ' '.$r($n%1000) : '');
+        if ($n < 1000000)    return $r((int)($n/1000)).' ribu'.($n%1000 ? ' '.$r($n%1000) : '');
+        if ($n < 1000000000) return $r((int)($n/1000000)).' juta'.($n%1000000 ? ' '.$r($n%1000000) : '');
+        return $r((int)($n/1000000000)).' miliar'.($n%1000000000 ? ' '.$r($n%1000000000) : '');
+    };
+    return ucfirst(trim($r($n)));
+}
+
 // ── DATES ─────────────────────────────────────────────────────────────────────
 function fmt_date(string $date, string $fmt = 'd M Y'): string {
     if (!$date) return '-';

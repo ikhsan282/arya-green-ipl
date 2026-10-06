@@ -116,14 +116,20 @@ function nav_active(string $path): string {
     <?php if (can('reports.view')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/reports/index.php"
-         class="nav-link text-white<?= nav_active('/reports') ?>">
+         class="nav-link text-white<?= nav_active('/reports/index') ?>">
         <i class="bi bi-bar-chart-line me-2"></i> Laporan
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/reports/arrears.php"
+         class="nav-link text-white<?= nav_active('/reports/arrears') ?>">
+        <i class="bi bi-exclamation-triangle me-2"></i> Rekap Tunggakan
       </a>
     </li>
     <?php endif; ?>
 
     <!-- ── Komunikasi ── -->
-    <?php if (can('billing.send_reminder') || can('wa.send') || can('complaints.view') || can('polls.view')): ?>
+    <?php if (can('billing.send_reminder') || can('complaints.view') || can('polls.view')): ?>
     <li class="nav-item mt-2">
       <small class="text-white-50 px-2 text-uppercase" style="font-size:.7rem">Komunikasi</small>
     </li>
@@ -134,15 +140,6 @@ function nav_active(string $path): string {
       <a href="<?= APP_URL ?>/pages/billing/send_reminders.php"
          class="nav-link text-white<?= nav_active('/send_reminders') ?>">
         <i class="bi bi-envelope me-2"></i> Reminder Email
-      </a>
-    </li>
-    <?php endif; ?>
-
-    <?php if (can('wa.send')): ?>
-    <li class="nav-item">
-      <a href="<?= APP_URL ?>/pages/wa/index.php"
-         class="nav-link text-white<?= nav_active('/wa/') ?>">
-        <i class="bi bi-whatsapp me-2"></i> Reminder WA
       </a>
     </li>
     <?php endif; ?>

@@ -65,6 +65,11 @@ include __DIR__ . '/../../includes/sidebar.php';
           </div>
           <div class="card-footer">
             <a href="index.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
+            <?php if ($pay['status']==='verified'): ?>
+              <a href="print_receipt.php?id=<?= $id ?>" target="_blank" class="btn btn-outline-primary btn-sm ms-2">
+                <i class="bi bi-printer me-1"></i> Cetak Kwitansi
+              </a>
+            <?php endif; ?>
             <?php if (can('payments.verify') && $pay['status']==='pending'): ?>
               <a href="verify.php?id=<?= $id ?>" class="btn btn-success btn-sm ms-2"><i class="bi bi-check-lg me-1"></i> Verifikasi</a>
             <?php endif; ?>
