@@ -92,20 +92,40 @@ arya-green-ipl/
 | Viewer | Read-only semua |
 
 ## Fitur
-- ✅ Login / Logout dengan session
-- ✅ CSRF protection di semua form
-- ✅ Email verifikasi via `mail()`
-- ✅ Forgot & reset password (token 1 jam)
-- ✅ RBAC: roles + permissions + role_permissions
-- ✅ Master data: unit, tipe unit, penghuni
-- ✅ Generate tagihan IPL per periode (bulanan)
-- ✅ Catat pembayaran + upload bukti bayar
-- ✅ Verifikasi pembayaran oleh admin
-- ✅ Status tagihan: belum, lunas, terlambat
-- ✅ Laporan tagihan & rekap pembayaran
-- ✅ Dashboard statistik real-time
-- ✅ Pagination di semua list
-- ✅ Responsive (Bootstrap 5)
+
+### Dashboard
+- Statistik real-time: total unit, total warga aktif, jumlah belum bayar (belum + terlambat), total terkumpul bulan ini
+- Progress bar lunas vs belum vs terlambat untuk periode berjalan, plus nominal terkumpul & tunggakan
+- Tabel 8 tagihan terlambat (urut jatuh tempo) dengan link ke billing
+- Tabel 8 pembayaran terbaru dengan status badge
+
+### Master Data
+- **Unit** — CRUD; nomor unit, blok, tipe unit; status dihuni/kosong
+- **Tipe Unit** — CRUD; nama tipe, nominal IPL per bulan
+- **Warga / Penghuni** — CRUD; nama, telepon, email, unit; status aktif/nonaktif
+
+### Tagihan IPL
+- **Generate tagihan** per periode (tahun + bulan + jatuh tempo): otomatis buat tagihan untuk semua unit berstatus `dihuni`; unit yang sudah punya tagihan dilewati (idempotent)
+- Status tagihan diperbarui otomatis: `belum_bayar → terlambat` jika melewati jatuh tempo
+- Filter tagihan per periode, status (belum/lunas/terlambat), dan pencarian unit/warga
+- Ringkasan periode: total, lunas, belum, terlambat; nominal terkumpul & tunggakan
+- Denda (`fine_amount`) bisa diset manual di halaman detail tagihan
+- Pagination 15 baris per halaman
+
+### Pembayaran
+- Catat pembayaran dari halaman tagihan atau menu pembayaran
+- Metode: tunai, transfer, QRIS, lainnya; field nomor referensi & nama bank
+- Upload bukti bayar (jpg/png/webp/pdf, maks 2 MB); file disimpan di `uploads/payment_proofs/`
+- Alur verifikasi: `pending → verified / rejected` oleh Admin/Bendahara
+- Filter daftar: status verifikasi, metode, pencarian unit/warga/referensi
+
+### Laporan
+- Laporan tagihan & rekap pembayaran dengan filter periode
+
+### Manajemen User & Role
+- CRUD user; nama, username, email, peran
+- Permission editor per role: centang/uncentang permission individual dari halaman roles
+- Toggle aktif/nonaktif; reset password oleh Super Admin
 
 ## Keamanan
 - Semua query pakai MySQLi prepared statements
@@ -115,4 +135,6 @@ arya-green-ipl/
 - Session `httponly` + `samesite=Strict`
 - Upload divalidasi MIME type + ukuran maksimal 2 MB
 - `.htaccess` blokir akses langsung ke `config/`, `includes/`, `database/`
-- Validasi permission di setiap halaman (`require_perm()`)
+- Validasi permission di setiap halaman (`require_permission()`)
+- Email verifikasi akun via `mail()`
+- Forgot & reset password dengan token berumur 1 jam
