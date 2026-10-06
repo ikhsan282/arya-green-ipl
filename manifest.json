@@ -1,0 +1,36 @@
+{
+  "name": "Arya Green IPL",
+  "short_name": "AryaGreen",
+  "description": "Portal Warga & Manajemen IPL Arya Green Pamulang",
+  "start_url": "/arya-green-ipl/pages/portal.php",
+  "display": "standalone",
+  "background_color": "#f0f4f0",
+  "theme_color": "#198754",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/arya-green-ipl/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/arya-green-ipl/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tagihan Saya",
+      "url": "/arya-green-ipl/pages/billing/index.php",
+      "icons": [{"src": "/arya-green-ipl/assets/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Kas Publik",
+      "url": "/arya-green-ipl/pages/public/kas.php",
+      "icons": [{"src": "/arya-green-ipl/assets/icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ]
+}
