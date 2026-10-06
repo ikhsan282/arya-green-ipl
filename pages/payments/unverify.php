@@ -4,9 +4,10 @@ auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
 require_permission('payments.verify');
 
-// Hanya Super Admin yang boleh batalkan verifikasi
-if ((auth_user()['role'] ?? '') !== 'super_admin') {
-    flash('error', 'Hanya Super Admin yang dapat membatalkan verifikasi.');
+// Hanya Super Admin dan Admin yang boleh batalkan verifikasi
+$role = auth_user()['role'] ?? '';
+if (!in_array($role, ['super_admin', 'admin'])) {
+    flash('error', 'Hanya Super Admin atau Admin yang dapat membatalkan verifikasi.');
     redirect(APP_URL . '/pages/payments/index.php');
 }
 
