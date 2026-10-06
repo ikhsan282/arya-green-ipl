@@ -28,8 +28,14 @@ function nav_active(string $path): string {
     <?php if (can('units.view')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/units/index.php"
-         class="nav-link text-white<?= nav_active('/units') ?>">
+         class="nav-link text-white<?= nav_active('/units/') ?>">
         <i class="bi bi-houses me-2"></i> Data Unit
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/unit_types/index.php"
+         class="nav-link text-white<?= nav_active('/unit_types') ?>">
+        <i class="bi bi-grid me-2"></i> Tipe Unit
       </a>
     </li>
     <?php endif; ?>
@@ -48,6 +54,15 @@ function nav_active(string $path): string {
       <a href="<?= APP_URL ?>/pages/billing/index.php"
          class="nav-link text-white<?= nav_active('/billing') ?>">
         <i class="bi bi-receipt me-2"></i> Tagihan IPL
+      </a>
+    </li>
+    <?php endif; ?>
+
+    <?php if (can('billing.send_reminder')): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/billing/send_reminders.php"
+         class="nav-link text-white<?= nav_active('/send_reminders') ?>">
+        <i class="bi bi-envelope me-2"></i> Reminder Email
       </a>
     </li>
     <?php endif; ?>

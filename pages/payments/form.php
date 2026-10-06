@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/email_notifications.php';
 require_permission('payments.create');
 
 $db      = db();
@@ -94,6 +95,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upd2 = $db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=? WHERE id=?');
             $upd2->bind_param('si', $payment_date, $sel_bill_id);
             $upd2->execute();
+        } else {
+            // Notifikasi admin: ada pembayaran baru menunggu verifikasi
+            $pay_info = [
+                'id'             => $pay_id,
+                'block'          => $bill['block'] ?? '',
+                'unit_number'    => $bill['unit_number'] ?? '',
+                'period'         => $bill['period'] ?? '',
+                'amount_paid'    => $amount_paid,
+                'payment_method' => $payment_method,
+                'payment_date'   => $payment_date,
+            ];
+            notify_admin_new_payment($pay_info, $bill['resident_name'] ?? '');
         }
 
         log_activity('create','payments',"Payment #{$pay_id} for bill #{$sel_bill_id}");

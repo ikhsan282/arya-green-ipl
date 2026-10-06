@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/email_notifications.php';
 require_permission('billing.view');
 
 $db = db();
@@ -210,6 +211,12 @@ include __DIR__ . '/../../includes/sidebar.php';
           <small class="text-success ms-2">Terkumpul: <?= idr((float)($summary['terkumpul']??0)) ?></small>
           <small class="text-danger ms-2">Tunggakan: <?= idr((float)($summary['tunggakan']??0)) ?></small>
         </span>
+        <?php if (can('billing.send_reminder')): ?>
+        <a href="<?= APP_URL ?>/pages/billing/send_reminders.php"
+           class="btn btn-sm btn-outline-warning">
+          <i class="bi bi-envelope me-1"></i> Kirim Reminder
+        </a>
+        <?php endif; ?>
       </div>
       <div class="card-body border-bottom">
         <form method="GET" class="row g-2">

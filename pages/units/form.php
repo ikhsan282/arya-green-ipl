@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare(
                 'UPDATE units SET unit_type_id=?,unit_number=?,block=?,floor=?,area_sqm=?,status=?,notes=? WHERE id=?'
             );
-            $stmt->bind_param('issiidsi', $data['unit_type_id'],$data['unit_number'],$data['block'],
+            $stmt->bind_param('issidssi', $data['unit_type_id'],$data['unit_number'],$data['block'],
                 $data['floor'],$data['area_sqm'],$data['status'],$data['notes'],$id);
             $stmt->execute();
             log_activity('update','units',"Unit #{$id} updated");

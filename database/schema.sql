@@ -58,7 +58,6 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   ('billing.view',          'Lihat Tagihan',               'billing'),
   ('billing.generate',      'Generate Tagihan',            'billing'),
   ('billing.edit',          'Edit Tagihan',                'billing'),
-  ('billing.delete',        'Hapus Tagihan',               'billing'),
   -- Payments
   ('payments.view',         'Lihat Pembayaran',            'payments'),
   ('payments.create',       'Catat Pembayaran',            'payments'),
@@ -70,9 +69,14 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   ('users.create',          'Tambah User',                 'users'),
   ('users.edit',            'Edit User',                   'users'),
   ('users.delete',          'Hapus User',                  'users'),
+  -- Cashbook
+  ('cashbook.view',          'Lihat Buku Kas',              'cashbook'),
+  ('cashbook.manage',        'Kelola Buku Kas',             'cashbook'),
   -- Roles
   ('roles.view',            'Lihat Roles',                 'roles'),
-  ('roles.manage',          'Kelola Roles & Permissions',  'roles');
+  ('roles.manage',          'Kelola Roles & Permissions',  'roles'),
+  -- Billing extra
+  ('billing.send_reminder', 'Kirim Reminder Email',        'billing');
 
 -- ------------------------------------------------------------
 -- Role Permissions
@@ -267,6 +271,57 @@ CREATE TABLE `activity_logs` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Email Logs
+-- ------------------------------------------------------------
+CREATE TABLE `email_logs` (
+  `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `type`       VARCHAR(50)  NOT NULL,
+  `to_email`   VARCHAR(150) NOT NULL,
+  `to_name`    VARCHAR(150) DEFAULT NULL,
+  `subject`    VARCHAR(255) NOT NULL,
+  `ref_id`     INT UNSIGNED DEFAULT NULL,
+  `status`     ENUM('sent','failed') NOT NULL DEFAULT 'sent',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_email_logs_type`       (`type`),
+  INDEX `idx_email_logs_ref_id`     (`ref_id`),
+  INDEX `idx_email_logs_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Cash Book (Buku Kas)
+-- ------------------------------------------------------------
+CREATE TABLE `cash_book` (
+  `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `type`           ENUM('pemasukan','pengeluaran') NOT NULL,
+  `category`       VARCHAR(100) NOT NULL,
+  `amount`         DECIMAL(14,2) NOT NULL,
+  `description`    TEXT DEFAULT NULL,
+  `trx_date`       DATE NOT NULL,
+  `ref_payment_id` INT UNSIGNED DEFAULT NULL,
+  `created_by`     INT UNSIGNED DEFAULT NULL,
+  `created_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`ref_payment_id`) REFERENCES `payments`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (`created_by`)     REFERENCES `users`(`id`)    ON DELETE SET NULL ON UPDATE CASCADE,
+  INDEX `idx_cashbook_trx_date` (`trx_date`),
+  INDEX `idx_cashbook_type`     (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Role Permissions: tambahan cashbook & billing.send_reminder
+-- ------------------------------------------------------------
+-- super_admin & admin: cashbook full + send_reminder
+INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r, `permissions` p
+WHERE r.name IN ('super_admin','admin')
+  AND p.name IN ('cashbook.view','cashbook.manage','billing.send_reminder');
+
+-- petugas: cashbook view only
+INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `roles` r, `permissions` p
+WHERE r.name = 'petugas' AND p.name = 'cashbook.view';
 
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 ALTER TABLE `bills`

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/email_notifications.php';
 require_permission('payments.verify');
 
 $db = db();
@@ -10,7 +11,7 @@ if (!$id) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pag
 
 $stmt = $db->prepare(
     'SELECT p.*, b.id AS bill_id, b.total_amount, bp.label AS period,
-            u.unit_number, u.block, r.name AS resident_name
+            u.unit_number, u.block, r.name AS resident_name, r.email AS resident_email
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
@@ -39,12 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $s2->execute();
         log_activity('verify','payments',"Payment #{$id} verified");
         flash('success','Pembayaran berhasil diverifikasi.');
+        // Email notifikasi ke warga
+        if (!empty($pay['resident_email'])) {
+            $pay['verified_at'] = date('Y-m-d H:i:s');
+            notify_payment_verified($pay, $pay['resident_email'], $pay['resident_name'] ?? '');
+        }
     } elseif ($action === 'reject') {
         $s = $db->prepare('UPDATE payments SET status="rejected",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
         $s->bind_param('isi', $uid, $notes, $id);
         $s->execute();
         log_activity('reject','payments',"Payment #{$id} rejected");
         flash('warning','Pembayaran ditolak.');
+        // Email notifikasi ke warga
+        if (!empty($pay['resident_email'])) {
+            notify_payment_rejected($pay, $pay['resident_email'], $pay['resident_name'] ?? '', $notes);
+        }
     }
     redirect(APP_URL . '/pages/payments/index.php');
 }
