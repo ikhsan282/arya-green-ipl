@@ -31,13 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($id) {
             $s = $db->prepare('UPDATE inventory SET name=?,category=?,quantity=?,unit=?,`condition`=?,location=?,purchase_date=?,purchase_price=?,notes=?' . ($photo ? ',photo_file=?' : '') . ' WHERE id=?');
-            if ($photo) $s->bind_param('ssississssi', $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$photo,$id);
-            else        $s->bind_param('ssississssi', $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$id);
+            if ($photo) $s->bind_param('ssissssdssi', $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$photo,$id);
+            else        $s->bind_param('ssissssdsi',  $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$id);
             $s->execute();
             flash('success', 'Aset diperbarui.');
         } else {
             $s = $db->prepare('INSERT INTO inventory (name,category,quantity,unit,`condition`,location,purchase_date,purchase_price,notes,photo_file,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-            $s->bind_param('ssississssi', $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$photo,$uid);
+            $s->bind_param('ssissssdssi', $name,$cat,$qty,$unit,$cond,$loc,$pdate,$price,$notes,$photo,$uid);
             $s->execute();
             flash('success', 'Aset berhasil ditambahkan.');
         }

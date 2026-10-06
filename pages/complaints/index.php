@@ -51,9 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'reply') {
-        require_permission('complaints.manage');
         $id  = (int)($_POST['complaint_id'] ?? 0);
         $msg = clean($_POST['message'] ?? '');
+        // Allow: pengurus (complaints.manage) OR pemilik aduan itu sendiri
+        $owner = $db->prepare('SELECT user_id FROM complaints WHERE id=? LIMIT 1');
+        $owner->bind_param('i', $id); $owner->execute();
+        $owner_uid = $owner->get_result()->fetch_row()[0] ?? null;
+        if (!can('complaints.manage') && $owner_uid != $uid) {
+            flash('error', 'Tidak diizinkan.'); redirect(APP_URL.'/pages/complaints/index.php');
+        }
         if ($msg) {
             $s = $db->prepare('INSERT INTO complaint_replies (complaint_id,user_id,message) VALUES (?,?,?)');
             $s->bind_param('iis', $id, $uid, $msg);

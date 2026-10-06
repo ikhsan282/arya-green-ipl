@@ -101,7 +101,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <?php endforeach; endif; ?>
           </div>
-          <?php if (can('complaints.manage')): ?>
+          <?php if (can('complaints.manage') || $complaint['user_id'] == $uid): ?>
           <div class="card-footer">
             <form method="POST" action="index.php">
               <?= csrf_field() ?>

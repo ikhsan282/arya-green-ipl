@@ -154,7 +154,81 @@ include __DIR__ . '/../../includes/sidebar.php';
         <small class="text-muted"><?= $p['total_votes'] ?> total suara</small>
         <?php endif; ?>
       </div>
-      <div class="card-footer text-muted small">Dibuat oleh <?= e($p['creator'] ?? '—') ?></div>
+      <div class="card-footer d-flex justify-content-between align-items-center text-muted small">
+        <span>Dibuat oleh <?= e($p['creator'] ?? '—') ?></span>
+        <?php if ($ended && $p['total_votes'] > 0): ?>
+        <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                data-bs-toggle="collapse" data-bs-target="#chart<?= $p['id'] ?>">
+          <i class="bi bi-bar-chart me-1"></i>Statistik
+        </button>
+        <?php endif; ?>
+      </div>
+      <?php if ($ended && $p['total_votes'] > 0): ?>
+      <div class="collapse" id="chart<?= $p['id'] ?>">
+        <div class="card-body border-top">
+          <div class="d-flex justify-content-between mb-2">
+            <strong class="small">Hasil Voting</strong>
+            <small class="text-muted"><?= $p['total_votes'] ?> total suara</small>
+          </div>
+          <canvas id="canvas<?= $p['id'] ?>" height="120"></canvas>
+          <?php
+            $chart_labels = json_encode(array_column($p['options'], 'label'));
+            $chart_votes  = json_encode(array_column($p['options'], 'votes'));
+            $chart_pcts   = json_encode(array_map(function($o) use ($p) {
+              return $p['total_votes'] > 0 ? round($o['votes'] / $p['total_votes'] * 100, 1) : 0;
+            }, $p['options']));
+          ?>
+          <script>
+          (function(){
+            var ctx = document.getElementById('canvas<?= $p['id'] ?>').getContext('2d');
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: <?= $chart_labels ?>,
+                datasets: [{
+                  label: 'Suara',
+                  data: <?= $chart_votes ?>,
+                  backgroundColor: [
+                    '#198754','#0d6efd','#ffc107','#dc3545',
+                    '#0dcaf0','#6f42c1','#fd7e14','#20c997'
+                  ],
+                  borderRadius: 4
+                }]
+              },
+              options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: function(c) {
+                        var pcts = <?= $chart_pcts ?>;
+                        return c.raw + ' suara (' + pcts[c.dataIndex] + '%)';
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  x: { ticks: { stepSize: 1 }, beginAtZero: true }
+                }
+              }
+            });
+          })();
+          </script>
+          <div class="mt-3">
+            <?php foreach ($p['options'] as $o):
+              $pct = $p['total_votes'] > 0 ? round($o['votes'] / $p['total_votes'] * 100, 1) : 0;
+            ?>
+            <div class="d-flex justify-content-between small mb-1">
+              <span><?= e($o['label']) ?></span>
+              <span class="fw-semibold"><?= $o['votes'] ?> suara <span class="text-muted">(<?= $pct ?>%)</span></span>
+            </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
     </div>
     <?php endforeach; endif; ?>
 
@@ -195,4 +269,5 @@ include __DIR__ . '/../../includes/sidebar.php';
   </div>
 </div>
 <?php endif; ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <?php include __DIR__ . '/../../includes/footer.php'; ?>

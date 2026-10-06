@@ -33,44 +33,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect(APP_URL.'/pages/onboarding/index.php?step=2');
     }
 
-    // Step 2: Import warga dari Excel/CSV
-    if ($action === 'import_residents') {
+    // Step 2a: Preview CSV sebelum import
+    if ($action === 'preview_csv') {
         if (empty($_FILES['csv_file']['name'])) {
             flash('error', 'Pilih file CSV terlebih dahulu.');
             redirect(APP_URL.'/pages/onboarding/index.php?step=2');
         }
         $file = $_FILES['csv_file']['tmp_name'];
-        $rows = 0; $errors = [];
+        $preview = [];
         if (($handle = fopen($file, 'r')) !== false) {
-            $header = fgetcsv($handle); // skip header
+            fgetcsv($handle); // skip header
             while (($row = fgetcsv($handle)) !== false) {
                 if (count($row) < 4) continue;
-                [$unit_num, $block, $name, $phone] = array_map('trim', $row);
-                $email  = trim($row[4] ?? '');
                 $status = trim($row[5] ?? 'pemilik');
                 if (!in_array($status, ['pemilik','penyewa'])) $status = 'pemilik';
-
-                // Cari atau buat unit
-                $u = $db->prepare('SELECT id FROM units WHERE unit_number=? AND block=?');
-                $u->bind_param('ss', $unit_num, $block); $u->execute();
-                $unit = $u->get_result()->fetch_row();
-                if (!$unit) {
-                    // Ambil unit_type_id pertama
-                    $ut_id = $db->query('SELECT id FROM unit_types LIMIT 1')->fetch_row()[0] ?? 1;
-                    $ins = $db->prepare('INSERT INTO units (unit_type_id,unit_number,block,status) VALUES (?,?,?,?)');
-                    $s2 = 'dihuni';
-                    $ins->bind_param('isss', $ut_id, $unit_num, $block, $s2); $ins->execute();
-                    $unit_id = $db->insert_id;
-                } else {
-                    $unit_id = $unit[0];
-                }
-
-                // Insert resident
-                $r = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,email,status) VALUES (?,?,?,?,?)');
-                $r->bind_param('issss', $unit_id, $name, $phone, $email, $status);
-                if ($r->execute()) $rows++;
+                $preview[] = [
+                    'unit_number' => trim($row[0]),
+                    'block'       => trim($row[1]),
+                    'name'        => trim($row[2]),
+                    'phone'       => trim($row[3]),
+                    'email'       => trim($row[4] ?? ''),
+                    'status'      => $status,
+                ];
             }
             fclose($handle);
+        }
+        if (empty($preview)) {
+            flash('error', 'File CSV kosong atau format tidak sesuai.');
+            redirect(APP_URL.'/pages/onboarding/index.php?step=2');
+        }
+        $_SESSION['csv_preview'] = $preview;
+        redirect(APP_URL.'/pages/onboarding/index.php?step=2&preview=1');
+    }
+
+    // Step 2b: Konfirmasi import dari preview
+    if ($action === 'import_residents') {
+        $preview = $_SESSION['csv_preview'] ?? [];
+        unset($_SESSION['csv_preview']);
+        if (empty($preview)) {
+            flash('error', 'Tidak ada data preview. Upload ulang file CSV.');
+            redirect(APP_URL.'/pages/onboarding/index.php?step=2');
+        }
+        $rows = 0;
+        $ut_id = $db->query('SELECT id FROM unit_types LIMIT 1')->fetch_row()[0] ?? 1;
+        foreach ($preview as $p) {
+            [$unit_num, $block, $name, $phone, $email, $status] = array_values($p);
+            $u = $db->prepare('SELECT id FROM units WHERE unit_number=? AND block=?');
+            $u->bind_param('ss', $unit_num, $block); $u->execute();
+            $unit = $u->get_result()->fetch_row();
+            if (!$unit) {
+                $s2 = 'dihuni';
+                $ins = $db->prepare('INSERT INTO units (unit_type_id,unit_number,block,status) VALUES (?,?,?,?)');
+                $ins->bind_param('isss', $ut_id, $unit_num, $block, $s2); $ins->execute();
+                $unit_id = $db->insert_id;
+            } else {
+                $unit_id = $unit[0];
+            }
+            $r = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,email,status) VALUES (?,?,?,?,?)');
+            $r->bind_param('issss', $unit_id, $name, $phone, $email, $status);
+            if ($r->execute()) $rows++;
         }
         log_activity('import', 'onboarding', "Import {$rows} warga dari CSV");
         flash('success', "Berhasil mengimpor {$rows} warga.");
@@ -157,6 +178,51 @@ include __DIR__ . '/../../includes/sidebar.php';
 
     <?php elseif ($step === 2): ?>
     <!-- Step 2: Import CSV -->
+    <?php $csv_preview = $_SESSION['csv_preview'] ?? null; ?>
+    <?php if ($csv_preview && isset($_GET['preview'])): ?>
+    <!-- Preview table -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-table me-1"></i> Preview Data (<?= count($csv_preview) ?> baris)</span>
+        <a href="?step=2" class="btn btn-sm btn-outline-secondary" onclick="<?php unset($_SESSION['csv_preview']); ?>">
+          <i class="bi bi-arrow-left me-1"></i>Upload Ulang
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:360px;overflow-y:auto">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light sticky-top">
+              <tr><th>#</th><th>Unit</th><th>Blok</th><th>Nama</th><th>Telepon</th><th>Email</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+            <?php foreach ($csv_preview as $i => $row): ?>
+            <tr>
+              <td><?= $i+1 ?></td>
+              <td><?= e($row['unit_number']) ?></td>
+              <td><?= e($row['block']) ?></td>
+              <td><?= e($row['name']) ?></td>
+              <td><?= e($row['phone']) ?></td>
+              <td><?= e($row['email']) ?></td>
+              <td><span class="badge bg-<?= $row['status']==='pemilik'?'primary':'secondary' ?>"><?= e($row['status']) ?></span></td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <form method="POST">
+          <?= csrf_field() ?><input type="hidden" name="_action" value="import_residents">
+          <div class="d-flex gap-2">
+            <a href="?step=2" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i>Batal</a>
+            <button class="btn btn-success flex-fill">
+              <i class="bi bi-check-lg me-1"></i>Konfirmasi Import <?= count($csv_preview) ?> Warga
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <?php else: ?>
     <div class="card">
       <div class="card-header"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Import Data Warga</div>
       <div class="card-body">
@@ -165,14 +231,14 @@ include __DIR__ . '/../../includes/sidebar.php';
           Contoh: <code>A01,A,Budi Santoso,08123456789,budi@email.com,pemilik</code>
         </div>
         <form method="POST" enctype="multipart/form-data">
-          <?= csrf_field() ?><input type="hidden" name="_action" value="import_residents">
+          <?= csrf_field() ?><input type="hidden" name="_action" value="preview_csv">
           <div class="mb-3">
             <label class="form-label">File CSV</label>
             <input type="file" name="csv_file" class="form-control" accept=".csv,.txt" required>
           </div>
           <div class="d-flex gap-2">
             <a href="?step=1" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
-            <button class="btn btn-success flex-fill">Import & Lanjut <i class="bi bi-upload ms-1"></i></button>
+            <button class="btn btn-success flex-fill"><i class="bi bi-eye me-1"></i>Preview Data</button>
           </div>
         </form>
 
@@ -199,6 +265,7 @@ include __DIR__ . '/../../includes/sidebar.php';
         </a>
       </div>
     </div>
+    <?php endif; ?>
 
     <?php elseif ($step === 3): ?>
     <!-- Step 3: Saldo awal kas -->
