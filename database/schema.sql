@@ -27,7 +27,7 @@ CREATE TABLE `roles` (
 INSERT INTO `roles` (`name`, `label`) VALUES
   ('super_admin', 'Super Admin'),
   ('ketua',       'Ketua'),
-  ('petugas',     'Petugas'),
+  ('bendahara',   'Bendahara'),
   ('warga',       'Warga');
 
 -- ------------------------------------------------------------
@@ -98,7 +98,7 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, `id` FROM `permissions`
 WHERE `name` NOT IN ('roles.manage','users.delete');
 
--- Petugas: dashboard, view units/residents, billing, payments (no delete)
+-- Bendahara: dashboard, view units/residents, billing, payments (no delete)
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, `id` FROM `permissions`
 WHERE `name` IN (
@@ -318,10 +318,10 @@ SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name IN ('super_admin','ketua')
   AND p.name IN ('cashbook.view','cashbook.manage','billing.send_reminder');
 
--- petugas: cashbook view only
+-- bendahara: cashbook view only
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
-WHERE r.name = 'petugas' AND p.name = 'cashbook.view';
+WHERE r.name = 'bendahara' AND p.name = 'cashbook.view';
 
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 ALTER TABLE `bills`
@@ -602,7 +602,7 @@ WHERE `name` IN (
   'letters.view','letters.manage'
 );
 
--- Petugas: view + request pengeluaran + absensi + complaints.view
+-- Bendahara: view + request pengeluaran + absensi + complaints.view
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, id FROM `permissions`
 WHERE `name` IN (

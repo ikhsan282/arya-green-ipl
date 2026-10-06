@@ -29,7 +29,7 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 
 1. **Super Admin** - Full access + multi-environment
 2. **Ketua** - Semua fitur kecuali role management & delete user
-3. **Petugas** - View + input billing/payment/absensi
+3. **Bendahara** - View + input billing/payment/absensi
 4. **Warga** - View tagihan sendiri, polling, aduan
 
 ## Fitur Utama
