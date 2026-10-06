@@ -126,6 +126,12 @@ function nav_active(string $path): string {
         <i class="bi bi-exclamation-triangle me-2"></i> Rekap Tunggakan
       </a>
     </li>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/reports/cashflow.php"
+         class="nav-link text-white<?= nav_active('/reports/cashflow') ?>">
+        <i class="bi bi-graph-up-arrow me-2"></i> Arus Kas
+      </a>
+    </li>
     <?php endif; ?>
 
     <!-- ── Komunikasi ── -->

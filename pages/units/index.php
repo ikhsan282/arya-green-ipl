@@ -142,6 +142,9 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <td><?= idr((float)$u['ipl_amount']) ?></td>
                 <td><?= unit_status_badge($u['status']) ?></td>
                 <td>
+                  <a href="detail.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                    <i class="bi bi-eye"></i>
+                  </a>
                   <?php if (can('units.edit')): ?>
                     <a href="form.php?id=<?= $u['id'] ?>" class="btn btn-xs btn-outline-primary btn-sm py-0 px-2">
                       <i class="bi bi-pencil"></i>

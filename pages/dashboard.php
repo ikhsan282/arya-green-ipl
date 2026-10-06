@@ -56,6 +56,29 @@ $overdue = $db->query(
      ORDER BY b.due_date ASC LIMIT 8'
 )->fetch_all(MYSQLI_ASSOC);
 
+// Yearly trend for chart
+$trend_stmt = $db->prepare(
+    'SELECT bp.period_month AS m,
+            COALESCE(SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount END),0) AS terkumpul,
+            COALESCE(SUM(CASE WHEN b.status IN ("belum_bayar","terlambat") THEN b.total_amount END),0) AS tunggakan
+     FROM billing_periods bp
+     LEFT JOIN bills b ON b.billing_period_id=bp.id
+     WHERE bp.period_year=?
+     GROUP BY bp.period_month ORDER BY bp.period_month'
+);
+$trend_stmt->bind_param('i', $year);
+$trend_stmt->execute();
+$trend_rows = $trend_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$trend_map  = array_column($trend_rows, null, 'm');
+$chart_labels  = [];
+$chart_lunas   = [];
+$chart_nunggak = [];
+for ($m = 1; $m <= 12; $m++) {
+    $chart_labels[]  = substr(bulan_indo($m), 0, 3);
+    $chart_lunas[]   = (float)($trend_map[$m]['terkumpul'] ?? 0);
+    $chart_nunggak[] = (float)($trend_map[$m]['tunggakan'] ?? 0);
+}
+
 $page_title = 'Dashboard';
 include __DIR__ . '/../includes/header.php';
 include __DIR__ . '/../includes/sidebar.php';
@@ -237,5 +260,45 @@ include __DIR__ . '/../includes/sidebar.php';
       </div>
     </div>
 
+    <!-- Chart tren pembayaran -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-bar-chart-line me-1 text-success"></i> Tren Pembayaran <?= $year ?></div>
+      <div class="card-body"><canvas id="dashChart" height="90"></canvas></div>
+    </div>
+
   </div><!-- /.main-content -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('dashChart'), {
+  type: 'bar',
+  data: {
+    labels: <?= json_encode($chart_labels) ?>,
+    datasets: [
+      {
+        label: 'Terkumpul',
+        data: <?= json_encode($chart_lunas) ?>,
+        backgroundColor: 'rgba(25,135,84,0.7)',
+        borderColor: 'rgba(25,135,84,1)',
+        borderWidth: 1
+      },
+      {
+        label: 'Tunggakan',
+        data: <?= json_encode($chart_nunggak) ?>,
+        backgroundColor: 'rgba(220,53,69,0.6)',
+        borderColor: 'rgba(220,53,69,1)',
+        borderWidth: 1
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: {
+        ticks: { callback: v => 'Rp ' + (v/1000000).toFixed(1) + 'jt' }
+      }
+    }
+  }
+});
+</script>
 <?php include __DIR__ . '/../includes/footer.php'; ?>
