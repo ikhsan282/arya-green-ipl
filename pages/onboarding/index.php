@@ -1,8 +1,8 @@
 <?php
 // Onboarding wizard — hanya tampil jika setup belum selesai
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../../includes/functions.php';
 require_permission('users.create'); // hanya ketua/super
 
 $db  = db();
