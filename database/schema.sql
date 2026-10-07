@@ -162,12 +162,11 @@ CREATE TABLE `unit_types` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `unit_types` (`name`, `description`, `ipl_amount`) VALUES
-  ('Tipe 36',  'Hunian tipe 36 m²',   250000.00),
-  ('Tipe 45',  'Hunian tipe 45 m²',   300000.00),
-  ('Tipe 54',  'Hunian tipe 54 m²',   350000.00),
-  ('Tipe 72',  'Hunian tipe 72 m²',   400000.00),
-  ('Tipe 90',  'Hunian tipe 90 m²',   500000.00),
-  ('Ruko',     'Rumah Toko',          750000.00);
+  ('Ruko',              'Rumah Toko',                        500000.00),
+  ('Rumah Type Navulia','Rumah hunian type Navulia',         350000.00),
+  ('Rumah Type Fresia', 'Rumah hunian type Fresia',          300000.00),
+  ('Rumah Type Magnolia','Rumah hunian type Magnolia',       275000.00),
+  ('Rumah Type Cattleya','Rumah hunian type Cattleya',       250000.00);
 
 -- ------------------------------------------------------------
 -- Units (Hunian)
