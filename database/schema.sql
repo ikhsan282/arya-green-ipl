@@ -429,6 +429,7 @@ CREATE TABLE `cash_book` (
   `amount`         DECIMAL(14,2) NOT NULL,
   `description`    TEXT DEFAULT NULL,
   `trx_date`       DATE NOT NULL,
+  `proof_file`     VARCHAR(255) DEFAULT NULL,
   `ref_payment_id` INT UNSIGNED DEFAULT NULL,
   `created_by`     INT UNSIGNED DEFAULT NULL,
   `created_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

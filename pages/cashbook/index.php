@@ -22,14 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date  = clean($_POST['trx_date']    ?? '');
         $uid   = auth_id();
 
+        $proof = null;
+        if (!empty($_FILES['proof_file']['name'])) {
+            try { $proof = upload_proof($_FILES['proof_file']); }
+            catch (Exception $e) { flash('error', $e->getMessage()); redirect(APP_URL.'/pages/cashbook/index.php'); }
+        }
+
         if (!$type || !$cat || $amt <= 0 || !$date) {
             flash('error', 'Semua kolom wajib diisi dengan benar.');
         } else {
             $stmt = $db->prepare(
-                'INSERT INTO cash_book (type, category, amount, description, trx_date, created_by)
-                 VALUES (?,?,?,?,?,?)'
+                'INSERT INTO cash_book (type, category, amount, description, trx_date, proof_file, created_by)
+                 VALUES (?,?,?,?,?,?,?)'
             );
-            $stmt->bind_param('ssdssi', $type, $cat, $amt, $desc, $date, $uid);
+            $stmt->bind_param('ssdsssi', $type, $cat, $amt, $desc, $date, $proof, $uid);
             $stmt->execute();
             log_activity('create', 'cashbook', "Tambah {$type}: {$cat} " . idr($amt));
             flash('success', 'Entri kas berhasil disimpan.');
@@ -43,13 +49,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $id = (int)($_POST['del_id'] ?? 0);
         // Jangan hapus entri yang berasal dari sistem IPL
-        $chk = $db->prepare('SELECT ref_payment_id FROM cash_book WHERE id=?');
+        $chk = $db->prepare('SELECT ref_payment_id, proof_file FROM cash_book WHERE id=?');
         $chk->bind_param('i', $id);
         $chk->execute();
-        $row = $chk->get_result()->fetch_row();
+        $row = $chk->get_result()->fetch_assoc();
         if (!$row) { flash('error', 'Entri tidak ditemukan.'); }
-        elseif ($row[0]) { flash('error', 'Entri otomatis dari IPL tidak bisa dihapus manual.'); }
+        elseif ($row['ref_payment_id']) { flash('error', 'Entri otomatis dari IPL tidak bisa dihapus manual.'); }
         else {
+            // Hapus file fisik jika ada
+            if ($row['proof_file'] && file_exists(UPLOAD_DIR . $row['proof_file'])) {
+                @unlink(UPLOAD_DIR . $row['proof_file']);
+            }
             $del = $db->prepare('DELETE FROM cash_book WHERE id=?');
             $del->bind_param('i', $id);
             $del->execute();
@@ -210,7 +220,7 @@ include __DIR__ . '/../../includes/sidebar.php';
         <div class="card h-100">
           <div class="card-header"><i class="bi bi-plus-circle me-1 text-success"></i> Tambah Entri</div>
           <div class="card-body">
-            <form method="POST" id="formAddEntry">
+            <form method="POST" id="formAddEntry" enctype="multipart/form-data">
               <?= csrf_field() ?>
               <input type="hidden" name="_action" value="add">
               <div class="mb-2">
@@ -250,6 +260,12 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <label class="form-label">Keterangan <small class="text-muted">(opsional)</small></label>
                 <textarea name="description" class="form-control form-control-sm" rows="2"
                           maxlength="500"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Foto Bukti <small class="text-muted">(opsional)</small></label>
+                <input type="file" name="proof_file" class="form-control form-control-sm"
+                       accept="image/jpeg,image/png,image/webp,application/pdf">
+                <div class="form-text">Maks 2MB. Format: JPG, PNG, WebP, PDF</div>
               </div>
               <button type="submit" class="btn btn-success btn-sm w-100">
                 <i class="bi bi-save me-1"></i> Simpan Entri
@@ -357,12 +373,13 @@ include __DIR__ . '/../../includes/sidebar.php';
               <th>Kategori</th>
               <th>Keterangan</th>
               <th class="text-end">Jumlah</th>
+              <th>Bukti</th>
               <th>Oleh</th>
               <?php if (can('cashbook.manage')): ?><th></th><?php endif; ?>
             </tr></thead>
             <tbody>
             <?php if (empty($entries)): ?>
-              <tr><td colspan="8" class="text-center text-muted py-4">Belum ada entri kas untuk periode ini.</td></tr>
+              <tr><td colspan="9" class="text-center text-muted py-4">Belum ada entri kas untuk periode ini.</td></tr>
             <?php else: foreach ($entries as $i => $row): ?>
               <tr>
                 <td><?= $pag['offset'] + $i + 1 ?></td>
@@ -382,6 +399,15 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <td class="text-muted small"><?= e($row['description'] ?: '—') ?></td>
                 <td class="text-end fw-semibold <?= $row['type'] === 'pemasukan' ? 'text-success' : 'text-danger' ?>">
                   <?= $row['type'] === 'pengeluaran' ? '−' : '+' ?><?= idr((float)$row['amount']) ?>
+                </td>
+                <td>
+                  <?php if ($row['proof_file']): ?>
+                    <a href="<?= UPLOAD_URL . e($row['proof_file']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" title="Lihat bukti">
+                      <i class="bi bi-paperclip"></i>
+                    </a>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
                 </td>
                 <td class="small text-muted"><?= e($row['creator_name'] ?? '—') ?></td>
                 <?php if (can('cashbook.manage')): ?>
