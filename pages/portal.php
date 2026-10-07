@@ -116,7 +116,7 @@ $page_title = 'Portal Warga';
 <div class="pwa-header">
   <div class="d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center gap-2">
-      <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:36px;width:auto;object-fit:contain;filter:brightness(0) invert(1);">
+      <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:36px;width:auto;object-fit:contain;mix-blend-mode:screen;">
       <div>
         <div class="opacity-75 small"><?= e(APP_NAME) ?></div>
         <h5 class="mb-0"><?= e(auth_user()['name'] ?? '') ?></h5>

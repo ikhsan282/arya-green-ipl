@@ -238,10 +238,10 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             <i class="bi bi-shield-check"></i> Lingkungan Nyaman, Transparan & Akuntabel
           </div>
           <h1 class="display-5 fw-bold mb-3 section-title" style="line-height:1.2;">
-            Sistem Digital Iuran & Manajemen Warga <span style="color:var(--brand-primary);"><?= e(APP_NAME) ?></span>
+            Portal Warga Digital <span style="color:var(--brand-primary);">Arya Green Pamulang</span>
           </h1>
           <p class="lead text-muted mb-4" style="font-size:1.15rem;">
-            Kemudahan bagi warga untuk mengecek tagihan IPL bulanan, melapor aduan, mengikuti polling musyawarah, serta transparansi real-time pembukuan kas lingkungan perumahan.
+            Hunian minimalis modern oleh Brantas Abipraya Properti (BUMN) dengan sistem pengelolaan RT terpadu. Cek tagihan IPL, lapor aduan, polling musyawarah, dan transparansi kas lingkungan — semua dalam satu aplikasi.
           </p>
           <div class="d-flex flex-wrap gap-3">
             <a href="<?= APP_URL ?>/auth/login.php" class="btn btn-brand btn-lg">
@@ -270,8 +270,9 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
                 <span class="small text-white-50">Ringkasan Lingkungan</span>
                 <span class="badge bg-light text-success fw-bold">Live Data</span>
               </div>
-              <h4 class="fw-bold mb-1">Perumahan Arya Green</h4>
+              <h4 class="fw-bold mb-1">Arya Green Pamulang</h4>
               <p class="small text-white-70 mb-0"><i class="bi bi-geo-alt me-1"></i>Pamulang, Tangerang Selatan</p>
+              <p class="small text-white-60 mb-0" style="font-size:0.7rem;"><i class="bi bi-shield-check me-1"></i>Brantas Abipraya Properti</p>
             </div>
             <div class="card-body p-4 bg-white">
               <div class="row g-3">
@@ -479,15 +480,14 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
       <div class="row gy-4 mb-4">
         <div class="col-md-6">
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="brand-logo-icon">
-              <i class="bi bi-tree-fill"></i>
-            </div>
+            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:40px;width:auto;object-fit:contain;mix-blend-mode:screen;">
             <h5 class="text-white fw-bold mb-0"><?= e(APP_NAME) ?></h5>
           </div>
           <p class="small text-white-50 mb-2">
-            <?= e(APP_TAGLINE) ?> — Aplikasi pengelolaan iuran dan operasional lingkungan perumahan warga Pamulang.
+            <?= e(APP_TAGLINE) ?> — Aplikasi pengelolaan iuran dan operasional lingkungan perumahan Arya Green Pamulang.
           </p>
-          <small class="text-white-50"><i class="bi bi-geo-alt me-1"></i>Pamulang, Tangerang Selatan, Banten</small>
+          <small class="text-white-50 d-block"><i class="bi bi-geo-alt me-1"></i>Pamulang, Tangerang Selatan, Banten</small>
+          <small class="text-white-50 d-block mt-1"><i class="bi bi-building me-1"></i>Developer: Brantas Abipraya Properti (BUMN)</small>
         </div>
         <div class="col-md-3">
           <h6 class="text-white fw-bold mb-3">Tautan Publik</h6>
