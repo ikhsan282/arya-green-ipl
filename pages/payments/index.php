@@ -40,7 +40,7 @@ $total = $cnt->get_result()->fetch_row()[0];
 $pag   = paginate($total, $per, $page);
 
 $stmt = $db->prepare(
-    'SELECT p.*, b.amount AS bill_amount, bp.label AS period,
+    "SELECT p.*, b.amount AS bill_amount, bp.label AS period,
             u.unit_number, u.block, r.name AS resident_name,
             pm.name AS payment_method_name,
             vu.name AS verifier_name
@@ -52,7 +52,7 @@ $stmt = $db->prepare(
      LEFT JOIN users vu ON vu.id=p.verified_by
      LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE {$wsql} ORDER BY p.created_at DESC
-     LIMIT ? OFFSET ?'
+     LIMIT ? OFFSET ?"
 );
 $fp = array_merge($params, [$per, $pag['offset']]);
 $stmt->bind_param($types.'ii', ...$fp);
