@@ -43,6 +43,7 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 /* nav-scroll: area menu yang bisa di-scroll */
 .sidebar .nav-scroll {
   flex: 1 1 0;
+  height: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
