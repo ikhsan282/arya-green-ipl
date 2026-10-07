@@ -331,7 +331,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             </div>
             <h5 class="fw-bold mb-2">Tagihan & Bukti Bayar Digital</h5>
             <p class="text-muted small mb-0">
-              Notifikasi tagihan bulanan langsung, konfirmasi pembayaran mudah lewat transfer/QRIS, serta cetak kuitansi resmi bertanda tangan.
+              Notifikasi tagihan bulanan langsung, konfirmasi pembayaran mudah lewat transfer/QRIS, serta cetak kuitansi resmi lengkap dengan format tanda tangan.
             </p>
           </div>
         </div>
@@ -355,7 +355,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             </div>
             <h5 class="fw-bold mb-2">Layanan Aduan & Aspirasi</h5>
             <p class="text-muted small mb-0">
-              Laporkan kendala fasilitas, keamanan, atau kebersihan lingkungan dilengkapi foto. Pengurus dapat merespons progres secara langsung.
+              Laporkan kendala fasilitas, keamanan, atau kebersihan lingkungan dengan mudah. Pengurus dapat merespons dan memperbarui progres secara langsung.
             </p>
           </div>
         </div>
@@ -377,9 +377,9 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             <div class="feature-icon-wrapper">
               <i class="bi bi-file-earmark-text"></i>
             </div>
-            <h5 class="fw-bold mb-2">Surat Pengantar RT Otomatis</h5>
+            <h5 class="fw-bold mb-2">Surat Pengantar RT Digital</h5>
             <p class="text-muted small mb-0">
-              Pengajuan surat domisili atau keterangan resmi warga diproses dengan penomoran otomatis yang rapi dan siap cetak.
+              Pengajuan surat domisili atau keterangan resmi warga diproses dengan penomoran otomatis dan tersimpan rapi untuk siap dicetak kapan saja.
             </p>
           </div>
         </div>
@@ -391,7 +391,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             </div>
             <h5 class="fw-bold mb-2">Agenda & Absensi Kegiatan</h5>
             <p class="text-muted small mb-0">
-              Jadwal kerja bakti, rapat warga, dan acara peringatan hari besar terorganisir dengan sistem presensi kehadiran warga berfoto.
+              Jadwal kerja bakti, rapat warga, dan acara peringatan hari besar terorganisir dengan sistem presensi digital yang praktis dan akurat.
             </p>
           </div>
         </div>
@@ -413,8 +413,8 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             <div class="d-flex align-items-start gap-3">
               <div class="text-success fs-4"><i class="bi bi-check-circle-fill"></i></div>
               <div>
-                <h6 class="fw-bold mb-1">Auto-Verifikasi Cepat</h6>
-                <p class="text-muted small mb-0">Pembayaran tunai atau metode terintegrasi langsung lunas dan menerbitkan kuitansi.</p>
+                <h6 class="fw-bold mb-1">Verifikasi Otomatis</h6>
+                <p class="text-muted small mb-0">Pembayaran tunai langsung lunas otomatis, sedangkan metode transfer diverifikasi pengurus untuk akurasi.</p>
               </div>
             </div>
             <div class="d-flex align-items-start gap-3">
