@@ -45,7 +45,6 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 - **Payment Methods** — master metode pembayaran dinamis, bukan ENUM; metode aktif muncul otomatis di form pembayaran
 - **Rate Limiting** — tabel `login_attempts` membatasi 5 kegagalan per akun dan 20 kegagalan per IP dalam 15 menit
 - **SMTP opsional** — isi konfigurasi SMTP di `config/config.php`; jika kosong atau gagal, sistem memakai fallback `mail()` cPanel
-- **Database migration** — untuk instalasi baru gunakan `database/schema.sql`; database lama dapat menjalankan migration additif `database/migrations/005_login_attempts.sql`
 - **PWA Lanjutan** — `offline.html` fallback, `sw.js` IndexedDB outbox + Background Sync, install prompt handler, dark mode toggle
 - **Email HTML Responsif** — multipart/alternative (HTML + plain text), tombol CTA dengan VML fallback Outlook
 - **Export CSV RFC 6266/5987** — UTF-8 BOM + filename* encoding untuk karakter non-ASCII

@@ -97,7 +97,7 @@ SELECT LENGTH(password), LEFT(password, 4) FROM users WHERE username = 'superadm
 **Fix jika password corrupt:**
 ```sql
 -- Reset password ke Admin@1234
-UPDATE users SET password = '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uHV/WiduW' WHERE username = 'superadmin';
+UPDATE users SET password = '$2y$12$fw.u3Yko8Qp2MDJlaZUx3Orz.SvJqr2Lz4qyp2Bvon6NTjuD1rwNu' WHERE username = 'superadmin';
 ```
 
 ### Gejala: "Email belum diverifikasi"

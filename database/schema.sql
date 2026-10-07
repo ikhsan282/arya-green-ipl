@@ -141,7 +141,7 @@ CREATE TABLE `users` (
 -- Default super admin: password = Admin@1234
 INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`) VALUES
 (1, 'Super Administrator', 'superadmin', 'admin@aryagreen.id',
- '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uHV/WiduW', NOW());
+ '$2y$12$fw.u3Yko8Qp2MDJlaZUx3Orz.SvJqr2Lz4qyp2Bvon6NTjuD1rwNu', NOW());
 
 -- ------------------------------------------------------------
 -- Unit Types
