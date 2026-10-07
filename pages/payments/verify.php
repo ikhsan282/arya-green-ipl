@@ -38,6 +38,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $s2 = $db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=? WHERE id=?');
         $s2->bind_param('si', $pay['payment_date'], $pay['bill_id']);
         $s2->execute();
+        // Auto-entry ke buku kas
+        $s3 = $db->prepare(
+            'INSERT INTO cash_book (kas_account_id,type,category,amount,description,trx_date,ref_payment_id,created_by)
+             SELECT ka.id, "pemasukan", "IPL", ?, ?, ?, ?, ?
+             FROM kas_accounts ka WHERE ka.is_default = 1 LIMIT 1'
+        );
+        $desc = 'IPL ' . $pay['period'] . ' — ' . ($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? '');
+        $s3->bind_param('dssii', $pay['amount_paid'], $desc, $pay['payment_date'], $id, $uid);
+        $s3->execute();
         log_activity('verify','payments',"Payment #{$id} verified");
         flash('success','Pembayaran berhasil diverifikasi.');
         // Email notifikasi ke warga
