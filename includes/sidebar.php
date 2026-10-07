@@ -279,14 +279,14 @@ function nav_active(string $path): string {
       <div class="avatar-sm me-2">
         <i class="bi bi-person-circle fs-4 text-white-50"></i>
       </div>
-      <div class="text-white lh-1">
-        <div class="fw-semibold" style="font-size:.85rem"><?= e($current_user['name'] ?? '') ?></div>
+      <div class="text-white lh-1 flex-grow-1 overflow-hidden">
+        <div class="fw-semibold text-truncate" style="font-size:.85rem"><?= e($current_user['name'] ?? '') ?></div>
         <small class="text-white-50"><?= e(ucwords(str_replace('_',' ', $current_user['role'] ?? ''))) ?></small>
       </div>
+      <button type="button" class="dark-toggle sidebar-theme-toggle text-white ms-2" aria-label="Ganti tema" title="Ganti tema">
+        <i class="bi bi-moon-stars"></i>
+      </button>
     </div>
-    <button type="button" class="dark-toggle text-body ms-2" aria-label="Ganti tema" title="Ganti tema">
-      <i class="bi bi-moon-stars"></i>
-    </button>
     <a href="<?= APP_URL ?>/auth/logout.php"
        class="btn btn-sm btn-outline-light w-100"
        onclick="return confirm('Yakin ingin keluar?')">

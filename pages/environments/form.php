@@ -84,7 +84,7 @@ include __DIR__ . '/../../includes/sidebar.php';
     <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggler">
       <i class="bi bi-list fs-5"></i>
     </button>
-    <h6 class="mb-0 fw-semibold"><?= $page_title ?></h6>
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-buildings me-1 text-success"></i> <?= $page_title ?></h6>
   </div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
 

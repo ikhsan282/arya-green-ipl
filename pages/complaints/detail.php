@@ -40,7 +40,7 @@ include __DIR__ . '/../../includes/sidebar.php';
   <div class="topbar d-flex align-items-center px-3 gap-2">
     <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggler"><i class="bi bi-list fs-5"></i></button>
     <a href="index.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
-    <h6 class="mb-0 fw-semibold ms-1"><?= e($complaint['title']) ?></h6>
+    <h6 class="mb-0 fw-semibold ms-1"><i class="bi bi-chat-left-text me-1 text-info"></i><?= e($complaint['title']) ?></h6>
   </div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
   <div class="main-content">

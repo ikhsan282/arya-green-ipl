@@ -114,7 +114,7 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 
 /* ── Dark mode toggle ─────────────────────────── */
 .dark-toggle {
-  background: var(--surface-muted);
+  background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 4px 8px;
@@ -124,6 +124,13 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 }
 .dark-toggle:hover { background: var(--border-color); }
 .dark-toggle i { pointer-events: none; }
+
+/* Sidebar theme toggle - override */
+.sidebar-theme-toggle {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+}
+.sidebar-theme-toggle:hover { background: rgba(255,255,255,.15); }
 
 /* ── Responsive sidebar ───────────────────────── */
 @media (max-width: 991.98px) {

@@ -73,7 +73,7 @@ include __DIR__ . '/../../includes/sidebar.php';
 <div class="content-wrapper">
   <div class="topbar d-flex align-items-center px-3 gap-2">
     <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggler"><i class="bi bi-list fs-5"></i></button>
-    <h6 class="mb-0 fw-semibold">Data Warga</h6>
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-people me-1 text-primary"></i> Data Warga</h6>
   </div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
   <div class="main-content">

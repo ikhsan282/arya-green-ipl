@@ -89,7 +89,7 @@ include __DIR__ . '/../includes/sidebar.php';
     <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggler">
       <i class="bi bi-list fs-5"></i>
     </button>
-    <h6 class="mb-0 fw-semibold">Dashboard</h6>
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-speedometer2 me-1 text-primary"></i> Dashboard</h6>
     <span class="ms-auto text-muted small"><?= date('l, d F Y') ?></span>
   </div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
