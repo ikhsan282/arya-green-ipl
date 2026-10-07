@@ -75,8 +75,9 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 
 .topbar {
   height: var(--topbar-height);
-  background: #fff;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
   position: sticky; top: 0; z-index: 1030;
 }
 
