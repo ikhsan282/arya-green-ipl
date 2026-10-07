@@ -75,7 +75,7 @@ if ($action === 'request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="col-12 col-sm-9 col-md-6 col-lg-4">
       <div class="card auth-card p-4">
         <div class="text-center mb-4">
-          <div class="auth-logo mb-2"><i class="bi bi-tree-fill"></i></div>
+          <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" class="auth-logo-img mb-2">
           <h5 class="fw-bold mb-0">
             <?= $action === 'reset' ? 'Reset Password' : 'Lupa Password' ?>
           </h5>

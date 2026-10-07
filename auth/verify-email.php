@@ -48,8 +48,8 @@ if (!$token) {
   <div class="row justify-content-center">
     <div class="col-12 col-sm-8 col-md-5 col-lg-4">
       <div class="card auth-card p-4 text-center">
-        <div class="auth-logo mb-2"><i class="bi bi-tree-fill"></i></div>
-        <h5 class="fw-bold mb-3">Verifikasi Email</h5>
+        <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" class="auth-logo-img mb-3">
+        <h4 class="mb-3">Verifikasi Email</h4>
         <div class="alert alert-<?= $type ?>"><?= e($msg) ?></div>
         <a href="<?= APP_URL ?>/auth/login.php" class="btn btn-success">
           <i class="bi bi-box-arrow-in-right me-1"></i> Ke Halaman Login

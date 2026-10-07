@@ -8,7 +8,7 @@ function nav_active(string $path): string {
 <nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 p-0">
   <a href="<?= APP_URL ?>/pages/dashboard.php"
      class="d-flex align-items-center p-3 text-white text-decoration-none sidebar-brand">
-    <i class="bi bi-tree-fill me-2 fs-4"></i>
+    <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" class="sidebar-logo me-2">
     <span class="fw-bold"><?= APP_NAME ?></span>
   </a>
   <hr class="text-white m-0">
