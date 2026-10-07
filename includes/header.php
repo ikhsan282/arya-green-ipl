@@ -17,6 +17,7 @@ $page_title   = $page_title ?? 'Dashboard';
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="icon" type="image/png" href="<?= APP_URL ?>/assets/images/emblem.png">
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
   <meta name="theme-color" content="#198754">
   <!-- Custom -->

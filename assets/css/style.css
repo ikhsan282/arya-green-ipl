@@ -39,6 +39,7 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 }
 
 .sidebar > .nav {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -51,7 +52,7 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 .sidebar > .p-3 { flex-shrink: 0; background: var(--sidebar-bg); }
 
 .sidebar-brand { background: rgba(0,0,0,.2); }
-.sidebar-logo { height: 48px; width: auto; object-fit: contain; mix-blend-mode: screen; }
+.sidebar-logo { height: 48px; width: auto; object-fit: contain; }
 
 .sidebar .nav-link { border-radius: 6px; margin-bottom: 2px; font-size: .875rem; }
 .sidebar .nav-link:hover  { background: var(--sidebar-hover); }

@@ -54,6 +54,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e(APP_NAME) ?> — <?= e(APP_TAGLINE) ?></title>
   <meta name="description" content="Sistem Informasi Pengelolaan Iuran Pengelolaan Lingkungan (IPL) & Komunitas Perumahan Arya Green Pamulang.">
+  <link rel="icon" type="image/png" href="<?= APP_URL ?>/assets/images/emblem.png">
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
   <meta name="theme-color" content="#0d5c3a">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -480,7 +481,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
       <div class="row gy-4 mb-4">
         <div class="col-md-6">
           <div class="d-flex align-items-center gap-2 mb-2">
-            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:40px;width:auto;object-fit:contain;mix-blend-mode:screen;">
+            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:40px;width:auto;object-fit:contain;">
             <h5 class="text-white fw-bold mb-0"><?= e(APP_NAME) ?></h5>
           </div>
           <p class="small text-white-50 mb-2">
