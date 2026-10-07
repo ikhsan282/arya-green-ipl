@@ -14,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'request') {
         require_permission('expense.request');
-        $kas_id = (int)($_POST['kas_account_id'] ?? 0);
         $cat    = clean($_POST['category']    ?? '');
         $amt    = (float)str_replace(['.', ','], ['', '.'], $_POST['amount'] ?? '0');
         $desc   = clean($_POST['description'] ?? '');
@@ -23,10 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', 'Semua kolom wajib diisi.');
         } else {
             $s = $db->prepare(
-                'INSERT INTO expense_requests (kas_account_id,category,amount,description,trx_date,requested_by)
-                 VALUES (?,?,?,?,?,?)'
+                'INSERT INTO expense_requests (category,amount,description,trx_date,requested_by)
+                 VALUES (?,?,?,?,?)'
             );
-            $s->bind_param('isdssi', $kas_id, $cat, $amt, $desc, $date, $uid);
+            $s->bind_param('sdssi', $cat, $amt, $desc, $date, $uid);
             $s->execute();
             log_activity('create', 'expense', "Ajukan pengeluaran: {$cat} " . idr($amt));
             flash('success', 'Pengajuan pengeluaran berhasil dikirim.');
@@ -51,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Catat ke cash_book
             $cb = $db->prepare(
-                'INSERT INTO cash_book (kas_account_id,type,category,amount,description,trx_date,created_by)
-                 VALUES (?,?,?,?,?,?,?)'
+                'INSERT INTO cash_book (type,category,amount,description,trx_date,created_by)
+                 VALUES (?,?,?,?,?,?)'
             );
             $type = 'pengeluaran';
-            $cb->bind_param('issdssi', $req['kas_account_id'], $type, $req['category'],
+            $cb->bind_param('ssdssi', $type, $req['category'],
                             $req['amount'], $req['description'], $req['trx_date'], $uid);
             $cb->execute();
             $cb_id = $db->insert_id;
@@ -101,10 +100,9 @@ $total = $cnt->get_result()->fetch_row()[0];
 $pag   = paginate($total, $per, $page);
 
 $stmt = $db->prepare(
-    "SELECT er.*, ka.name AS kas_name,
+    "SELECT er.*,
             u1.name AS requester_name, u2.name AS reviewer_name
      FROM expense_requests er
-     LEFT JOIN kas_accounts ka ON ka.id = er.kas_account_id
      LEFT JOIN users u1 ON u1.id = er.requested_by
      LEFT JOIN users u2 ON u2.id = er.reviewed_by
      WHERE {$wsql}
@@ -115,7 +113,6 @@ $stmt->bind_param($types . 'ii', ...$fp);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-$kas_list = $db->query('SELECT id,name FROM kas_accounts WHERE is_active=1 ORDER BY is_default DESC, name')->fetch_all(MYSQLI_ASSOC);
 $pending_count = $db->query('SELECT COUNT(*) FROM expense_requests WHERE status="pending"')->fetch_row()[0];
 
 $page_title = 'Approval Pengeluaran';
@@ -142,15 +139,7 @@ include __DIR__ . '/../../includes/sidebar.php';
         <form method="POST" class="row g-2">
           <?= csrf_field() ?>
           <input type="hidden" name="_action" value="request">
-          <div class="col-md-2">
-            <label class="form-label">Sub-Kas</label>
-            <select name="kas_account_id" class="form-select form-select-sm">
-              <?php foreach ($kas_list as $k): ?>
-                <option value="<?= $k['id'] ?>"><?= e($k['name']) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
             <label class="form-label">Kategori</label>
             <input type="text" name="category" class="form-control form-control-sm" required maxlength="100" placeholder="Listrik, ATK…">
           </div>
@@ -188,19 +177,18 @@ include __DIR__ . '/../../includes/sidebar.php';
         <div class="table-responsive">
           <table class="table table-hover mb-0">
             <thead><tr>
-              <th>Tanggal</th><th>Kategori</th><th>Sub-Kas</th>
+              <th>Tanggal</th><th>Kategori</th>
               <th class="text-end">Jumlah</th><th>Keterangan</th>
               <th>Diajukan</th><th>Status</th>
               <?php if (can('expense.approve')): ?><th>Aksi</th><?php endif; ?>
             </tr></thead>
             <tbody>
             <?php if (empty($rows)): ?>
-              <tr><td colspan="8" class="text-center text-muted py-4">Belum ada pengajuan.</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Belum ada pengajuan.</td></tr>
             <?php else: foreach ($rows as $r): ?>
               <tr>
                 <td><?= fmt_date($r['trx_date']) ?></td>
                 <td><?= e($r['category']) ?></td>
-                <td><?= e($r['kas_name'] ?? '—') ?></td>
                 <td class="text-end fw-semibold text-danger"><?= idr((float)$r['amount']) ?></td>
                 <td class="text-muted small"><?= e($r['description']) ?></td>
                 <td class="small"><?= e($r['requester_name'] ?? '—') ?></td>

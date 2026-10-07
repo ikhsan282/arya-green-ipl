@@ -45,9 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s2->execute();
             // Auto-entry ke buku kas
             $s3 = $db->prepare(
-                'INSERT INTO cash_book (kas_account_id,type,category,amount,description,trx_date,ref_payment_id,created_by)
-                 SELECT ka.id, "pemasukan", "IPL", ?, ?, ?, ?, ?
-                 FROM kas_accounts ka WHERE ka.is_default = 1 LIMIT 1'
+                'INSERT INTO cash_book (type,category,amount,description,trx_date,ref_payment_id,created_by)
+                 VALUES ("pemasukan", "IPL", ?, ?, ?, ?, ?)'
             );
             $desc = 'IPL ' . $pay['period'] . ' — ' . ($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? '');
             $s3->bind_param('dssii', $pay['amount_paid'], $desc, $pay['payment_date'], $id, $uid);

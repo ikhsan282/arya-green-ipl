@@ -96,15 +96,6 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
-    <?php if (can('kas.view')): ?>
-    <li class="nav-item">
-      <a href="<?= APP_URL ?>/pages/kas/index.php"
-         class="nav-link text-white<?= nav_active('/kas/') ?>">
-        <i class="bi bi-wallet2 me-2"></i> Sub-Kas
-      </a>
-    </li>
-    <?php endif; ?>
-
     <?php if (can('expense.request') || can('expense.approve')): ?>
     <li class="nav-item">
       <?php

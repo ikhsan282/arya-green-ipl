@@ -78,9 +78,6 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   ('users.delete',            'Hapus User',                     'users'),
   ('roles.view',              'Lihat Roles',                    'roles'),
   ('roles.manage',            'Kelola Roles & Permissions',     'roles'),
-  -- Sub-kas
-  ('kas.view',                'Lihat Sub-Kas',                  'kas'),
-  ('kas.manage',              'Kelola Sub-Kas',                 'kas'),
   -- Approval pengeluaran
   ('expense.request',         'Ajukan Pengeluaran',             'expense'),
   ('expense.approve',         'Setujui/Tolak Pengeluaran',      'expense'),
@@ -137,7 +134,6 @@ WHERE `name` IN (
   'payments.view','payments.create','payments.verify',
   'payment_methods.view',
   'cashbook.view','cashbook.manage',
-  'kas.view','kas.manage',
   'expense.request',
   'reports.view',
   'complaints.view',
@@ -457,34 +453,10 @@ ALTER TABLE `activity_logs`
 COMMIT;
 
 -- ------------------------------------------------------------
--- 1. Sub-kas (multi rekening)
--- ------------------------------------------------------------
-CREATE TABLE `kas_accounts` (
-  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `name`        VARCHAR(100) NOT NULL,
-  `description` TEXT DEFAULT NULL,
-  `balance`     DECIMAL(14,2) NOT NULL DEFAULT 0,
-  `is_default`  TINYINT(1) NOT NULL DEFAULT 0,
-  `is_active`   TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO `kas_accounts` (`name`, `description`, `is_default`) VALUES
-  ('Kas Utama', 'Rekening kas utama RT', 1),
-  ('Kas Sosial', 'Dana sosial warga', 0);
-
--- Tambah kolom kas_account_id ke cash_book
-ALTER TABLE `cash_book`
-  ADD COLUMN `kas_account_id` INT UNSIGNED DEFAULT NULL AFTER `id`,
-  ADD FOREIGN KEY (`kas_account_id`) REFERENCES `kas_accounts`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- ------------------------------------------------------------
--- 2. Approval pengeluaran
+-- 1. Approval pengeluaran
 -- ------------------------------------------------------------
 CREATE TABLE `expense_requests` (
   `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `kas_account_id` INT UNSIGNED DEFAULT NULL,
   `category`       VARCHAR(100) NOT NULL,
   `amount`         DECIMAL(14,2) NOT NULL,
   `description`    TEXT NOT NULL,
@@ -497,7 +469,6 @@ CREATE TABLE `expense_requests` (
   `cash_book_id`   INT UNSIGNED DEFAULT NULL,
   `created_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`kas_account_id`) REFERENCES `kas_accounts`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`requested_by`)   REFERENCES `users`(`id`)        ON DELETE SET NULL,
   FOREIGN KEY (`reviewed_by`)    REFERENCES `users`(`id`)        ON DELETE SET NULL,
   FOREIGN KEY (`cash_book_id`)   REFERENCES `cash_book`(`id`)    ON DELETE SET NULL

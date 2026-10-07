@@ -22,7 +22,6 @@
 
 ### 3. Kas & Keuangan
 - ✅ **Buku Kas** (`pages/cashbook/`) — List pemasukan/pengeluaran, filter periode, saldo running
-- ✅ **Sub-Kas** (`pages/kas/`) — Multi rekening kas, kas utama + kas sosial
 - ✅ **Approval Pengeluaran** (`pages/expense/`) — Request-approve flow, badge pending count
 
 ### 4. Laporan

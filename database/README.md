@@ -23,7 +23,7 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 
 ## Upgrade Database Existing
 
-Jika menu tidak muncul (Sub-Kas, Pengeluaran, Aduan, dll): **re-import `schema.sql` fresh** atau manual tambahkan permission yang hilang via SQL tab phpMyAdmin.
+Jika menu tidak muncul (Pengeluaran, Aduan, dll): **re-import `schema.sql` fresh** atau manual tambahkan permission yang hilang via SQL tab phpMyAdmin.
 
 ---
 

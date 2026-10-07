@@ -120,7 +120,6 @@ arya-green-ipl/
 │   │   ├── cashflow.php       # Laporan arus kas gabungan + chart
 │   │   └── cashflow_export.php# Export CSV arus kas
 │   ├── cashbook/              # Buku kas pemasukan & pengeluaran
-│   ├── kas/                   # Kas operasional / sub-kas
 │   ├── expense/               # Approval pengeluaran
 │   ├── inventory/
 │   │   ├── index.php          # Daftar aset
@@ -188,7 +187,6 @@ arya-green-ipl/
 
 ### Keuangan
 - **Buku Kas** — pemasukan & pengeluaran, auto-entry dari pembayaran IPL
-- **Kas Operasional** — sub-kas / petty cash
 - **Approval Pengeluaran** — ajukan → setujui/tolak → auto-catat ke kas
 - **Rekap Kas Publik** — halaman publik tanpa login
 - **Laporan Arus Kas Gabungan** — bar+line chart, breakdown per kategori, export CSV

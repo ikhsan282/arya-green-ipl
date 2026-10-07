@@ -29,17 +29,6 @@ $entries = $db->prepare(
 $entries->bind_param('ii', $f_year, $f_month); $entries->execute();
 $entries = $entries->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Saldo kumulatif per rekening (kas)
-$kas_saldo = $db->query(
-    'SELECT ka.name,
-       COALESCE(SUM(CASE WHEN cb.type="pemasukan" THEN cb.amount END),0) -
-       COALESCE(SUM(CASE WHEN cb.type="pengeluaran" THEN cb.amount END),0) AS saldo
-     FROM kas_accounts ka
-     LEFT JOIN cash_book cb ON cb.kas_account_id=ka.id
-     WHERE ka.is_active=1
-     GROUP BY ka.id ORDER BY ka.is_default DESC, ka.name'
-)->fetch_all(MYSQLI_ASSOC);
-
 // Polling publik aktif
 $now = date('Y-m-d H:i:s');
 $polls = $db->prepare(
@@ -123,28 +112,6 @@ $polls = $polls->get_result()->fetch_all(MYSQLI_ASSOC);
       </div>
     </div>
   </div>
-
-  <!-- Saldo per rekening -->
-  <?php if (!empty($kas_saldo)): ?>
-  <div class="card stat-card mb-4">
-    <div class="card-header fw-semibold"><i class="bi bi-wallet2 me-1 text-success"></i> Saldo per Rekening Kas</div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead><tr><th>Rekening</th><th class="text-end">Saldo</th></tr></thead>
-          <tbody>
-          <?php foreach ($kas_saldo as $k): ?>
-          <tr>
-            <td><?= e($k['name']) ?></td>
-            <td class="text-end fw-semibold <?= (float)$k['saldo']>=0?'text-success':'text-danger' ?>"><?= idr((float)$k['saldo']) ?></td>
-          </tr>
-          <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  <?php endif; ?>
 
   <!-- Rincian transaksi -->
   <div class="card stat-card mb-4">
