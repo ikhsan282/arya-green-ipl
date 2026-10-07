@@ -24,10 +24,11 @@ if (!$unit) { flash('error','Unit tidak ditemukan.'); redirect(APP_URL.'/pages/u
 // Riwayat tagihan semua periode
 $bills = $db->prepare(
     'SELECT b.*, bp.label AS period, bp.period_year, bp.period_month,
-            p.amount_paid, p.payment_method, p.payment_date, p.status AS pay_status
+            p.amount_paid, p.payment_method, pm.name AS payment_method_name, p.payment_date, p.status AS pay_status
      FROM bills b
      JOIN billing_periods bp ON bp.id = b.billing_period_id
      LEFT JOIN payments p ON p.bill_id = b.id AND p.status = "verified"
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE b.unit_id = ?
      ORDER BY bp.period_year DESC, bp.period_month DESC'
 );
@@ -140,7 +141,7 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <td><strong><?= idr((float)$b['total_amount']) ?></strong></td>
                 <td><?= bill_status_badge($b['status']) ?></td>
                 <td><?= $b['payment_date'] ? fmt_date($b['payment_date']) : '-' ?></td>
-                <td><?= $b['payment_method'] ? e(ucfirst($b['payment_method'])) : '-' ?></td>
+                <td><?= $b['payment_method_name'] ?? ($b['payment_method'] ? e(ucfirst($b['payment_method'])) : '-') ?></td>
               </tr>
             <?php endforeach; endif; ?>
             </tbody>

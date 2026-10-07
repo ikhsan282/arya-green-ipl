@@ -11,12 +11,14 @@ if (!$id) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pag
 
 $stmt = $db->prepare(
     'SELECT p.*, b.id AS bill_id, b.total_amount, bp.label AS period,
-            u.unit_number, u.block, r.name AS resident_name, r.email AS resident_email
+            u.unit_number, u.block, r.name AS resident_name, r.email AS resident_email,
+            pm.name AS payment_method_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
      JOIN units u ON u.id=b.unit_id
      LEFT JOIN residents r ON r.id=b.resident_id
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE p.id=? AND p.status="pending"'
 );
 $stmt->bind_param('i', $id);
@@ -91,7 +93,7 @@ include __DIR__ . '/../../includes/sidebar.php';
               <tr><th>Periode</th><td><?= e($pay['period']) ?></td></tr>
               <tr><th>Tgl Bayar</th><td><?= fmt_date($pay['payment_date']) ?></td></tr>
               <tr><th>Jumlah</th><td><strong><?= idr((float)$pay['amount_paid']) ?></strong></td></tr>
-              <tr><th>Metode</th><td><?= e(ucfirst($pay['payment_method'])) ?><?= $pay['bank_name'] ? ' - '.e($pay['bank_name']) : '' ?></td></tr>
+              <tr><th>Metode</th><td><?= e($pay['payment_method_name'] ?? ($pay['payment_method'] ?: '-')) ?><?= $pay['bank_name'] ? ' - '.e($pay['bank_name']) : '' ?></td></tr>
               <tr><th>Referensi</th><td><?= e($pay['reference_no'] ?? '-') ?></td></tr>
             </table>
           </div>

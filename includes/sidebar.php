@@ -77,6 +77,15 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
+    <?php if (can('payment_methods.view')): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/payment_methods/index.php"
+         class="nav-link text-white<?= nav_active('/payment_methods') ?>">
+        <i class="bi bi-credit-card me-2"></i> Metode Pembayaran
+      </a>
+    </li>
+    <?php endif; ?>
+
     <?php if (can('cashbook.view')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/cashbook/index.php"

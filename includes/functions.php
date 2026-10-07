@@ -127,7 +127,9 @@ function period_label(int $year, int $month): string {
 }
 
 // ── FILE UPLOAD ───────────────────────────────────────────────────────────────
-function upload_proof(array $file): string {
+// ponytail: satu helper untuk semua upload (bukti bayar, QR, foto); folder & daftar
+// tipe jadi parameter. Upgrade path: pindah ke storage service jika perlu.
+function upload_file(array $file, string $dest_dir = UPLOAD_DIR, array $allowed = UPLOAD_ALLOWED): string {
     if ($file['error'] !== UPLOAD_ERR_OK) {
         throw new RuntimeException('Upload error: ' . $file['error']);
     }
@@ -137,16 +139,21 @@ function upload_proof(array $file): string {
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mime  = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
-    if (!in_array($mime, UPLOAD_ALLOWED, true)) {
+    if (!in_array($mime, $allowed, true)) {
         throw new RuntimeException('Tipe file tidak diizinkan (JPG, PNG, WebP, PDF).');
     }
     $ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . strtolower($ext);
-    $dest     = UPLOAD_DIR . $filename;
+    $dest     = $dest_dir . $filename;
+    if (!is_dir($dest_dir)) { mkdir($dest_dir, 0755, true); }
     if (!move_uploaded_file($file['tmp_name'], $dest)) {
         throw new RuntimeException('Gagal menyimpan file.');
     }
     return $filename;
+}
+
+function upload_proof(array $file): string {
+    return upload_file($file);
 }
 
 // ── EMAIL ─────────────────────────────────────────────────────────────────────

@@ -40,6 +40,11 @@ if (!$bill) {
     )->fetch_all(MYSQLI_ASSOC);
 }
 
+$payment_methods = $db->query(
+    'SELECT id, code, name, account_no, account_name, instructions
+     FROM payment_methods WHERE is_active=1 ORDER BY sort_order, name'
+)->fetch_all(MYSQLI_ASSOC);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $sel_bill_id    = (int)($_POST['bill_id'] ?? $bill_id);
@@ -47,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount_paid    = (float)str_replace([',','.'], ['',''], $_POST['amount_paid'] ?? 0);
     // re-parse IDR formatted number: strip dots (thousands) keep value
     $amount_paid    = (float)str_replace('.', '', preg_replace('/[^0-9.]/', '', $_POST['amount_paid'] ?? '0'));
-    $payment_method = clean($_POST['payment_method'] ?? 'tunai');
+    $pm_id          = (int)($_POST['payment_method_id'] ?? 0);
     $bank_name      = clean($_POST['bank_name']      ?? '');
     $reference_no   = clean($_POST['reference_no']   ?? '');
     $notes          = clean($_POST['notes']          ?? '');
@@ -55,6 +60,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$sel_bill_id)  $errors[] = 'Pilih tagihan terlebih dahulu.';
     if ($amount_paid <= 0) $errors[] = 'Jumlah bayar harus lebih dari 0.';
     if (!$payment_date) $errors[] = 'Tanggal pembayaran wajib diisi.';
+
+    // Resolve metode dari master (hanya metode aktif yang boleh dipakai)
+    $payment_method = null;
+    if ($pm_id && empty($errors)) {
+        $pms = $db->prepare('SELECT * FROM payment_methods WHERE id=? AND is_active=1');
+        $pms->bind_param('i', $pm_id);
+        $pms->execute();
+        $payment_method = $pms->get_result()->fetch_assoc();
+        if (!$payment_method) $errors[] = 'Metode pembayaran tidak valid atau nonaktif.';
+    } elseif (!$pm_id) {
+        $errors[] = 'Pilih metode pembayaran.';
+    }
+    $is_cash = $payment_method !== null && (int)($payment_method['auto_verify'] ?? 0) === 1;
 
     // Validate bill exists & get amount
     if ($sel_bill_id && empty($errors)) {
@@ -77,17 +95,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         $uid = auth_id();
+        $pm_name = $payment_method['name'];
         $stmt = $db->prepare(
-            'INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method,bank_name,reference_no,proof_file,notes)
-             VALUES (?,?,?,?,?,?,?,?,?)'
+            'INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,bank_name,reference_no,proof_file,notes)
+             VALUES (?,?,?,?,?,?,?,?,?,?)'
         );
-        $stmt->bind_param('iisdsssss', $sel_bill_id,$uid,$payment_date,$amount_paid,
-            $payment_method,$bank_name,$reference_no,$proof_file,$notes);
+        $stmt->bind_param('iisdisssss', $sel_bill_id,$uid,$payment_date,$amount_paid,$pm_id,$pm_name,
+            $bank_name,$reference_no,$proof_file,$notes);
         $stmt->execute();
         $pay_id = $db->insert_id;
 
         // If tunai/cash, auto-verify and mark bill paid
-        if ($payment_method === 'tunai') {
+        if ($is_cash) {
             $uid_v = auth_id();
             $upd = $db->prepare('UPDATE payments SET status="verified",verified_by=?,verified_at=NOW() WHERE id=?');
             $upd->bind_param('ii', $uid_v, $pay_id);
@@ -112,14 +131,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'unit_number'    => $bill['unit_number'] ?? '',
                 'period'         => $bill['period'] ?? '',
                 'amount_paid'    => $amount_paid,
-                'payment_method' => $payment_method,
+                'payment_method' => $pm_name,
                 'payment_date'   => $payment_date,
             ];
             notify_admin_new_payment($pay_info, $bill['resident_name'] ?? '');
         }
 
         log_activity('create','payments',"Payment #{$pay_id} for bill #{$sel_bill_id}");
-        flash('success','Pembayaran berhasil dicatat.' . ($payment_method === 'tunai' ? ' Status tagihan diperbarui.' : ' Menunggu verifikasi.'));
+        flash('success','Pembayaran berhasil dicatat.' . ($is_cash ? ' Status tagihan diperbarui.' : ' Menunggu verifikasi.'));
         redirect(APP_URL . '/pages/payments/index.php');
     }
 }
@@ -184,13 +203,14 @@ include __DIR__ . '/../../includes/sidebar.php';
                      placeholder="Cth: 300.000">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Metode Pembayaran</label>
-              <select name="payment_method" class="form-select" id="payMethod">
-                <option value="tunai"    <?= ($_POST['payment_method']??'tunai')==='tunai'    ?'selected':'' ?>>Tunai (Langsung / Auto-Verifikasi)</option>
-                <option value="transfer" <?= ($_POST['payment_method']??'')==='transfer' ?'selected':'' ?>>Transfer Bank</option>
-                <option value="qris"     <?= ($_POST['payment_method']??'')==='qris'     ?'selected':'' ?>>QRIS</option>
-                <option value="lainnya"  <?= ($_POST['payment_method']??'')==='lainnya'  ?'selected':'' ?>>Lainnya</option>
+              <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
+              <select name="payment_method_id" class="form-select" id="payMethod" required>
+                <option value="">— Pilih Metode —</option>
+                <?php foreach ($payment_methods as $pm): ?>
+                  <option value="<?= $pm['id'] ?>" data-code="<?= e($pm['code']) ?>" data-instructions="<?= e($pm['instructions'] ?? '') ?>" <?= (int)($_POST['payment_method_id'] ?? 0) === (int)$pm['id'] ? 'selected' : '' ?>><?= e($pm['name']) ?></option>
+                <?php endforeach; ?>
               </select>
+              <div id="paymentInstructions" class="form-text"></div>
             </div>
             <div class="col-md-6" id="bankNameField">
               <label class="form-label">Nama Bank</label>
@@ -225,9 +245,22 @@ include __DIR__ . '/../../includes/sidebar.php';
 <script>
 const payMethod = document.getElementById('payMethod');
 const bankField = document.getElementById('bankNameField');
-function toggleBank() {
-  bankField.style.display = ['transfer','lainnya'].includes(payMethod.value) ? '' : 'none';
+const instrBox  = document.getElementById('paymentInstructions');
+function selectedCode() {
+  const opt = payMethod && payMethod.options[payMethod.selectedIndex];
+  return opt ? (opt.dataset.code || '') : '';
 }
-payMethod && payMethod.addEventListener('change', toggleBank);
+function toggleBank() {
+  // tampilkan nama bank hanya untuk metode non-tunai
+  bankField.style.display = selectedCode() === 'tunai' ? 'none' : '';
+}
+function toggleInstructions() {
+  const opt = payMethod && payMethod.options[payMethod.selectedIndex];
+  const text = opt ? (opt.dataset.instructions || '') : '';
+  if (text) { instrBox.textContent = text; instrBox.classList.remove('d-none'); }
+  else { instrBox.textContent = ''; instrBox.classList.add('d-none'); }
+}
+payMethod && payMethod.addEventListener('change', () => { toggleBank(); toggleInstructions(); });
 toggleBank();
+toggleInstructions();
 </script>

@@ -17,7 +17,7 @@ $params = [];
 $types  = '';
 
 if ($f_status) { $where[] = 'p.status=?';          $params[] = $f_status; $types .= 's'; }
-if ($f_method) { $where[] = 'p.payment_method=?';  $params[] = $f_method; $types .= 's'; }
+if ($f_method) { $where[] = 'p.payment_method_id=?'; $params[] = (int)$f_method; $types .= 'i'; }
 if ($search)   {
     $where[] = '(u.unit_number LIKE ? OR r.name LIKE ? OR p.reference_no LIKE ?)';
     $like = "%{$search}%";
@@ -31,6 +31,7 @@ $cnt = $db->prepare(
      JOIN bills b ON b.id=p.bill_id
      JOIN units u ON u.id=b.unit_id
      LEFT JOIN residents r ON r.id=b.resident_id
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE {$wsql}"
 );
 if ($params) $cnt->bind_param($types, ...$params);
@@ -39,8 +40,9 @@ $total = $cnt->get_result()->fetch_row()[0];
 $pag   = paginate($total, $per, $page);
 
 $stmt = $db->prepare(
-    "SELECT p.*, b.amount AS bill_amount, bp.label AS period,
+    'SELECT p.*, b.amount AS bill_amount, bp.label AS period,
             u.unit_number, u.block, r.name AS resident_name,
+            pm.name AS payment_method_name,
             vu.name AS verifier_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
@@ -48,8 +50,9 @@ $stmt = $db->prepare(
      JOIN units u ON u.id=b.unit_id
      LEFT JOIN residents r ON r.id=b.resident_id
      LEFT JOIN users vu ON vu.id=p.verified_by
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE {$wsql} ORDER BY p.created_at DESC
-     LIMIT ? OFFSET ?"
+     LIMIT ? OFFSET ?'
 );
 $fp = array_merge($params, [$per, $pag['offset']]);
 $stmt->bind_param($types.'ii', ...$fp);
@@ -92,10 +95,11 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="col-6 col-md-2">
             <select name="method" class="form-select form-select-sm">
               <option value="">Semua Metode</option>
-              <option value="tunai"    <?= $f_method==='tunai'    ?'selected':'' ?>>Tunai</option>
-              <option value="transfer" <?= $f_method==='transfer' ?'selected':'' ?>>Transfer</option>
-              <option value="qris"     <?= $f_method==='qris'     ?'selected':'' ?>>QRIS</option>
-              <option value="lainnya"  <?= $f_method==='lainnya'  ?'selected':'' ?>>Lainnya</option>
+              <?php
+              $all_methods = $db->query('SELECT id, name FROM payment_methods ORDER BY sort_order, name')->fetch_all(MYSQLI_ASSOC);
+              foreach ($all_methods as $am): ?>
+                <option value="<?= $am['id'] ?>" <?= $f_method === (string)$am['id'] ? 'selected' : '' ?>><?= e($am['name']) ?></option>
+              <?php endforeach; ?>
             </select>
           </div>
           <div class="col-auto">
@@ -122,7 +126,7 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <td><?= e($p['resident_name'] ?? '-') ?></td>
                 <td><?= e($p['period']) ?></td>
                 <td><strong><?= idr((float)$p['amount_paid']) ?></strong></td>
-                <td><?= e(ucfirst($p['payment_method'])) ?><?= $p['bank_name'] ? '<br><small class="text-muted">'.e($p['bank_name']).'</small>' : '' ?></td>
+                <td><?= e($p['payment_method_name'] ?? ($p['payment_method'] ?: '-')) ?><?= $p['bank_name'] ? '<br><small class="text-muted">'.e($p['bank_name']).'</small>' : '' ?></td>
                 <td><?= e($p['reference_no'] ?? '-') ?></td>
                 <td><?= payment_status_badge($p['status']) ?></td>
                 <td>

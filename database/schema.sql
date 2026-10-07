@@ -75,6 +75,9 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   -- Roles
   ('roles.view',            'Lihat Roles',                 'roles'),
   ('roles.manage',          'Kelola Roles & Permissions',  'roles'),
+  -- Payment Methods (Master)
+  ('payment_methods.view',   'Lihat Metode Pembayaran',     'payments'),
+  ('payment_methods.manage', 'Kelola Metode Pembayaran',    'payments'),
   -- Billing extra
   ('billing.send_reminder', 'Kirim Reminder Email',        'billing');
 
@@ -105,6 +108,7 @@ WHERE `name` IN (
   'dashboard.view','units.view','residents.view',
   'billing.view','billing.generate',
   'payments.view','payments.create','payments.verify',
+  'payment_methods.view','payment_methods.manage',
   'reports.view'
 );
 
@@ -235,6 +239,30 @@ CREATE TABLE `bills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
+-- Payment Methods (Master)
+-- ------------------------------------------------------------
+CREATE TABLE `payment_methods` (
+  `id`           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `code`         VARCHAR(30)  NOT NULL UNIQUE,
+  `name`         VARCHAR(100) NOT NULL,
+  `account_no`   VARCHAR(50)  DEFAULT NULL,
+  `account_name` VARCHAR(100) DEFAULT NULL,
+  `qr_image`     VARCHAR(255) DEFAULT NULL,
+  `instructions` TEXT DEFAULT NULL,
+  `auto_verify`  TINYINT(1)   NOT NULL DEFAULT 0,
+  `is_active`    TINYINT(1)   NOT NULL DEFAULT 1,
+  `sort_order`   INT          NOT NULL DEFAULT 0,
+  `created_at`   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `payment_methods` (`code`, `name`, `auto_verify`, `sort_order`) VALUES
+  ('tunai',    'Tunai',          1, 1),
+  ('transfer', 'Transfer Bank',  0, 2),
+  ('qris',     'QRIS',           0, 3),
+  ('lainnya',  'Lainnya',        0, 4);
+
+-- ------------------------------------------------------------
 -- Payments
 -- ------------------------------------------------------------
 CREATE TABLE `payments` (
@@ -243,7 +271,8 @@ CREATE TABLE `payments` (
   `user_id`        INT UNSIGNED DEFAULT NULL,
   `payment_date`   DATE         NOT NULL,
   `amount_paid`    DECIMAL(12,2) NOT NULL,
-  `payment_method` ENUM('tunai','transfer','qris','lainnya') NOT NULL DEFAULT 'tunai',
+  `payment_method_id` INT UNSIGNED DEFAULT NULL,
+  `payment_method` VARCHAR(50)  NOT NULL DEFAULT 'tunai',
   `bank_name`      VARCHAR(50)  DEFAULT NULL,
   `reference_no`   VARCHAR(100) DEFAULT NULL,
   `proof_file`     VARCHAR(255) DEFAULT NULL,
@@ -255,7 +284,8 @@ CREATE TABLE `payments` (
   `updated_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`bill_id`)     REFERENCES `bills`(`id`)  ON UPDATE CASCADE,
   FOREIGN KEY (`user_id`)     REFERENCES `users`(`id`)  ON DELETE SET NULL ON UPDATE CASCADE,
-  FOREIGN KEY (`verified_by`) REFERENCES `users`(`id`)  ON DELETE SET NULL ON UPDATE CASCADE
+  FOREIGN KEY (`verified_by`) REFERENCES `users`(`id`)  ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (`payment_method_id`) REFERENCES `payment_methods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

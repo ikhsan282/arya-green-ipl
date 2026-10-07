@@ -26,9 +26,10 @@ if (!$bill) { flash('error','Tagihan tidak ditemukan.'); redirect(APP_URL.'/page
 
 // Payment history for this bill
 $payments = $db->prepare(
-    'SELECT p.*, u.name AS verified_by_name
+    'SELECT p.*, pm.name AS payment_method_name, u.name AS verified_by_name
      FROM payments p
      LEFT JOIN users u ON u.id=p.verified_by
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE p.bill_id=? ORDER BY p.created_at DESC'
 );
 $payments->bind_param('i', $id);
@@ -98,7 +99,7 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <tr>
                   <td><?= fmt_date($p['payment_date']) ?></td>
                   <td><?= idr((float)$p['amount_paid']) ?></td>
-                  <td><?= e(ucfirst($p['payment_method'])) ?><?= $p['bank_name'] ? ' - '.e($p['bank_name']) : '' ?></td>
+                  <td><?= e($p['payment_method_name'] ?? ($p['payment_method'] ?: '-')) ?><?= $p['bank_name'] ? ' - '.e($p['bank_name']) : '' ?></td>
                   <td><?= e($p['reference_no'] ?? '-') ?></td>
                   <td><?= payment_status_badge($p['status']) ?></td>
                   <td>

@@ -11,6 +11,7 @@ if (!$id) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pag
 $stmt = $db->prepare(
     'SELECT p.*, b.total_amount AS bill_total, bp.label AS period,
             u.unit_number, u.block, r.name AS resident_name, r.phone AS resident_phone,
+            pm.name AS payment_method_name,
             vu.name AS verifier_name, cu.name AS created_by_name,
             e.name AS env_name, e.logo AS env_logo
      FROM payments p
@@ -20,6 +21,7 @@ $stmt = $db->prepare(
      LEFT JOIN residents r ON r.id=b.resident_id
      LEFT JOIN users vu ON vu.id=p.verified_by
      LEFT JOIN users cu ON cu.id=p.user_id
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      LEFT JOIN environments e ON e.id=1
      WHERE p.id=?'
 );
@@ -125,7 +127,7 @@ $page_title = 'Cetak Kwitansi';
         </tr>
         <tr>
           <th class="text-start">Metode</th>
-          <td class="text-end"><?= e(ucfirst($pay['payment_method'])) ?><?= $pay['bank_name'] ? ' — '.e($pay['bank_name']) : '' ?></td>
+          <td class="text-end"><?= e($pay['payment_method_name'] ?? ($pay['payment_method'] ?: '-')) ?><?= $pay['bank_name'] ? ' — '.e($pay['bank_name']) : '' ?></td>
         </tr>
         <?php if ($pay['reference_no']): ?>
         <tr>

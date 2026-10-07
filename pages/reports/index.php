@@ -29,12 +29,13 @@ $summary = $stmt->get_result()->fetch_assoc();
 
 // Payment breakdown by method
 $mstmt = $db->prepare(
-    'SELECT p.payment_method, COUNT(*) AS cnt, SUM(p.amount_paid) AS total
+    'SELECT COALESCE(pm.name, p.payment_method, "Tidak diketahui") AS method_name, COUNT(*) AS cnt, SUM(p.amount_paid) AS total
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
+     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE bp.period_year=? AND bp.period_month=? AND p.status="verified"
-     GROUP BY p.payment_method'
+     GROUP BY method_name'
 );
 $mstmt->bind_param('ii', $f_year, $f_month);
 $mstmt->execute();
@@ -165,7 +166,7 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <tr><td colspan="3" class="text-muted text-center py-3">Belum ada data</td></tr>
               <?php else: foreach ($by_method as $m): ?>
                 <tr>
-                  <td><?= e(ucfirst($m['payment_method'])) ?></td>
+                  <td><?= e($m['method_name']) ?></td>
                   <td><?= $m['cnt'] ?></td>
                   <td><?= idr((float)$m['total']) ?></td>
                 </tr>
