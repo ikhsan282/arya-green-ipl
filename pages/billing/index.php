@@ -7,6 +7,34 @@ require_permission('billing.view');
 
 $db = db();
 
+// ── Hapus tagihan ──────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
+    csrf_verify();
+    require_permission('billing.generate');
+
+    $bill_id = (int)($_POST['bill_id'] ?? 0);
+    if (!$bill_id) { flash('error', 'ID tagihan tidak valid.'); redirect(APP_URL.'/pages/billing/index.php'); }
+
+    // Cek apakah ada payment terkait
+    $chk = $db->prepare('SELECT COUNT(*) FROM payments WHERE bill_id=?');
+    $chk->bind_param('i', $bill_id);
+    $chk->execute();
+    $cnt = $chk->get_result()->fetch_row()[0];
+
+    if ($cnt > 0) {
+        flash('error', 'Tagihan tidak dapat dihapus karena sudah ada pembayaran terkait.');
+        redirect(APP_URL.'/pages/billing/index.php');
+    }
+
+    // Safe hapus
+    $del = $db->prepare('DELETE FROM bills WHERE id=?');
+    $del->bind_param('i', $bill_id);
+    $del->execute();
+    log_activity('delete', 'billing', "Deleted bill #{$bill_id}");
+    flash('success', 'Tagihan berhasil dihapus.');
+    redirect(APP_URL.'/pages/billing/index.php');
+}
+
 // ── Generate tagihan ───────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'generate') {
     csrf_verify();
