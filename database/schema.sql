@@ -162,11 +162,11 @@ CREATE TABLE `unit_types` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `unit_types` (`name`, `description`, `ipl_amount`) VALUES
-  ('Ruko',              'Rumah Toko',                        500000.00),
-  ('Rumah Type Navulia','Rumah hunian type Navulia',         350000.00),
-  ('Rumah Type Fresia', 'Rumah hunian type Fresia',          300000.00),
-  ('Rumah Type Magnolia','Rumah hunian type Magnolia',       275000.00),
-  ('Rumah Type Cattleya','Rumah hunian type Cattleya',       250000.00);
+  ('Ruko',               'Rumah Toko',                  300000.00),
+  ('Rumah Type Navulia', 'Rumah hunian type Navulia',   200000.00),
+  ('Rumah Type Fresia',  'Rumah hunian type Fresia',    200000.00),
+  ('Rumah Type Magnolia','Rumah hunian type Magnolia',  200000.00),
+  ('Rumah Type Cattleya','Rumah hunian type Cattleya',  200000.00);
 
 -- ------------------------------------------------------------
 -- Units (Hunian)
