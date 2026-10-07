@@ -93,16 +93,16 @@ CREATE TABLE `role_permissions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Super Admin gets everything
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, `id` FROM `permissions`;
 
 -- Ketua: all except roles.manage and users.delete
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, `id` FROM `permissions`
 WHERE `name` NOT IN ('roles.manage','users.delete');
 
 -- Bendahara: dashboard, view units/residents, billing, payments (no delete)
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, `id` FROM `permissions`
 WHERE `name` IN (
   'dashboard.view','units.view','residents.view',
@@ -113,7 +113,7 @@ WHERE `name` IN (
 );
 
 -- Warga: dashboard, own billing & payments only
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 4, `id` FROM `permissions`
 WHERE `name` IN ('dashboard.view','billing.view','payments.view','payments.create');
 
@@ -404,13 +404,13 @@ CREATE TABLE `cash_book` (
 -- Role Permissions: tambahan cashbook & billing.send_reminder
 -- ------------------------------------------------------------
 -- super_admin & ketua: cashbook full + send_reminder
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name IN ('super_admin','ketua')
   AND p.name IN ('cashbook.view','cashbook.manage','billing.send_reminder');
 
 -- bendahara: cashbook view only
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'bendahara' AND p.name = 'cashbook.view';
 

@@ -23,13 +23,7 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 
 ## Upgrade Database Existing
 
-Jika Anda sudah import schema versi lama dan menemukan **menu tidak muncul** di sidebar, jalankan upgrade berikut **sekali saja** via phpMyAdmin:
-
-**phpMyAdmin → Import → pilih file `database/upgrade_permissions.sql`**
-
-Menu yang akan muncul setelah upgrade: Sub-Kas, Pengeluaran, Buku Kas, Metode Pembayaran, Reminder Email, Aduan Warga, Polling, Kegiatan, Inventaris, Surat RT, Lingkungan.
-
-> Script menggunakan `INSERT IGNORE` — aman dijalankan ulang, tidak akan error jika sudah ada.
+Jika menu tidak muncul (Sub-Kas, Pengeluaran, Aduan, dll): **re-import `schema.sql` fresh** atau manual tambahkan permission yang hilang via SQL tab phpMyAdmin.
 
 ---
 
