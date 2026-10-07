@@ -139,9 +139,7 @@ arya-green-ipl/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/
     ├── schema.sql             # DDL lengkap semua modul (27 tabel)
-    └── migrations/            # Migration incremental
-        ├── 004_environments_permissions.sql
-        └── 005_login_attempts.sql
+    └── README.md              # Database setup guide
 ```
 
 ## Peran Default (RBAC)
