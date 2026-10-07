@@ -13,6 +13,12 @@ $step = (int)($_GET['step'] ?? 1);
 $unit_count     = $db->query('SELECT COUNT(*) FROM units')->fetch_row()[0];
 $resident_count = $db->query('SELECT COUNT(*) FROM residents')->fetch_row()[0];
 
+// GET: clear preview session via tombol "Upload Ulang"
+if (isset($_GET['clear_preview'])) {
+    unset($_SESSION['csv_preview']);
+    redirect(APP_URL.'/pages/onboarding/index.php?step=2');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $action = clean($_POST['_action'] ?? '');
@@ -44,14 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (($handle = fopen($file, 'r')) !== false) {
             fgetcsv($handle); // skip header
             while (($row = fgetcsv($handle)) !== false) {
-                if (count($row) < 4) continue;
-                $status = trim($row[5] ?? 'pemilik');
+                if (count($row) < 3) continue; // minimal: unit_number, block, name
+                $status = trim($row[5] ?? '');
                 if (!in_array($status, ['pemilik','penyewa'])) $status = 'pemilik';
                 $preview[] = [
-                    'unit_number' => trim($row[0]),
-                    'block'       => trim($row[1]),
-                    'name'        => trim($row[2]),
-                    'phone'       => trim($row[3]),
+                    'unit_number' => trim($row[0] ?? ''),
+                    'block'       => trim($row[1] ?? ''),
+                    'name'        => trim($row[2] ?? ''),
+                    'phone'       => trim($row[3] ?? ''),
                     'email'       => trim($row[4] ?? ''),
                     'status'      => $status,
                 ];
@@ -75,9 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(APP_URL.'/pages/onboarding/index.php?step=2');
         }
         $rows = 0;
-        $ut_id = $db->query('SELECT id FROM unit_types LIMIT 1')->fetch_row()[0] ?? 1;
+        $ut_id = $db->query('SELECT id FROM unit_types ORDER BY id ASC LIMIT 1')->fetch_row()[0] ?? 1;
         foreach ($preview as $p) {
-            [$unit_num, $block, $name, $phone, $email, $status] = array_values($p);
+            $unit_num = $p['unit_number'];
+            $block = $p['block'];
+            $name = $p['name'];
+            $phone = $p['phone'];
+            $email = $p['email'];
+            $status = $p['status'];
             $u = $db->prepare('SELECT id FROM units WHERE unit_number=? AND block=?');
             $u->bind_param('ss', $unit_num, $block); $u->execute();
             $unit = $u->get_result()->fetch_row();
@@ -184,7 +195,7 @@ include __DIR__ . '/../../includes/sidebar.php';
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between">
         <span><i class="bi bi-table me-1"></i> Preview Data (<?= count($csv_preview) ?> baris)</span>
-        <a href="?step=2" class="btn btn-sm btn-outline-secondary" onclick="<?php unset($_SESSION['csv_preview']); ?>">
+        <a href="?step=2&clear_preview=1" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-arrow-left me-1"></i>Upload Ulang
         </a>
       </div>
