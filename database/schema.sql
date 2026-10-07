@@ -43,43 +43,69 @@ CREATE TABLE `permissions` (
 
 INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   -- Dashboard
-  ('dashboard.view',        'Lihat Dashboard',             'dashboard'),
+  ('dashboard.view',          'Lihat Dashboard',                'dashboard'),
   -- Units
-  ('units.view',            'Lihat Data Unit',             'units'),
-  ('units.create',          'Tambah Unit',                 'units'),
-  ('units.edit',            'Edit Unit',                   'units'),
-  ('units.delete',          'Hapus Unit',                  'units'),
+  ('units.view',              'Lihat Data Unit',                'units'),
+  ('units.create',            'Tambah Unit',                    'units'),
+  ('units.edit',              'Edit Unit',                      'units'),
+  ('units.delete',            'Hapus Unit',                     'units'),
   -- Residents
-  ('residents.view',        'Lihat Data Warga',            'residents'),
-  ('residents.create',      'Tambah Warga',                'residents'),
-  ('residents.edit',        'Edit Warga',                  'residents'),
-  ('residents.delete',      'Hapus Warga',                 'residents'),
+  ('residents.view',          'Lihat Data Warga',               'residents'),
+  ('residents.create',        'Tambah Warga',                   'residents'),
+  ('residents.edit',          'Edit Warga',                     'residents'),
+  ('residents.delete',        'Hapus Warga',                    'residents'),
   -- Billing
-  ('billing.view',          'Lihat Tagihan',               'billing'),
-  ('billing.generate',      'Generate Tagihan',            'billing'),
-  ('billing.edit',          'Edit Tagihan',                'billing'),
+  ('billing.view',            'Lihat Tagihan',                  'billing'),
+  ('billing.generate',        'Generate Tagihan',               'billing'),
+  ('billing.edit',            'Edit Tagihan',                   'billing'),
+  ('billing.send_reminder',   'Kirim Reminder Email',           'billing'),
   -- Payments
-  ('payments.view',         'Lihat Pembayaran',            'payments'),
-  ('payments.create',       'Catat Pembayaran',            'payments'),
-  ('payments.verify',       'Verifikasi Pembayaran',       'payments'),
-  -- Reports
-  ('reports.view',          'Lihat Laporan',               'reports'),
-  -- Users
-  ('users.view',            'Lihat Data User',             'users'),
-  ('users.create',          'Tambah User',                 'users'),
-  ('users.edit',            'Edit User',                   'users'),
-  ('users.delete',          'Hapus User',                  'users'),
+  ('payments.view',           'Lihat Pembayaran',               'payments'),
+  ('payments.create',         'Catat Pembayaran',               'payments'),
+  ('payments.verify',         'Verifikasi Pembayaran',          'payments'),
+  -- Payment Methods
+  ('payment_methods.view',    'Lihat Metode Pembayaran',        'payments'),
+  ('payment_methods.manage',  'Kelola Metode Pembayaran',       'payments'),
   -- Cashbook
-  ('cashbook.view',          'Lihat Buku Kas',              'cashbook'),
-  ('cashbook.manage',        'Kelola Buku Kas',             'cashbook'),
-  -- Roles
-  ('roles.view',            'Lihat Roles',                 'roles'),
-  ('roles.manage',          'Kelola Roles & Permissions',  'roles'),
-  -- Payment Methods (Master)
-  ('payment_methods.view',   'Lihat Metode Pembayaran',     'payments'),
-  ('payment_methods.manage', 'Kelola Metode Pembayaran',    'payments'),
-  -- Billing extra
-  ('billing.send_reminder', 'Kirim Reminder Email',        'billing');
+  ('cashbook.view',           'Lihat Buku Kas',                 'cashbook'),
+  ('cashbook.manage',         'Kelola Buku Kas',                'cashbook'),
+  -- Reports
+  ('reports.view',            'Lihat Laporan',                  'reports'),
+  -- Users and roles
+  ('users.view',              'Lihat Data User',                'users'),
+  ('users.create',            'Tambah User',                    'users'),
+  ('users.edit',              'Edit User',                      'users'),
+  ('users.delete',            'Hapus User',                     'users'),
+  ('roles.view',              'Lihat Roles',                    'roles'),
+  ('roles.manage',            'Kelola Roles & Permissions',     'roles'),
+  -- Sub-kas
+  ('kas.view',                'Lihat Sub-Kas',                  'kas'),
+  ('kas.manage',              'Kelola Sub-Kas',                 'kas'),
+  -- Approval pengeluaran
+  ('expense.request',         'Ajukan Pengeluaran',             'expense'),
+  ('expense.approve',         'Setujui/Tolak Pengeluaran',      'expense'),
+  -- Aduan
+  ('complaints.view',         'Lihat Aduan',                    'complaints'),
+  ('complaints.manage',       'Kelola Aduan',                   'complaints'),
+  -- Polling
+  ('polls.view',              'Lihat Polling',                  'polls'),
+  ('polls.manage',            'Kelola Polling',                 'polls'),
+  ('polls.vote',              'Vote Polling',                   'polls'),
+  -- Kegiatan
+  ('events.view',             'Lihat Kegiatan',                 'events'),
+  ('events.manage',           'Kelola Kegiatan',                'events'),
+  ('events.attendance',       'Kelola Absensi',                 'events'),
+  -- Inventaris
+  ('inventory.view',          'Lihat Inventaris',               'inventory'),
+  ('inventory.manage',        'Kelola Inventaris',              'inventory'),
+  -- Surat
+  ('letters.view',            'Lihat Surat RT',                 'letters'),
+  ('letters.manage',          'Buat/Cetak Surat RT',            'letters'),
+  -- Lingkungan
+  ('environments.view',       'Lihat Lingkungan',               'environments'),
+  ('environments.create',     'Tambah Lingkungan',              'environments'),
+  ('environments.edit',       'Edit Lingkungan',                'environments'),
+  ('environments.delete',     'Hapus Lingkungan',               'environments');
 
 -- ------------------------------------------------------------
 -- Role Permissions
@@ -92,30 +118,47 @@ CREATE TABLE `role_permissions` (
   FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Super Admin gets everything
+-- Super Admin: semua permission
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, `id` FROM `permissions`;
 
--- Ketua: all except roles.manage and users.delete
+-- Ketua: semua kecuali roles.manage, users.delete, environments.*
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, `id` FROM `permissions`
-WHERE `name` NOT IN ('roles.manage','users.delete');
+WHERE `name` NOT IN ('roles.manage','users.delete','environments.create','environments.edit','environments.delete');
 
--- Bendahara: dashboard, view units/residents, billing, payments (no delete)
+-- Bendahara: keuangan, kas, laporan, komunikasi dasar
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 3, `id` FROM `permissions`
 WHERE `name` IN (
-  'dashboard.view','units.view','residents.view',
+  'dashboard.view',
+  'units.view','residents.view',
   'billing.view','billing.generate',
   'payments.view','payments.create','payments.verify',
-  'payment_methods.view','payment_methods.manage',
-  'reports.view'
+  'payment_methods.view',
+  'cashbook.view','cashbook.manage',
+  'kas.view','kas.manage',
+  'expense.request',
+  'reports.view',
+  'complaints.view',
+  'polls.view','polls.vote',
+  'events.view','events.attendance',
+  'inventory.view',
+  'letters.view'
 );
 
--- Warga: dashboard, own billing & payments only
+-- Warga: dashboard, tagihan sendiri, komunikasi warga
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 4, `id` FROM `permissions`
-WHERE `name` IN ('dashboard.view','billing.view','payments.view','payments.create');
+WHERE `name` IN (
+  'dashboard.view',
+  'billing.view',
+  'payments.view','payments.create',
+  'complaints.view',
+  'polls.view','polls.vote',
+  'events.view',
+  'letters.view'
+);
 
 -- ------------------------------------------------------------
 -- Users
@@ -400,20 +443,6 @@ CREATE TABLE `cash_book` (
   INDEX `idx_cashbook_type`     (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ------------------------------------------------------------
--- Role Permissions: tambahan cashbook & billing.send_reminder
--- ------------------------------------------------------------
--- super_admin & ketua: cashbook full + send_reminder
-INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT r.id, p.id FROM `roles` r, `permissions` p
-WHERE r.name IN ('super_admin','ketua')
-  AND p.name IN ('cashbook.view','cashbook.manage','billing.send_reminder');
-
--- bendahara: cashbook view only
-INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT r.id, p.id FROM `roles` r, `permissions` p
-WHERE r.name = 'bendahara' AND p.name = 'cashbook.view';
-
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 ALTER TABLE `bills`
   ADD INDEX `idx_bills_status`   (`status`),
@@ -638,81 +667,6 @@ INSERT INTO `environments` (`name`, `code`, `rt`, `rw`, `kelurahan`, `kecamatan`
 ALTER TABLE `users`
   ADD COLUMN `env_id` INT UNSIGNED DEFAULT NULL AFTER `role_id`,
   ADD FOREIGN KEY (`env_id`) REFERENCES `environments`(`id`) ON DELETE SET NULL;
-
--- ------------------------------------------------------------
--- 9. Permissions baru
--- ------------------------------------------------------------
-INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
-  -- Sub-kas
-  ('kas.view',             'Lihat Sub-Kas',              'kas'),
-  ('kas.manage',           'Kelola Sub-Kas',             'kas'),
-  -- Approval pengeluaran
-  ('expense.request',      'Ajukan Pengeluaran',         'expense'),
-  ('expense.approve',      'Setujui/Tolak Pengeluaran',  'expense'),
-  -- Aduan
-  ('complaints.view',      'Lihat Aduan',                'complaints'),
-  ('complaints.manage',    'Kelola Aduan',               'complaints'),
-  -- Polling
-  ('polls.view',           'Lihat Polling',              'polls'),
-  ('polls.manage',         'Kelola Polling',             'polls'),
-  ('polls.vote',           'Vote Polling',               'polls'),
-  -- Kegiatan
-  ('events.view',          'Lihat Kegiatan',             'events'),
-  ('events.manage',        'Kelola Kegiatan',            'events'),
-  ('events.attendance',    'Kelola Absensi',             'events'),
-  -- Inventaris
-  ('inventory.view',       'Lihat Inventaris',           'inventory'),
-  ('inventory.manage',     'Kelola Inventaris',          'inventory'),
-  -- Surat
-  ('letters.view',         'Lihat Surat RT',             'letters'),
-  ('letters.manage',       'Buat/Cetak Surat RT',        'letters'),
-  -- Multi-env
-  ('environments.view',     'Lihat Lingkungan',          'environments'),
-  ('environments.create',   'Tambah Lingkungan',         'environments'),
-  ('environments.edit',     'Edit Lingkungan',           'environments'),
-  ('environments.delete',   'Hapus Lingkungan',          'environments');
-
--- Super admin: semua permission baru
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT 1, id FROM `permissions`
-WHERE `name` IN (
-  'kas.view','kas.manage','expense.request','expense.approve',
-  'complaints.view','complaints.manage',
-  'polls.view','polls.manage','polls.vote',
-  'events.view','events.manage','events.attendance',
-  'inventory.view','inventory.manage',
-  'letters.view','letters.manage',
-  'environments.view','environments.create','environments.edit','environments.delete'
-);
-
--- Ketua: semua kecuali environments.*
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT 2, id FROM `permissions`
-WHERE `name` IN (
-  'kas.view','kas.manage','expense.request','expense.approve',
-  'complaints.view','complaints.manage',
-  'polls.view','polls.manage','polls.vote',
-  'events.view','events.manage','events.attendance',
-  'inventory.view','inventory.manage',
-  'letters.view','letters.manage'
-);
-
--- Bendahara: view + request pengeluaran + absensi + complaints.view
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT 3, id FROM `permissions`
-WHERE `name` IN (
-  'kas.view','expense.request',
-  'complaints.view','polls.view','polls.vote',
-  'events.view','events.attendance',
-  'inventory.view','letters.view'
-);
-
--- Warga: view publik + vote + aduan + absensi
-INSERT INTO `role_permissions` (`role_id`, `permission_id`)
-SELECT 4, id FROM `permissions`
-WHERE `name` IN (
-  'complaints.view','polls.view','polls.vote','events.view'
-);
 
 -- ------------------------------------------------------------
 -- 10. Rate Limiting (Login Attempts)
