@@ -13,7 +13,7 @@ $stmt = $db->prepare(
             u.unit_number, u.block, r.name AS resident_name, r.phone AS resident_phone,
             pm.name AS payment_method_name,
             vu.name AS verifier_name, cu.name AS created_by_name,
-            e.name AS env_name, e.logo AS env_logo
+            e.name AS env_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
@@ -71,9 +71,7 @@ $page_title = 'Cetak Kwitansi';
     <!-- Receipt -->
     <div class="receipt-box card p-4">
       <div class="receipt-header text-center mb-4 pb-3">
-        <?php if (!empty($pay['env_logo'])): ?>
-          <img src="<?= UPLOAD_URL . e($pay['env_logo']) ?>" class="logo-img mb-2" alt="Logo">
-        <?php endif; ?>
+        <img src="<?= APP_URL ?>/assets/images/logo.png" class="logo-img mb-2" alt="Logo Arya Green">
         <h4 class="mb-1 fw-bold"><?= e($pay['env_name'] ?? 'ARYA GREEN PAMULANG') ?></h4>
         <p class="mb-0 text-muted small">Iuran Pengelolaan Lingkungan</p>
       </div>
