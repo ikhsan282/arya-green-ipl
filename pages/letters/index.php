@@ -39,7 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_permission('letters.manage');
         $did = (int)($_POST['id'] ?? 0);
         if ($did) {
-            $db->prepare('DELETE FROM letters WHERE id=?')->bind_param('i', $did)->execute();
+            $del = $db->prepare('DELETE FROM letters WHERE id=?');
+            $del->bind_param('i', $did);
+            $del->execute();
             log_activity('delete', 'letters', "Hapus surat id={$did}");
             flash('success', 'Surat dihapus.');
         }

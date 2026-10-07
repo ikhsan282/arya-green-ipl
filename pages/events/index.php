@@ -42,7 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_permission('events.manage');
         $eid = (int)($_POST['event_id'] ?? 0);
         if ($eid) {
-            $db->prepare('DELETE FROM events WHERE id=?')->bind_param('i', $eid)->execute();
+            $del = $db->prepare('DELETE FROM events WHERE id=?');
+            $del->bind_param('i', $eid);
+            $del->execute();
             log_activity('delete', 'events', "Hapus kegiatan id={$eid}");
             flash('success', 'Kegiatan dihapus.');
         }
