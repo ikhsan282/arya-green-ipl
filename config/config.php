@@ -17,9 +17,22 @@ define('UPLOAD_URL',      APP_URL . '/uploads/payment_proofs/');
 define('UPLOAD_MAX_SIZE', 2 * 1024 * 1024); // 2 MB
 define('UPLOAD_ALLOWED',  ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
-// Email (PHP mail() — compatible with cPanel)
-define('MAIL_FROM',      'noreply@aryagreen.id');
-define('MAIL_FROM_NAME', APP_NAME);
+// Email Configuration
+// Opsi 1: PHP mail() bawaan cPanel (default)
+// Opsi 2: SMTP Relay (isi SMTP_HOST untuk mengaktifkan SMTP socket, misal Gmail, Mailgun, SendGrid)
+define('MAIL_FROM',       'noreply@aryagreen.id');
+define('MAIL_FROM_NAME',  APP_NAME);
+define('SMTP_HOST',       ''); // contoh: 'mail.aryagreen.id' atau 'smtp.gmail.com'
+define('SMTP_PORT',       587); // 587 (TLS), 465 (SSL), 25
+define('SMTP_USER',       '');
+define('SMTP_PASS',       '');
+define('SMTP_SECURE',     'tls'); // 'tls', 'ssl', atau '' (none)
+define('SMTP_TIMEOUT',    15); // detik
+
+// Rate Limiting (Login Brute Force Protection)
+define('LOGIN_MAX_ATTEMPTS',    5);     // Maksimal gagal untuk satu akun
+define('LOGIN_MAX_IP_ATTEMPTS', 20);    // Maksimal gagal dari satu IP (cegah password spraying)
+define('LOGIN_LOCKOUT_TIME',     900);   // 15 menit (dalam detik)
 
 // Fine / denda (IDR per day after due date)
 define('FINE_PER_DAY', 5000);

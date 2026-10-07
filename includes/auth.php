@@ -66,7 +66,82 @@ function require_permission(string $permission): void {
 }
 
 // ── Login / Logout ─────────────────────────────────────────────────────────────
+function login_client_ip(): string {
+    // REMOTE_ADDR dipakai agar header X-Forwarded-For tidak bisa dipalsukan klien.
+    return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+}
+
+function login_rate_limit_status(string $username): array {
+    $db = db();
+    $ip = login_client_ip();
+    $normalized = strtolower(trim($username));
+    $normalized = substr($normalized, 0, 100); // limit panjang sesuai kolom DB
+
+    // Cek rate limit per akun (username/email) + IP
+    $lockout_seconds = LOGIN_LOCKOUT_TIME;
+    $stmt = $db->prepare(
+        'SELECT COUNT(*) AS failures, MAX(attempted_at) AS last_attempt
+         FROM login_attempts
+         WHERE ip_address=? AND username=? AND is_success=0
+           AND attempted_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)'
+    );
+    $stmt->bind_param('ssi', $ip, $normalized, $lockout_seconds);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $failures = (int)($row['failures'] ?? 0);
+
+    if ($failures < LOGIN_MAX_ATTEMPTS) {
+        // Cek juga batas per IP (password spraying protection)
+        $stmt_ip = $db->prepare(
+            'SELECT COUNT(*) AS failures FROM login_attempts
+             WHERE ip_address=? AND is_success=0
+               AND attempted_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)'
+        );
+        $stmt_ip->bind_param('si', $ip, $lockout_seconds);
+        $stmt_ip->execute();
+        $ip_row = $stmt_ip->get_result()->fetch_assoc();
+        $ip_failures = (int)($ip_row['failures'] ?? 0);
+
+        if ($ip_failures < LOGIN_MAX_IP_ATTEMPTS) {
+            return ['locked' => false, 'remaining' => LOGIN_MAX_ATTEMPTS - $failures, 'retry_after' => 0];
+        }
+    }
+
+    // Hitung retry_after berdasarkan last_attempt jika locked
+    $last = null;
+    if (isset($row['last_attempt'])) {
+        $last = strtotime((string)$row['last_attempt']);
+    }
+    $retry_after = $last ? max(1, LOGIN_LOCKOUT_TIME - (time() - $last)) : LOGIN_LOCKOUT_TIME;
+    return ['locked' => true, 'remaining' => 0, 'retry_after' => $retry_after];
+}
+
+function record_login_attempt(string $username, bool $success): void {
+    $db = db();
+    $ip = login_client_ip();
+    $normalized = substr(strtolower(trim($username)), 0, 100);
+    $ok = $success ? 1 : 0;
+    $stmt = $db->prepare('INSERT INTO login_attempts (ip_address,username,is_success) VALUES (?,?,?)');
+    $stmt->bind_param('ssi', $ip, $normalized, $ok);
+    $stmt->execute();
+
+    if ($success) {
+        $clear = $db->prepare('DELETE FROM login_attempts WHERE ip_address=? AND username=? AND is_success=0');
+        $clear->bind_param('ss', $ip, $normalized);
+        $clear->execute();
+    } elseif (random_int(1, 100) === 1) {
+        // Cleanup probabilistik agar tabel tidak tumbuh tanpa batas.
+        $db->query('DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)');
+    }
+}
+
 function attempt_login(string $username, string $password): array {
+    $rate = login_rate_limit_status($username);
+    if ($rate['locked']) {
+        $minutes = max(1, (int)ceil($rate['retry_after'] / 60));
+        return ['ok' => false, 'msg' => "Terlalu banyak percobaan login. Coba lagi dalam {$minutes} menit."];
+    }
+
     $db   = db();
     $stmt = $db->prepare(
         'SELECT u.*, r.name AS role FROM users u
@@ -78,11 +153,14 @@ function attempt_login(string $username, string $password): array {
     $user = $stmt->get_result()->fetch_assoc();
 
     if (!$user || !password_verify($password, $user['password'])) {
+        record_login_attempt($username, false);
         return ['ok' => false, 'msg' => 'Username atau password salah.'];
     }
     if (!$user['email_verified_at']) {
         return ['ok' => false, 'msg' => 'Email belum diverifikasi. Cek inbox Anda.'];
     }
+
+    record_login_attempt($username, true);
 
     // Regenerate session to prevent fixation
     session_regenerate_id(true);

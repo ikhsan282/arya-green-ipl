@@ -157,7 +157,113 @@ function upload_proof(array $file): string {
 }
 
 // ── EMAIL ─────────────────────────────────────────────────────────────────────
+// ponytail: SMTP socket sederhana tanpa vendor/PHPMailer (RFC 5321 auth login).
+// Fallback otomatis ke mail() jika SMTP_HOST kosong.
+function send_mail_smtp(string $to, string $subject, string $body): bool {
+    $host = SMTP_HOST;
+    $port = SMTP_PORT;
+    $user = SMTP_USER;
+    $pass = SMTP_PASS;
+    $secure = strtolower(SMTP_SECURE);
+    $timeout = defined('SMTP_TIMEOUT') ? SMTP_TIMEOUT : 15;
+
+    $remote = ($secure === 'ssl' ? 'ssl://' : '') . $host;
+    $errno = 0; $errstr = '';
+    $socket = @fsockopen($remote, $port, $errno, $errstr, $timeout);
+    if (!$socket) {
+        error_log("SMTP connection failed to {$remote}:{$port}: {$errstr} ({$errno})");
+        return false;
+    }
+
+    // Set socket timeout for read/write operations
+    stream_set_timeout($socket, $timeout);
+
+    $read = function() use ($socket): string {
+        $data = '';
+        while (!feof($socket)) {
+            $line = fgets($socket, 512);
+            if ($line === false) break;
+            $data .= $line;
+            if (preg_match('/^[0-9]{3}[ ].*$/m', $line)) break;
+        }
+        return $data;
+    };
+
+    $write = function(string $cmd) use ($socket, $read): string {
+        fputs($socket, $cmd . "\r\n");
+        return $read();
+    };
+
+    $init = $read();
+    if (!str_starts_with($init, '220')) { fclose($socket); return false; }
+
+    // EHLO with sanitized hostname (no CRLF injection)
+    $ehlo_host = preg_replace('/[^\w\.-]/', '', $_SERVER['SERVER_NAME'] ?? 'localhost');
+    $hello = $write('EHLO ' . $ehlo_host);
+
+    // StartTLS jika port 587 atau secure=tls
+    if ($secure === 'tls') {
+        $tls = $write('STARTTLS');
+        if (!str_starts_with($tls, '220')) { fclose($socket); return false; }
+        if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+            fclose($socket); return false;
+        }
+        $hello = $write('EHLO ' . $ehlo_host);
+    }
+
+    // Auth Login jika kredensial diisi
+    if ($user && $pass) {
+        $auth = $write('AUTH LOGIN');
+        if (!str_starts_with($auth, '334')) { fclose($socket); return false; }
+        $u_res = $write(base64_encode($user));
+        if (!str_starts_with($u_res, '334')) { fclose($socket); return false; }
+        $p_res = $write(base64_encode($pass));
+        if (!str_starts_with($p_res, '235')) {
+            error_log("SMTP authentication failed for user {$user}");
+            fclose($socket); return false;
+        }
+    }
+
+    $from_mail = MAIL_FROM;
+    $from_name = MAIL_FROM_NAME;
+
+    $m_from = $write('MAIL FROM:<' . $from_mail . '>');
+    if (!str_starts_with($m_from, '250')) { fclose($socket); return false; }
+
+    $rcpt = $write('RCPT TO:<' . $to . '>');
+    if (!str_starts_with($rcpt, '250') && !str_starts_with($rcpt, '251')) { fclose($socket); return false; }
+
+    $data = $write('DATA');
+    if (!str_starts_with($data, '354')) { fclose($socket); return false; }
+
+    // Normalize line endings to CRLF per RFC 5321
+    $body = preg_replace('/(?<!\r)\n/', "\r\n", $body);
+    // Dot-stuffing: lines starting with '.' get an extra '.'
+    $body = preg_replace('/^\./m', '..', $body);
+
+    $headers  = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: {$from_name} <{$from_mail}>\r\n";
+    $headers .= "To: <{$to}>\r\n";
+    $headers .= "Date: " . date('r') . "\r\n";
+    $headers .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
+    $headers .= "X-Mailer: AryaGreen-IPL/1.0\r\n";
+
+    $message = $headers . "\r\n" . $body . "\r\n.";
+    $send = $write($message);
+    $write('QUIT');
+    fclose($socket);
+
+    return str_starts_with($send, '250');
+}
+
 function send_mail(string $to, string $subject, string $body): bool {
+    if (defined('SMTP_HOST') && SMTP_HOST !== '') {
+        if (send_mail_smtp($to, $subject, $body)) {
+            return true;
+        }
+        error_log("SMTP failed, attempting mail() fallback");
+    }
     $headers  = "MIME-Version: 1.0\r\n";
     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
     $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">\r\n";

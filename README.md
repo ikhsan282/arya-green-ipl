@@ -17,7 +17,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 mysql -u root -p < database/schema.sql
 ```
 
-> Schema sudah lengkap di 1 file: 25 tabel, role `ketua`/`warga`, default user `superadmin` / `Admin@1234`.
+> Schema sudah lengkap di 1 file: 27 tabel, role `ketua`/`warga`, default user `superadmin` / `Admin@1234`.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:
@@ -33,19 +33,30 @@ Edit `config/config.php`:
 ```php
 define('APP_URL', 'http://yourdomain.com/arya-green-ipl');
 define('MAIL_FROM', 'noreply@aryagreen.id');
+
+// Opsional: Jika menggunakan SMTP Relay pihak ketiga (Gmail / SendGrid / Mailgun / SMTP cPanel)
+// Kosongkan SMTP_HOST jika ingin memakai php mail() bawaan hosting
+define('SMTP_HOST', 'mail.yourdomain.com');
+define('SMTP_PORT', 587);
+define('SMTP_USER', 'noreply@yourdomain.com');
+define('SMTP_PASS', 'your_smtp_password');
+define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 ```
 
 ### 4. Upload ke cPanel
 - Upload semua file ke `public_html/arya-green-ipl/`
 - Pastikan `.htaccess` ikut terupload
 - Set permission folder `uploads/`: `755`, file: `644`
+- Folder `uploads/payment_proofs/` sudah dilindungi `.htaccess` (larangan eksekusi PHP/CGI dan directory listing)
 
 ### 5. Login Default
 | Username | Password | Peran |
 |---|---|---|
 | `superadmin` | `Admin@1234` | Super Admin |
 
-> **Ganti password segera setelah login pertama!**
+> **Catatan Keamanan:**
+> - Sistem dilengkapi proteksi **Rate Limiting** (maksimal 5 kali percobaan login gagal dalam 15 menit).
+> - Ganti password segera setelah login pertama!
 
 ---
 
@@ -56,7 +67,6 @@ arya-green-ipl/
 ├── index.php                  # Entry point → redirect
 ├── manifest.json              # PWA manifest
 ├── sw.js                      # Service worker (PWA offline)
-├── migrate.php                # One-time migration runner (hapus setelah pakai)
 ├── config/
 │   ├── database.php           # DB constants
 │   └── config.php             # App settings, session, upload config
@@ -126,9 +136,10 @@ arya-green-ipl/
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/
-    ├── schema.sql             # DDL lengkap semua modul (25 tabel)
+    ├── schema.sql             # DDL lengkap semua modul (27 tabel)
     └── migrations/            # Migration incremental
-        └── 004_environments_permissions.sql
+        ├── 004_environments_permissions.sql
+        └── 005_login_attempts.sql
 ```
 
 ## Peran Default (RBAC)

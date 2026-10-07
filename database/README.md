@@ -23,7 +23,7 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 - Database: `db_arya_green_ipl`
 - Charset: `utf8mb4_unicode_ci`
 - Timezone: `+07:00` (WIB)
-- Tables: 25
+- Tables: 27
 
 ## Roles
 
@@ -43,4 +43,6 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 - Inventaris aset
 - Surat RT
 - **Payment Methods** — master metode pembayaran dinamis, bukan ENUM; metode aktif muncul otomatis di form pembayaran
-- **Database migration** — untuk instalasi baru gunakan `database/schema.sql`; database lama membutuhkan migration additif terpisah
+- **Rate Limiting** — tabel `login_attempts` membatasi 5 kegagalan per akun dan 20 kegagalan per IP dalam 15 menit
+- **SMTP opsional** — isi konfigurasi SMTP di `config/config.php`; jika kosong atau gagal, sistem memakai fallback `mail()` cPanel
+- **Database migration** — untuk instalasi baru gunakan `database/schema.sql`; database lama dapat menjalankan migration additif `database/migrations/005_login_attempts.sql`
