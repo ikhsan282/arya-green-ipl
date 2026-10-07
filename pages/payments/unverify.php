@@ -37,28 +37,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect(APP_URL . '/pages/payments/unverify.php?id=' . $id);
     }
 
-    // 1. Hapus entri cash_book yang terkait
-    $del = $db->prepare('DELETE FROM cash_book WHERE ref_payment_id = ?');
-    $del->bind_param('i', $id);
-    $del->execute();
+    try {
+        $db->begin_transaction();
 
-    // 2. Reset status payment ke pending
-    $upd = $db->prepare(
-        'UPDATE payments SET status="pending", verified_by=NULL, verified_at=NULL,
-         notes=CONCAT(IFNULL(notes,""), " [Dibatalkan: ", ?, "]") WHERE id=?'
-    );
-    $upd->bind_param('si', $reason, $id);
-    $upd->execute();
+        // 1. Hapus entri cash_book yang terkait
+        $del = $db->prepare('DELETE FROM cash_book WHERE ref_payment_id = ?');
+        $del->bind_param('i', $id);
+        $del->execute();
 
-    // 3. Reset status bill ke belum_bayar
-    $upd2 = $db->prepare(
-        'UPDATE bills SET status="belum_bayar", paid_date=NULL WHERE id=?'
-    );
-    $upd2->bind_param('i', $pay['bill_id']);
-    $upd2->execute();
+        // 2. Reset status payment ke pending
+        $upd = $db->prepare(
+            'UPDATE payments SET status="pending", verified_by=NULL, verified_at=NULL,
+             notes=CONCAT(IFNULL(notes,""), " [Dibatalkan: ", ?, "]") WHERE id=?'
+        );
+        $upd->bind_param('si', $reason, $id);
+        $upd->execute();
 
-    log_activity('unverify', 'payments', "Payment #{$id} verification cancelled: {$reason}");
-    flash('warning', 'Verifikasi pembayaran berhasil dibatalkan. Entri kas terkait dihapus.');
+        // 3. Reset status bill ke belum_bayar
+        $upd2 = $db->prepare(
+            'UPDATE bills SET status="belum_bayar", paid_date=NULL WHERE id=?'
+        );
+        $upd2->bind_param('i', $pay['bill_id']);
+        $upd2->execute();
+
+        $db->commit();
+
+        log_activity('unverify', 'payments', "Payment #{$id} verification cancelled: {$reason}");
+        flash('warning', 'Verifikasi pembayaran berhasil dibatalkan. Entri kas terkait dihapus.');
+    } catch (Exception $e) {
+        $db->rollback();
+        error_log("Payment unverify error: " . $e->getMessage());
+        flash('error', 'Gagal membatalkan verifikasi. Silakan coba lagi.');
+    }
     redirect(APP_URL . '/pages/payments/detail.php?id=' . $id);
 }
 

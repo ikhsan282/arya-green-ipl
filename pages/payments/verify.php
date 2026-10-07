@@ -32,40 +32,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes  = clean($_POST['notes'] ?? '');
     $uid    = auth_id();
 
-    if ($action === 'verify') {
-        $s = $db->prepare('UPDATE payments SET status="verified",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
-        $s->bind_param('isi', $uid, $notes, $id);
-        $s->execute();
-        // Mark bill paid
-        $s2 = $db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=? WHERE id=?');
-        $s2->bind_param('si', $pay['payment_date'], $pay['bill_id']);
-        $s2->execute();
-        // Auto-entry ke buku kas
-        $s3 = $db->prepare(
-            'INSERT INTO cash_book (kas_account_id,type,category,amount,description,trx_date,ref_payment_id,created_by)
-             SELECT ka.id, "pemasukan", "IPL", ?, ?, ?, ?, ?
-             FROM kas_accounts ka WHERE ka.is_default = 1 LIMIT 1'
-        );
-        $desc = 'IPL ' . $pay['period'] . ' — ' . ($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? '');
-        $s3->bind_param('dssii', $pay['amount_paid'], $desc, $pay['payment_date'], $id, $uid);
-        $s3->execute();
-        log_activity('verify','payments',"Payment #{$id} verified");
-        flash('success','Pembayaran berhasil diverifikasi.');
-        // Email notifikasi ke warga
-        if (!empty($pay['resident_email'])) {
-            $pay['verified_at'] = date('Y-m-d H:i:s');
-            notify_payment_verified($pay, $pay['resident_email'], $pay['resident_name'] ?? '');
+    try {
+        $db->begin_transaction();
+
+        if ($action === 'verify') {
+            $s = $db->prepare('UPDATE payments SET status="verified",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
+            $s->bind_param('isi', $uid, $notes, $id);
+            $s->execute();
+            // Mark bill paid
+            $s2 = $db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=? WHERE id=?');
+            $s2->bind_param('si', $pay['payment_date'], $pay['bill_id']);
+            $s2->execute();
+            // Auto-entry ke buku kas
+            $s3 = $db->prepare(
+                'INSERT INTO cash_book (kas_account_id,type,category,amount,description,trx_date,ref_payment_id,created_by)
+                 SELECT ka.id, "pemasukan", "IPL", ?, ?, ?, ?, ?
+                 FROM kas_accounts ka WHERE ka.is_default = 1 LIMIT 1'
+            );
+            $desc = 'IPL ' . $pay['period'] . ' — ' . ($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? '');
+            $s3->bind_param('dssii', $pay['amount_paid'], $desc, $pay['payment_date'], $id, $uid);
+            $s3->execute();
+
+            $db->commit();
+
+            log_activity('verify','payments',"Payment #{$id} verified");
+            flash('success','Pembayaran berhasil diverifikasi.');
+            // Email notifikasi ke warga
+            if (!empty($pay['resident_email'])) {
+                $pay['verified_at'] = date('Y-m-d H:i:s');
+                notify_payment_verified($pay, $pay['resident_email'], $pay['resident_name'] ?? '');
+            }
+        } elseif ($action === 'reject') {
+            $s = $db->prepare('UPDATE payments SET status="rejected",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
+            $s->bind_param('isi', $uid, $notes, $id);
+            $s->execute();
+
+            $db->commit();
+
+            log_activity('reject','payments',"Payment #{$id} rejected");
+            flash('warning','Pembayaran ditolak.');
+            // Email notifikasi ke warga
+            if (!empty($pay['resident_email'])) {
+                notify_payment_rejected($pay, $pay['resident_email'], $pay['resident_name'] ?? '', $notes);
+            }
         }
-    } elseif ($action === 'reject') {
-        $s = $db->prepare('UPDATE payments SET status="rejected",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
-        $s->bind_param('isi', $uid, $notes, $id);
-        $s->execute();
-        log_activity('reject','payments',"Payment #{$id} rejected");
-        flash('warning','Pembayaran ditolak.');
-        // Email notifikasi ke warga
-        if (!empty($pay['resident_email'])) {
-            notify_payment_rejected($pay, $pay['resident_email'], $pay['resident_name'] ?? '', $notes);
-        }
+    } catch (Exception $e) {
+        $db->rollback();
+        error_log("Payment verification error: " . $e->getMessage());
+        flash('error', 'Gagal memproses verifikasi. Silakan coba lagi.');
     }
     redirect(APP_URL . '/pages/payments/index.php');
 }
