@@ -12,9 +12,12 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 
 ## Default Login
 
-- Username: `superadmin`
-- Password: `Admin@1234`
-- Email: `admin@aryagreen.id`
+| Username | Password | Role | Email |
+|---|---|---|---|
+| `superadmin` | `P@ssw0rd` | Super Admin | admin@aryagreen.id |
+| `ketua` | `P@ssw0rd` | Ketua | ketua@aryagreen.id |
+| `bendahara` | `P@ssw0rd` | Bendahara | bendahara@aryagreen.id |
+| `warga` | `P@ssw0rd` | Warga | warga@aryagreen.id |
 
 **Wajib ganti password setelah login pertama.**
 

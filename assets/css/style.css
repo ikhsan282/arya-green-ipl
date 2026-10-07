@@ -28,14 +28,27 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: var(--sidebar-bg);
   position: fixed;
   top: 0; left: 0;
   z-index: 1040;
   transition: transform .25s ease;
-  overflow-y: auto;
+  overflow: hidden;
 }
+
+.sidebar > .nav {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.35) transparent;
+}
+
+.sidebar > .nav::-webkit-scrollbar { width: 6px; }
+.sidebar > .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); border-radius: 999px; }
+.sidebar > .nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar > .p-3 { flex-shrink: 0; background: var(--sidebar-bg); }
 
 .sidebar-brand { background: rgba(0,0,0,.2); }
 

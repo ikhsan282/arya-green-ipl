@@ -138,10 +138,17 @@ CREATE TABLE `users` (
   FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Default super admin: password = Admin@1234
+-- Default users (password = P@ssw0rd untuk semua)
+-- role_id: 1=super_admin, 2=ketua, 3=bendahara, 4=warga
 INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`) VALUES
 (1, 'Super Administrator', 'superadmin', 'admin@aryagreen.id',
- '$2y$12$fw.u3Yko8Qp2MDJlaZUx3Orz.SvJqr2Lz4qyp2Bvon6NTjuD1rwNu', NOW());
+ '$2y$12$KBlsNPjTdH35lmxPkbhn..nl8LSF1UwPcHer.WsGRiEQkhKe8QY6G', NOW()),
+(2, 'Ketua RT', 'ketua', 'ketua@aryagreen.id',
+ '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
+(3, 'Bendahara RT', 'bendahara', 'bendahara@aryagreen.id',
+ '$2y$12$JLqR9KocGwbqqyeS.1aAkOWk.odIIJLzSO2kIjRvtYclldC16Ogle', NOW()),
+(4, 'Warga Contoh', 'warga', 'warga@aryagreen.id',
+ '$2y$12$Q5GPXvq3oaYH51p4LNvA1e68eHndNdYqKL4gQ6oy.LtJmIXAWzCTS', NOW());
 
 -- ------------------------------------------------------------
 -- Unit Types

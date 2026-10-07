@@ -50,9 +50,12 @@ define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 - Folder `uploads/payment_proofs/` sudah dilindungi `.htaccess` (larangan eksekusi PHP/CGI dan directory listing)
 
 ### 5. Login Default
-| Username | Password | Peran |
+| Username | Password | Role |
 |---|---|---|
-| `superadmin` | `Admin@1234` | Super Admin |
+| `superadmin` | `P@ssw0rd` | Super Admin |
+| `ketua` | `P@ssw0rd` | Ketua |
+| `bendahara` | `P@ssw0rd` | Bendahara |
+| `warga` | `P@ssw0rd` | Warga |
 
 > **Catatan Keamanan:**
 > - Sistem dilengkapi proteksi **Rate Limiting** (maksimal 5 kali percobaan login gagal dalam 15 menit).
