@@ -66,7 +66,8 @@ arya-green-ipl/
 ├── .htaccess                  # Apache config, security headers
 ├── index.php                  # Entry point → redirect
 ├── manifest.json              # PWA manifest
-├── sw.js                      # Service worker (PWA offline)
+├── sw.js                      # Service worker + IndexedDB outbox sync
+├── offline.html               # Halaman fallback saat tanpa koneksi
 ├── config/
 │   ├── database.php           # DB constants
 │   └── config.php             # App settings, session, upload config
@@ -78,8 +79,9 @@ arya-green-ipl/
 │   ├── sidebar.php            # Sidebar navigasi (permission-aware)
 │   └── footer.php             # Scripts, closing tags
 ├── assets/
-│   ├── css/style.css          # Layout, sidebar, auth, badges
-│   └── js/app.js              # Sidebar toggle, confirm dialogs
+│   ├── css/style.css          # Layout, sidebar, auth, badges, dark mode
+│   ├── js/app.js              # Sidebar toggle, confirm dialogs, dark mode toggle
+│   └── js/offline.js          # Outbox queue (aduan/polling) + SW messaging
 ├── auth/
 │   ├── login.php
 │   ├── logout.php
@@ -230,3 +232,13 @@ arya-green-ipl/
 - `.htaccess` blokir akses langsung ke `config/`, `includes/`, `database/`
 - Validasi permission di setiap halaman (`require_permission()`)
 - Forgot & reset password dengan token berumur 1 jam
+- **Rate Limiting Login** — 5× gagal per akun/IP (15 menit), 20× gagal global per IP (mitigasi password spraying)
+- **SMTP Socket Native** — RFC 5321 AUTH LOGIN, CRLF normalisasi, dot-stuffing, StartTLS, fallback otomatis ke `mail()` cPanel
+- **Upload Protection** — `.htaccess` default-deny, whitelist hanya `.jpg/.jpeg/.png/.webp/.pdf`, dual Apache 2.2/2.4 syntax
+
+### UX & PWA Lanjutan
+- **Email Template HTML Responsif** — branding gradasi, tombol CTA (VML fallback Outlook), preheader inbox, footer link portal & kas publik, plain-text fallback multipart/alternative
+- **PWA Install Prompt** — `beforeinstallprompt` handler di `portal.php` (Android/Chrome/Edge), panduan manual "Bagikan → Tambah ke Layar Utama" untuk iOS Safari, dismiss persisten di `localStorage`
+- **Offline Fallback & Outbox Sync** — `offline.html` halaman ramah pengguna, `sw.js` IndexedDB outbox + Background Sync API, antrian POST aduan & polling saat offline dikirim otomatis saat online
+- **Export CSV Encoding** — UTF-8 BOM + `Content-Disposition: attachment; filename*=UTF-8''...` (RFC 6266/5987) untuk nama file non-ASCII & spasi
+- **Dark Mode Toggle** — CSS custom properties + `data-bs-theme`, persisten di `localStorage`, default mengikuti `prefers-color-scheme`, anti-FOUC inline script di `header.php`

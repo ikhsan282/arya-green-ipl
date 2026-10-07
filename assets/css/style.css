@@ -4,10 +4,25 @@
   --sidebar-bg: #1a3c2e;
   --sidebar-hover: #2d6a4f;
   --topbar-height: 56px;
+  --page-bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-muted: #f8f9fa;
+  --border-color: #e9ecef;
+  --text-color: #212529;
+  --muted-color: #6c757d;
+}
+
+html[data-bs-theme="dark"] {
+  --page-bg: #121a17;
+  --surface: #1d2924;
+  --surface-muted: #25352e;
+  --border-color: #35483f;
+  --text-color: #e5ebe8;
+  --muted-color: #aab8b1;
 }
 
 /* ── Layout ───────────────────────────────────── */
-body { background: #f5f7fa; font-size: .9rem; }
+body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
 
 .wrapper { min-height: 100vh; }
 
@@ -46,8 +61,8 @@ body { background: #f5f7fa; font-size: .9rem; }
 .main-content { flex: 1; padding: 1.5rem; }
 
 /* ── Cards ────────────────────────────────────── */
-.card { border: 1px solid #e9ecef; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-.card-header { background: #fff; border-bottom: 1px solid #e9ecef; font-weight: 600; }
+.card { border: 1px solid var(--border-color); background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.card-header { background: var(--surface-muted); border-bottom: 1px solid var(--border-color); font-weight: 600; }
 
 .stat-card { border-radius: 10px; }
 .stat-card .stat-icon {
@@ -57,9 +72,9 @@ body { background: #f5f7fa; font-size: .9rem; }
 
 /* ── Tables ───────────────────────────────────── */
 .table th { font-size: .78rem; text-transform: uppercase;
-            letter-spacing: .04em; color: #6c757d; font-weight: 600; }
+            letter-spacing: .04em; color: var(--muted-color); font-weight: 600; }
 .table td { vertical-align: middle; }
-.table-hover tbody tr:hover { background: #f0faf5; }
+.table-hover tbody tr:hover { background: var(--surface-muted); }
 
 /* ── Badges ───────────────────────────────────── */
 .badge { font-size: .75rem; padding: .35em .65em; }
@@ -70,14 +85,32 @@ body { background: #f5f7fa; font-size: .9rem; }
   border-color: #198754;
   box-shadow: 0 0 0 .2rem rgba(25,135,84,.2);
 }
+.form-control, .form-select {
+  background: var(--surface);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
 
 /* ── Auth pages ───────────────────────────────── */
 .auth-wrapper {
-  min-height: 100vh; background: linear-gradient(135deg, #1a3c2e 0%, #2d6a4f 100%);
+  min-height: 100vh; background: linear-gradient(135deg, var(--sidebar-bg) 0%, var(--sidebar-hover) 100%);
   display: flex; align-items: center; justify-content: center;
 }
 .auth-card { border-radius: 14px; border: 0; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
 .auth-logo  { font-size: 2rem; color: #198754; }
+
+/* ── Dark mode toggle ─────────────────────────── */
+.dark-toggle {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.dark-toggle:hover { background: var(--border-color); }
+.dark-toggle i { pointer-events: none; }
 
 /* ── Responsive sidebar ───────────────────────── */
 @media (max-width: 991.98px) {

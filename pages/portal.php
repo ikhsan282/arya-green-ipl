@@ -75,6 +75,10 @@ $page_title = 'Portal Warga';
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script>
+    // Anti-FOUC: terapkan tema sebelum render
+    (function(){try{var t=localStorage.getItem('agipl_theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-bs-theme',t);}catch(e){}})();
+  </script>
   <style>
     body { background:#f0f4f0; font-size:15px; }
     .pwa-header { background:linear-gradient(135deg,#198754,#0d6efd); color:#fff; padding:1.2rem 1rem .8rem; }
@@ -91,6 +95,20 @@ $page_title = 'Portal Warga';
     .nav-bottom i { display:block; font-size:1.3rem; margin-bottom:2px; }
     .main-pwa { padding-bottom:5rem; }
     .badge-tunggakan { background:#dc3545; color:#fff; border-radius:999px; padding:1px 6px; font-size:.7rem; }
+    .pwa-install-banner { display:none; background:linear-gradient(135deg,#198754,#0d6efd); color:#fff;
+      border-radius:12px; padding:1rem; margin-bottom:1rem; box-shadow:0 4px 14px rgba(25,135,84,.25); }
+    .pwa-install-banner.show { display:block; animation:slideIn .3s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+    html[data-bs-theme="dark"] body { background:#121a17; color:#e5ebe8; }
+    html[data-bs-theme="dark"] .card,
+    html[data-bs-theme="dark"] .bill-item,
+    html[data-bs-theme="dark"] .nav-bottom,
+    html[data-bs-theme="dark"] .bg-white { background:#1d2924 !important; color:#e5ebe8; }
+    html[data-bs-theme="dark"] .text-muted { color:#aab8b1 !important; }
+    html[data-bs-theme="dark"] .border-top,
+    html[data-bs-theme="dark"] .border-bottom { border-color:#35483f !important; }
+    .portal-theme-toggle { color:#fff; border:1px solid rgba(255,255,255,.5); background:transparent; }
+    .portal-theme-toggle:hover { background:rgba(255,255,255,.15); }
   </style>
 </head>
 <body>
@@ -107,10 +125,30 @@ $page_title = 'Portal Warga';
         <div class="fw-bold"><?= e($resident['block'].'-'.$resident['unit_number']) ?></div>
       <?php endif; ?>
     </div>
+    <button type="button" class="portal-theme-toggle dark-toggle ms-2" aria-label="Ganti tema" title="Ganti tema">
+      <i class="bi bi-moon-stars"></i>
+    </button>
   </div>
 </div>
 
 <div class="main-pwa p-3">
+
+  <!-- PWA install banner (beforeinstallprompt / iOS manual) -->
+  <div id="pwaInstallBanner" class="pwa-install-banner">
+    <div class="d-flex align-items-center gap-3">
+      <div class="fs-2"><i class="bi bi-phone"></i></div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold">Pasang Aplikasi Arya Green</div>
+        <small id="pwaInstallHint" class="opacity-75">Akses lebih cepat dari layar utama HP Anda.</small>
+      </div>
+      <button id="pwaInstallBtn" class="btn btn-light btn-sm fw-semibold text-nowrap">
+        <i class="bi bi-download me-1"></i>Pasang
+      </button>
+      <button id="pwaInstallDismiss" class="btn btn-sm text-white p-1" aria-label="Tutup">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
 
   <?php if (!$resident): ?>
   <div class="alert alert-warning">
@@ -271,11 +309,69 @@ $page_title = 'Portal Warga';
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= APP_URL ?>/assets/js/app.js"></script>
+<script src="<?= APP_URL ?>/assets/js/offline.js"></script>
 <script>
 // Register service worker untuk offline support
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('<?= APP_URL ?>/sw.js').catch(() => {});
 }
+
+// ── PWA Install Prompt ────────────────────────────────────────────────────
+(function () {
+  const banner  = document.getElementById('pwaInstallBanner');
+  const btn     = document.getElementById('pwaInstallBtn');
+  const dismiss = document.getElementById('pwaInstallDismiss');
+  const hint    = document.getElementById('pwaInstallHint');
+  if (!banner) return;
+
+  const DISMISS_KEY = 'agipl_pwa_dismissed';
+  const alreadyDismissed = () => localStorage.getItem(DISMISS_KEY) === '1';
+  const showBanner = (hintText) => {
+    if (hintText && hint) hint.textContent = hintText;
+    banner.classList.add('show');
+  };
+
+  // Android / Chrome / Edge: native beforeinstallprompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!alreadyDismissed()) showBanner();
+  });
+
+  btn?.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') banner.classList.remove('show');
+      deferredPrompt = null;
+    }
+  });
+
+  // iOS Safari: tidak ada beforeinstallprompt → tampilkan instruksi Share > Add to Home Screen
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+
+  if (isIOS && !isStandalone && !alreadyDismissed()) {
+    btn.style.display = 'none';
+    showBanner('Di Safari, tekan tombol Bagikan lalu pilih "Tambahkan ke Layar Utama".');
+  } else if (!deferredPrompt && !isIOS) {
+    // Browser desktop tanpa beforeinstallprompt — banner tidak perlu
+  }
+
+  // Jangan tampilkan kalau aplikasi sudah terpasang
+  window.addEventListener('appinstalled', () => {
+    banner.classList.remove('show');
+    localStorage.removeItem(DISMISS_KEY);
+  });
+
+  dismiss?.addEventListener('click', () => {
+    banner.classList.remove('show');
+    localStorage.setItem(DISMISS_KEY, '1');
+  });
+})();
 </script>
 </body>
 </html>

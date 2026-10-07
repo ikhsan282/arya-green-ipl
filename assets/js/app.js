@@ -49,6 +49,32 @@ if (proofInput && proofPreview) {
   });
 }
 
+// ── Dark mode toggle ──────────────────────────────────────────────────────
+// Persist pilihan di localStorage; default mengikuti prefers-color-scheme.
+const THEME_KEY = 'agipl_theme';
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-bs-theme', theme);
+  document.querySelectorAll('.dark-toggle i').forEach(icon => {
+    icon.classList.toggle('bi-moon-stars', theme === 'light');
+    icon.classList.toggle('bi-sun', theme === 'dark');
+  });
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+})();
+
+document.addEventListener('click', e => {
+  const toggle = e.target.closest('.dark-toggle');
+  if (!toggle) return;
+  const next = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
 // ── Rupiah input formatter ─────────────────────────────────────────────────
 document.querySelectorAll('[data-rupiah]').forEach(el => {
   el.addEventListener('input', () => {

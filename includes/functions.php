@@ -85,6 +85,18 @@ function render_pagination(array $p, string $url_base): string {
     return $html;
 }
 
+// ── EXPORT CSV ───────────────────────────────────────────────────────────────
+function header_csv_download(string $filename): void {
+    // RFC 6266 & RFC 5987: ASCII fallback + filename*=UTF-8''... untuk karakter non-ASCII & spasi
+    $ascii   = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
+    $encoded = rawurlencode($filename);
+    header('Content-Type: text/csv; charset=UTF-8');
+    header("Content-Disposition: attachment; filename=\"{$ascii}\"; filename*=UTF-8''{$encoded}");
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
+
 // ── MONEY ─────────────────────────────────────────────────────────────────────
 function idr(float $v): string {
     return 'Rp ' . number_format($v, 0, ',', '.');
@@ -157,9 +169,17 @@ function upload_proof(array $file): string {
 }
 
 // ── EMAIL ─────────────────────────────────────────────────────────────────────
+function mail_plain_text(string $html): string {
+    $html = preg_replace('/<(br\s*\/?>|\/p>|\/div>|\/tr>|\/h[1-6]>)/i', "\n", $html);
+    $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace("/\n[ \t]+/", "\n", $text);
+    $text = preg_replace('/[ \t]+/', ' ', $text);
+    return trim(preg_replace("/\n{3,}/", "\n\n", $text));
+}
+
 // ponytail: SMTP socket sederhana tanpa vendor/PHPMailer (RFC 5321 auth login).
 // Fallback otomatis ke mail() jika SMTP_HOST kosong.
-function send_mail_smtp(string $to, string $subject, string $body): bool {
+function send_mail_smtp(string $to, string $subject, string $body, string $plain = ''): bool {
     $host = SMTP_HOST;
     $port = SMTP_PORT;
     $user = SMTP_USER;
@@ -241,15 +261,30 @@ function send_mail_smtp(string $to, string $subject, string $body): bool {
     // Dot-stuffing: lines starting with '.' get an extra '.'
     $body = preg_replace('/^\./m', '..', $body);
 
+    // MIME multipart/alternative: HTML + plain text fallback
+    $boundary = '=_AGIPL_' . bin2hex(random_bytes(8));
+    $plain    = $plain !== '' ? $plain : mail_plain_text($body);
+    $plain    = preg_replace('/(?<!\r)\n/', "\r\n", $plain);
+    $plain    = preg_replace('/^\./m', '..', $plain);
+
     $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
     $headers .= "From: {$from_name} <{$from_mail}>\r\n";
     $headers .= "To: <{$to}>\r\n";
     $headers .= "Date: " . date('r') . "\r\n";
     $headers .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
     $headers .= "X-Mailer: AryaGreen-IPL/1.0\r\n";
 
-    $message = $headers . "\r\n" . $body . "\r\n.";
+    $message  = $headers;
+    $message .= "\r\n--{$boundary}\r\n";
+    $message .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    $message .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $message .= $plain . "\r\n";
+    $message .= "--{$boundary}\r\n";
+    $message .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $message .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $message .= $body . "\r\n";
+    $message .= "--{$boundary}--\r\n.";
     $send = $write($message);
     $write('QUIT');
     fclose($socket);
@@ -257,39 +292,141 @@ function send_mail_smtp(string $to, string $subject, string $body): bool {
     return str_starts_with($send, '250');
 }
 
-function send_mail(string $to, string $subject, string $body): bool {
+function send_mail(string $to, string $subject, string $body, string $plain = ''): bool {
     if (defined('SMTP_HOST') && SMTP_HOST !== '') {
-        if (send_mail_smtp($to, $subject, $body)) {
+        if (send_mail_smtp($to, $subject, $body, $plain)) {
             return true;
         }
         error_log("SMTP failed, attempting mail() fallback");
     }
+    $plain = $plain !== '' ? $plain : mail_plain_text($body);
+    $boundary = '=_AGIPL_' . bin2hex(random_bytes(8));
     $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
     $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM . ">\r\n";
     $headers .= "X-Mailer: PHP/" . phpversion();
-    return mail($to, $subject, $body, $headers);
+    $message  = "--{$boundary}\r\n"
+              . "Content-Type: text/plain; charset=UTF-8\r\n"
+              . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+              . $plain . "\r\n"
+              . "--{$boundary}\r\n"
+              . "Content-Type: text/html; charset=UTF-8\r\n"
+              . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+              . $body . "\r\n"
+              . "--{$boundary}--";
+    return mail($to, $subject, $message, $headers);
 }
 
-function mail_template(string $title, string $body_html): string {
-    $app = APP_NAME;
+function mail_template(string $title, string $body_html, string $cta_text = '', string $cta_url = ''): string {
+    $app_name = e(APP_NAME);
+    $app_url  = e(APP_URL);
+    $year     = date('Y');
+    $title_e  = e($title);
+
+    $cta_html = '';
+    if ($cta_text !== '' && $cta_url !== '') {
+        $cta_text_e = e($cta_text);
+        $cta_url_e  = htmlspecialchars($cta_url, ENT_QUOTES, 'UTF-8');
+        $cta_html = <<<HTML
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin:28px 0 16px;">
+          <tr>
+            <td align="center">
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{$cta_url_e}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="12%" stroke="f" fillcolor="#198754">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:bold;">{$cta_text_e}</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <a href="{$cta_url_e}" target="_blank"
+                 style="display:inline-block;background-color:#198754;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:44px;text-align:center;text-decoration:none;padding:0 28px;border-radius:6px;box-shadow:0 2px 4px rgba(25,135,84,0.3);-webkit-text-size-adjust:none;">
+                {$cta_text_e} &rarr;
+              </a>
+              <!--<![endif]-->
+            </td>
+          </tr>
+        </table>
+HTML;
+    }
+
     return <<<HTML
-    <!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px">
-    <div style="max-width:520px;margin:auto;background:#fff;border-radius:8px;overflow:hidden">
-      <div style="background:#198754;padding:20px;color:#fff;text-align:center">
-        <h2 style="margin:0">{$app}</h2>
-      </div>
-      <div style="padding:24px">
-        <h3>{$title}</h3>
-        {$body_html}
-        <hr style="margin:24px 0">
-        <p style="color:#999;font-size:12px;text-align:center">
-          &copy; {$app} — Jangan balas email ini.
-        </p>
-      </div>
-    </div>
-    </body></html>
-    HTML;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{$title_e} — {$app_name}</title>
+  <style type="text/css">
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; background-color: #f3f4f6; }
+    @media screen and (max-width: 600px) {
+      .container-table { width: 100% !important; }
+      .content-padding { padding: 20px !important; }
+      .header-padding { padding: 20px 16px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:24px 0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <!-- Preheader text for inbox preview -->
+  <div style="display:none;font-size:1px;color:#f3f4f6;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    {$title_e} — Pemberitahuan resmi dari {$app_name}.
+  </div>
+
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td align="center" style="padding:0 12px;">
+        <!-- Email Container Card -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" class="container-table" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);border:1px solid #e5e7eb;">
+          <!-- Header Banner -->
+          <tr>
+            <td class="header-padding" style="background:linear-gradient(135deg,#198754 0%,#0d6efd 100%);background-color:#198754;padding:28px 24px;text-align:center;">
+              <div style="display:inline-block;background-color:rgba(255,255,255,0.2);padding:6px 12px;border-radius:20px;margin-bottom:8px;">
+                <span style="color:#ffffff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Sistem Manajemen IPL</span>
+              </div>
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">{$app_name}</h1>
+            </td>
+          </tr>
+
+          <!-- Title Bar -->
+          <tr>
+            <td style="padding:20px 28px 0;text-align:left;">
+              <h2 style="margin:0;color:#111827;font-size:18px;font-weight:600;border-bottom:2px solid #e5e7eb;padding-bottom:12px;">
+                {$title_e}
+              </h2>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td class="content-padding" style="padding:20px 28px 28px;color:#374151;font-size:14px;line-height:1.65;">
+              {$body_html}
+              {$cta_html}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:20px 28px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#6b7280;line-height:1.5;">
+              <p style="margin:0 0 6px 0;font-weight:600;color:#374151;">&copy; {$year} {$app_name}</p>
+              <p style="margin:0 0 8px 0;">Email ini dikirim secara otomatis oleh sistem. Mohon untuk tidak membalas email ini secara langsung.</p>
+              <p style="margin:0;">
+                <a href="{$app_url}" target="_blank" style="color:#198754;text-decoration:none;font-weight:500;">Buka Portal Warga</a>
+                &bull;
+                <a href="{$app_url}/pages/public/kas.php" target="_blank" style="color:#198754;text-decoration:none;font-weight:500;">Kas Publik</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
 }
 
 // ── ACTIVITY LOG ──────────────────────────────────────────────────────────────

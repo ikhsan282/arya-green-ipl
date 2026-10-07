@@ -202,13 +202,13 @@ function send_verification_email(int $user_id, string $email, string $name): boo
     $stmt->execute();
 
     $link = APP_URL . '/auth/verify-email.php?token=' . $token;
-    $body = "<p>Halo <strong>{$name}</strong>,</p>
+    $link_e = htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $name_e = e($name);
+    $body = "<p>Halo <strong>{$name_e}</strong>,</p>
              <p>Klik tombol di bawah untuk memverifikasi email Anda:</p>
-             <p><a href='{$link}' style='background:#198754;color:#fff;padding:10px 20px;
-                border-radius:4px;text-decoration:none'>Verifikasi Email</a></p>
-             <p>Atau salin link ini:<br><small>{$link}</small></p>
+             <p>Atau salin link ini:<br><small>{$link_e}</small></p>
              <p>Link berlaku 24 jam.</p>";
-    return send_mail($email, 'Verifikasi Email — ' . APP_NAME, mail_template('Verifikasi Email', $body));
+    return send_mail($email, 'Verifikasi Email — ' . APP_NAME, mail_template('Verifikasi Email', $body, 'Verifikasi Email', $link));
 }
 
 // ── Password Reset ─────────────────────────────────────────────────────────────
@@ -227,10 +227,11 @@ function send_reset_email(string $email): bool {
     $stmt2->execute();
 
     $link = APP_URL . '/auth/forgot-password.php?action=reset&token=' . $token;
-    $body = "<p>Halo <strong>{$user['name']}</strong>,</p>
+    $link_e = htmlspecialchars($link, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $name_e = e($user['name']);
+    $body = "<p>Halo <strong>{$name_e}</strong>,</p>
              <p>Klik tombol di bawah untuk mereset password Anda:</p>
-             <p><a href='{$link}' style='background:#198754;color:#fff;padding:10px 20px;
-                border-radius:4px;text-decoration:none'>Reset Password</a></p>
-             <p>Link berlaku 1 jam. Abaikan jika Anda tidak meminta ini.</p>";
-    return send_mail($email, 'Reset Password — ' . APP_NAME, mail_template('Reset Password', $body));
+             <p>Link berlaku 1 jam. Abaikan jika Anda tidak meminta ini.</p>
+             <p>Jika tombol tidak dapat digunakan, salin link ini:<br><small>{$link_e}</small></p>";
+    return send_mail($email, 'Reset Password — ' . APP_NAME, mail_template('Reset Password', $body, 'Reset Password', $link));
 }

@@ -284,6 +284,9 @@ function nav_active(string $path): string {
         <small class="text-white-50"><?= e(ucwords(str_replace('_',' ', $current_user['role'] ?? ''))) ?></small>
       </div>
     </div>
+    <button type="button" class="dark-toggle text-body ms-2" aria-label="Ganti tema" title="Ganti tema">
+      <i class="bi bi-moon-stars"></i>
+    </button>
     <a href="<?= APP_URL ?>/auth/logout.php"
        class="btn btn-sm btn-outline-light w-100"
        onclick="return confirm('Yakin ingin keluar?')">

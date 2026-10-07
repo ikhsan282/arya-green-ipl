@@ -34,9 +34,8 @@ if ($params) $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-header('Content-Type: text/csv; charset=UTF-8');
-header('Content-Disposition: attachment; filename="rekap_tunggakan_' . date('Ymd') . '.csv"');
-header('Cache-Control: no-cache, no-store, must-revalidate');
+$filename = 'rekap_tunggakan_' . date('Ymd') . '.csv';
+header_csv_download($filename);
 
 $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel

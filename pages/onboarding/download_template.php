@@ -2,9 +2,9 @@
 // Download template CSV untuk import warga
 require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
+require_once __DIR__ . '/../../includes/functions.php';
 
-header('Content-Type: text/csv; charset=UTF-8');
-header('Content-Disposition: attachment; filename="template_import_warga.csv"');
+header_csv_download('template_import_warga.csv');
 
 $out = fopen('php://output', 'w');
 // BOM untuk Excel agar UTF-8 terbaca

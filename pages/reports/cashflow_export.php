@@ -21,9 +21,8 @@ $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $by_month = array_column($rows, null, 'm');
 
-header('Content-Type: text/csv; charset=UTF-8');
-header('Content-Disposition: attachment; filename="arus_kas_' . $f_year . '.csv"');
-header('Cache-Control: no-cache, no-store, must-revalidate');
+$filename = 'arus_kas_' . $f_year . '.csv';
+header_csv_download($filename);
 
 $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");

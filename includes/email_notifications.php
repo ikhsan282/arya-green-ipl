@@ -39,6 +39,7 @@ function send_reminder_due(array $bill, string $email, string $name): bool {
 
     $subject = 'Pengingat Tagihan IPL — ' . $bill['period'] . ' | ' . APP_NAME;
     $due     = fmt_date($bill['due_date'], 'd M Y');
+    $pay_url = APP_URL . '/pages/payments/form.php?bill_id=' . (int)$bill['id'];
     $body    = "
         <p>Halo <strong>" . htmlspecialchars($name) . "</strong>,</p>
         <p>Ini adalah pengingat bahwa tagihan IPL Anda untuk periode <strong>" . htmlspecialchars($bill['period']) . "</strong>
@@ -56,7 +57,7 @@ function send_reminder_due(array $bill, string $email, string $name): bool {
         <p style='margin-top:16px'>Harap segera lakukan pembayaran sebelum jatuh tempo untuk menghindari denda keterlambatan.</p>
         <p>Terima kasih atas perhatian dan kerja samanya.</p>";
 
-    $ok = send_mail($email, $subject, mail_template('Pengingat Tagihan IPL', $body));
+    $ok = send_mail($email, $subject, mail_template('Pengingat Tagihan IPL', $body, 'Bayar Sekarang', $pay_url));
     log_email('reminder_due', $email, $name, $subject, (int)$bill['id'], $ok);
     return $ok;
 }
@@ -68,6 +69,7 @@ function send_reminder_overdue(array $bill, string $email, string $name): bool {
 
     $subject = 'Tagihan IPL TERLAMBAT — ' . $bill['period'] . ' | ' . APP_NAME;
     $due     = fmt_date($bill['due_date'], 'd M Y');
+    $pay_url = APP_URL . '/pages/payments/form.php?bill_id=' . (int)$bill['id'];
     $body    = "
         <p>Halo <strong>" . htmlspecialchars($name) . "</strong>,</p>
         <p style='color:#dc3545;font-weight:bold'>⚠ Tagihan IPL Anda untuk periode <strong>" . htmlspecialchars($bill['period']) . "</strong>
@@ -89,7 +91,7 @@ function send_reminder_overdue(array $bill, string $email, string $name): bool {
         <p style='margin-top:16px'>Mohon segera melunasi tagihan untuk menghindari penambahan denda lebih lanjut.</p>
         <p>Jika Anda sudah melakukan pembayaran, abaikan email ini.</p>";
 
-    $ok = send_mail($email, $subject, mail_template('Tagihan Terlambat', $body));
+    $ok = send_mail($email, $subject, mail_template('Tagihan Terlambat', $body, 'Bayar Sekarang', $pay_url));
     log_email('reminder_overdue', $email, $name, $subject, (int)$bill['id'], $ok);
     return $ok;
 }
@@ -99,6 +101,7 @@ function notify_payment_verified(array $payment, string $email, string $name): b
     if (!$email) return false;
 
     $subject = 'Pembayaran IPL Terverifikasi — ' . $payment['period'] . ' | ' . APP_NAME;
+    $receipt_url = APP_URL . '/pages/payments/print_receipt.php?id=' . (int)$payment['id'];
     $body    = "
         <p>Halo <strong>" . htmlspecialchars($name) . "</strong>,</p>
         <p style='color:#198754'>✅ Pembayaran IPL Anda telah <strong>diverifikasi</strong> oleh pengurus.</p>
@@ -118,7 +121,7 @@ function notify_payment_verified(array $payment, string $email, string $name): b
         </table>
         <p style='margin-top:16px'>Simpan email ini sebagai bukti pembayaran Anda. Terima kasih.</p>";
 
-    $ok = send_mail($email, $subject, mail_template('Pembayaran Terverifikasi', $body));
+    $ok = send_mail($email, $subject, mail_template('Pembayaran Terverifikasi', $body, 'Lihat / Cetak Kuitansi', $receipt_url));
     log_email('payment_verified', $email, $name, $subject, (int)$payment['id'], $ok);
     return $ok;
 }
@@ -128,6 +131,7 @@ function notify_payment_rejected(array $payment, string $email, string $name, st
     if (!$email) return false;
 
     $subject = 'Pembayaran IPL Ditolak — ' . $payment['period'] . ' | ' . APP_NAME;
+    $pay_url = APP_URL . '/pages/payments/form.php?bill_id=' . (int)($payment['bill_id'] ?? 0);
     $reason_html = $reason ? "<p><strong>Alasan:</strong> " . htmlspecialchars($reason) . "</p>" : '';
     $body    = "
         <p>Halo <strong>" . htmlspecialchars($name) . "</strong>,</p>
@@ -144,7 +148,7 @@ function notify_payment_rejected(array $payment, string $email, string $name, st
         {$reason_html}
         <p style='margin-top:16px'>Harap hubungi pengurus atau ulangi pembayaran dengan bukti yang valid.</p>";
 
-    $ok = send_mail($email, $subject, mail_template('Pembayaran Ditolak', $body));
+    $ok = send_mail($email, $subject, mail_template('Pembayaran Ditolak', $body, 'Unggah Ulang Pembayaran', $pay_url));
     log_email('payment_rejected', $email, $name, $subject, (int)$payment['id'], $ok);
     return $ok;
 }
@@ -161,6 +165,7 @@ function notify_admin_new_payment(array $payment, string $resident_name): void {
     if (!$res) return;
 
     $subject = 'Pembayaran Baru Menunggu Verifikasi — ' . APP_NAME;
+    $verify_url = APP_URL . '/pages/payments/index.php?status=pending';
     $body    = "
         <p>Ada pembayaran IPL baru yang perlu diverifikasi.</p>
         <table style='border-collapse:collapse;width:100%'>
@@ -176,16 +181,10 @@ function notify_admin_new_payment(array $payment, string $resident_name): void {
               <td style='padding:4px 8px'>" . htmlspecialchars(ucfirst($payment['payment_method'])) . "</td></tr>
           <tr><td style='padding:4px 8px;color:#666'>Tanggal Bayar</td>
               <td style='padding:4px 8px'>" . fmt_date($payment['payment_date']) . "</td></tr>
-        </table>
-        <p style='margin-top:16px'>
-          <a href='" . APP_URL . "/pages/payments/index.php?status=pending'
-             style='background:#198754;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none'>
-            Lihat &amp; Verifikasi
-          </a>
-        </p>";
+        </table>";
 
     while ($ketua = $res->fetch_assoc()) {
-        $ok = send_mail($ketua['email'], $subject, mail_template('Pembayaran Baru', $body));
+        $ok = send_mail($ketua['email'], $subject, mail_template('Pembayaran Baru', $body, 'Lihat & Verifikasi', $verify_url));
         log_email('payment_received', $ketua['email'], $ketua['name'], $subject, (int)$payment['id'], $ok);
     }
 }

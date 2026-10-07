@@ -9,6 +9,10 @@ $page_title   = $page_title ?? 'Dashboard';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($page_title) ?> — <?= APP_NAME ?></title>
+  <script>
+    // Anti-FOUC: terapkan tema sebelum render
+    (function(){try{var t=localStorage.getItem('agipl_theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-bs-theme',t);}catch(e){}})();
+  </script>
   <!-- Bootstrap 5 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <!-- Bootstrap Icons -->
