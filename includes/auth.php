@@ -72,6 +72,16 @@ function login_client_ip(): string {
 }
 
 function login_rate_limit_status(string $username): array {
+    static $table_exists = null;
+    if ($table_exists === null) {
+        $db = db();
+        $check = $db->query("SHOW TABLES LIKE 'login_attempts'");
+        $table_exists = $check && $check->num_rows > 0;
+    }
+    if (!$table_exists) {
+        return ['locked' => false, 'remaining' => LOGIN_MAX_ATTEMPTS, 'retry_after' => 0];
+    }
+
     $db = db();
     $ip = login_client_ip();
     $normalized = strtolower(trim($username));
@@ -117,6 +127,14 @@ function login_rate_limit_status(string $username): array {
 }
 
 function record_login_attempt(string $username, bool $success): void {
+    static $table_exists = null;
+    if ($table_exists === null) {
+        $db = db();
+        $check = $db->query("SHOW TABLES LIKE 'login_attempts'");
+        $table_exists = $check && $check->num_rows > 0;
+    }
+    if (!$table_exists) return;
+
     $db = db();
     $ip = login_client_ip();
     $normalized = substr(strtolower(trim($username)), 0, 100);
