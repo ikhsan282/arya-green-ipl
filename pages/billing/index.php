@@ -313,6 +313,16 @@ include __DIR__ . '/../../includes/sidebar.php';
                       <i class="bi bi-eye"></i>
                     </a>
                   <?php endif; ?>
+                  <?php if (can('billing.generate') && $b['status'] === 'belum_bayar'): ?>
+                    <form method="POST" class="d-inline" onsubmit="return confirm('Hapus tagihan ini? Aksi tidak dapat dibatalkan.')">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="_action" value="delete">
+                      <input type="hidden" name="bill_id" value="<?= $b['id'] ?>">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Hapus tagihan">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; endif; ?>
