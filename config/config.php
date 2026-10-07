@@ -20,9 +20,9 @@ define('UPLOAD_ALLOWED',  ['image/jpeg', 'image/png', 'image/webp', 'application
 // Email Configuration
 // Opsi 1: PHP mail() bawaan cPanel (default)
 // Opsi 2: SMTP Relay (isi SMTP_HOST untuk mengaktifkan SMTP socket, misal Gmail, Mailgun, SendGrid)
-define('MAIL_FROM',       'noreply@aryagreen.id');
+define('MAIL_FROM',       'noreply@aryagreenpamulang.my.id');
 define('MAIL_FROM_NAME',  APP_NAME);
-define('SMTP_HOST',       ''); // contoh: 'mail.aryagreen.id' atau 'smtp.gmail.com'
+define('SMTP_HOST',       ''); // contoh: 'mail.aryagreenpamulang.my.id' atau 'smtp.gmail.com'
 define('SMTP_PORT',       587); // 587 (TLS), 465 (SSL), 25
 define('SMTP_USER',       '');
 define('SMTP_PASS',       '');

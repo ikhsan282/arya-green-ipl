@@ -32,7 +32,7 @@ define('DB_NAME', 'db_arya_green_ipl');
 Edit `config/config.php`:
 ```php
 define('APP_URL', 'http://yourdomain.com/arya-green-ipl');
-define('MAIL_FROM', 'noreply@aryagreen.id');
+define('MAIL_FROM', 'noreply@aryagreenpamulang.my.id');
 
 // Opsional: Jika menggunakan SMTP Relay pihak ketiga (Gmail / SendGrid / Mailgun / SMTP cPanel)
 // Kosongkan SMTP_HOST jika ingin memakai php mail() bawaan hosting

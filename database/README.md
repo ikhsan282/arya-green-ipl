@@ -14,10 +14,10 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 
 | Username | Password | Role | Email |
 |---|---|---|---|
-| `superadmin` | `P@ssw0rd` | Super Admin | admin@aryagreen.id |
-| `ketua` | `P@ssw0rd` | Ketua | ketua@aryagreen.id |
-| `bendahara` | `P@ssw0rd` | Bendahara | bendahara@aryagreen.id |
-| `warga` | `P@ssw0rd` | Warga | warga@aryagreen.id |
+| `superadmin` | `P@ssw0rd` | Super Admin | admin@aryagreenpamulang.my.id |
+| `ketua` | `P@ssw0rd` | Ketua | ketua@aryagreenpamulang.my.id |
+| `bendahara` | `P@ssw0rd` | Bendahara | bendahara@aryagreenpamulang.my.id |
+| `warga` | `P@ssw0rd` | Warga | warga@aryagreenpamulang.my.id |
 
 **Wajib ganti password setelah login pertama.**
 

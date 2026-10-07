@@ -141,13 +141,13 @@ CREATE TABLE `users` (
 -- Default users (password = P@ssw0rd untuk semua)
 -- role_id: 1=super_admin, 2=ketua, 3=bendahara, 4=warga
 INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`) VALUES
-(1, 'Super Administrator', 'superadmin', 'admin@aryagreen.id',
+(1, 'Super Administrator', 'superadmin', 'admin@aryagreenpamulang.my.id',
  '$2y$12$KBlsNPjTdH35lmxPkbhn..nl8LSF1UwPcHer.WsGRiEQkhKe8QY6G', NOW()),
-(2, 'Ketua RT', 'ketua', 'ketua@aryagreen.id',
+(2, 'Ketua RT', 'ketua', 'ketua@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
-(3, 'Bendahara RT', 'bendahara', 'bendahara@aryagreen.id',
+(3, 'Bendahara RT', 'bendahara', 'bendahara@aryagreenpamulang.my.id',
  '$2y$12$JLqR9KocGwbqqyeS.1aAkOWk.odIIJLzSO2kIjRvtYclldC16Ogle', NOW()),
-(4, 'Warga Contoh', 'warga', 'warga@aryagreen.id',
+(4, 'Warga Contoh', 'warga', 'warga@aryagreenpamulang.my.id',
  '$2y$12$Q5GPXvq3oaYH51p4LNvA1e68eHndNdYqKL4gQ6oy.LtJmIXAWzCTS', NOW());
 
 -- ------------------------------------------------------------

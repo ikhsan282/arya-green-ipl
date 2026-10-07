@@ -115,7 +115,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             <div class="col-md-6">
               <label class="form-label">Domain Kustom <small class="text-muted">(opsional)</small></label>
               <input type="text" name="custom_domain" class="form-control" maxlength="100"
-                     value="<?= e($env['custom_domain'] ?? '') ?>" placeholder="Cth: ipl.aryagreen.id">
+                     value="<?= e($env['custom_domain'] ?? '') ?>" placeholder="Cth: ipl.aryagreenpamulang.my.id">
             </div>
             <div class="col-12">
               <label class="form-label">Alamat <small class="text-muted">(opsional)</small></label>
