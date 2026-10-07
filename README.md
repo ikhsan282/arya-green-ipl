@@ -17,7 +17,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 mysql -u root -p < database/schema.sql
 ```
 
-> Schema sudah lengkap di 1 file: 27 tabel, role `ketua`/`warga`, default user `superadmin` / `Admin@1234`.
+> Schema sudah lengkap di 1 file: 27 tabel, 4 role (super_admin/ketua/bendahara/warga), 4 default user dengan password `P@ssw0rd`.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:
