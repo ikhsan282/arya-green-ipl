@@ -36,20 +36,26 @@ body { background: var(--page-bg); color: var(--text-color); font-size: .9rem; }
   z-index: 1040;
   transition: transform .25s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.sidebar > .nav {
-  flex: 1 1 auto;
+/* nav-scroll: area menu yang bisa di-scroll */
+.sidebar .nav-scroll {
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.35) transparent;
 }
 
-.sidebar > .nav::-webkit-scrollbar { width: 6px; }
-.sidebar > .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); border-radius: 999px; }
-.sidebar > .nav::-webkit-scrollbar-track { background: transparent; }
-.sidebar > .p-3 { flex-shrink: 0; background: var(--sidebar-bg); }
+.sidebar .nav-scroll::-webkit-scrollbar { width: 5px; }
+.sidebar .nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); border-radius: 999px; }
+.sidebar .nav-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* user-info + logout: selalu terlihat di bawah */
+.sidebar .sidebar-footer { flex-shrink: 0; background: var(--sidebar-bg); }
 
 .sidebar-brand { background: rgba(0,0,0,.2); }
 .sidebar-logo { height: 48px; width: auto; object-fit: contain; }

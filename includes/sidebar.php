@@ -13,7 +13,7 @@ function nav_active(string $path): string {
   </a>
   <hr class="text-white m-0">
 
-  <ul class="nav nav-pills flex-column mb-auto px-2 py-2" style="overflow-y:auto">
+  <ul class="nav nav-pills flex-column mb-auto px-2 py-2 nav-scroll">
 
     <?php if (can('dashboard.view')): ?>
     <li class="nav-item">
@@ -274,7 +274,7 @@ function nav_active(string $path): string {
   </ul>
 
   <hr class="text-white m-0">
-  <div class="p-3">
+  <div class="p-3 sidebar-footer">
     <div class="d-flex align-items-center mb-2">
       <div class="avatar-sm me-2">
         <i class="bi bi-person-circle fs-4 text-white-50"></i>
