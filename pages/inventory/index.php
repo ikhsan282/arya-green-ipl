@@ -47,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
-        $db->prepare('DELETE FROM inventory WHERE id=?')->bind_param('i',$id) && $db->execute();
+        $del = $db->prepare('DELETE FROM inventory WHERE id=?');
+        $del->bind_param('i', $id);
+        $del->execute();
         flash('success', 'Aset dihapus.');
         redirect(APP_URL.'/pages/inventory/index.php');
     }

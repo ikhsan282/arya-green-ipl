@@ -30,8 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'toggle') {
         $id = (int)($_POST['kas_id'] ?? 0);
-        $db->prepare('UPDATE kas_accounts SET is_active = NOT is_active WHERE id=?')
-           ->bind_param('i', $id) && $db->execute();
+        $stmt = $db->prepare('UPDATE kas_accounts SET is_active = NOT is_active WHERE id=?');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
         flash('success', 'Status kas diperbarui.');
     }
 
