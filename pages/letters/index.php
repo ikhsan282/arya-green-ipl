@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect(APP_URL.'/pages/letters/index.php');
         }
         $s = $db->prepare('INSERT INTO letters (type,number,resident_id,purpose,body,issued_date,issued_by) VALUES (?,?,?,?,?,?,?)');
-        $s->bind_param('ssissssi', $type, $number, $rid, $purpose, $body, $date, $uid);
+        $s->bind_param('ssisssi', $type, $number, $rid, $purpose, $body, $date, $uid);
         $s->execute();
         $lid = $db->insert_id;
         log_activity('create', 'letters', "Surat {$number}: {$purpose}");

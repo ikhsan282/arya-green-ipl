@@ -123,8 +123,7 @@ arya-green-ipl/
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/
-    ├── schema.sql             # DDL v1
-    ├── schema_v2.sql          # DDL lengkap semua modul (gunakan ini)
+    ├── schema.sql             # DDL lengkap semua modul (25 tabel)
     └── migrations/            # Migration incremental
         └── 004_environments_permissions.sql
 ```

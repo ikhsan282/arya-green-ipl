@@ -576,7 +576,10 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   ('letters.view',         'Lihat Surat RT',             'letters'),
   ('letters.manage',       'Buat/Cetak Surat RT',        'letters'),
   -- Multi-env
-  ('environments.manage',  'Kelola Multi Lingkungan',    'environments');
+  ('environments.view',     'Lihat Lingkungan',          'environments'),
+  ('environments.create',   'Tambah Lingkungan',         'environments'),
+  ('environments.edit',     'Edit Lingkungan',           'environments'),
+  ('environments.delete',   'Hapus Lingkungan',          'environments');
 
 -- Super admin: semua permission baru
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
@@ -587,10 +590,11 @@ WHERE `name` IN (
   'polls.view','polls.manage','polls.vote',
   'events.view','events.manage','events.attendance',
   'inventory.view','inventory.manage',
-  'letters.view','letters.manage','environments.manage'
+  'letters.view','letters.manage',
+  'environments.view','environments.create','environments.edit','environments.delete'
 );
 
--- Ketua: semua kecuali environments.manage
+-- Ketua: semua kecuali environments.*
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, id FROM `permissions`
 WHERE `name` IN (
