@@ -42,4 +42,5 @@ Atau via phpMyAdmin: Import → pilih `schema.sql`
 - Kegiatan & absensi
 - Inventaris aset
 - Surat RT
-- Multi-lingkungan (multi RT/RW)
+- **Payment Methods** — master metode pembayaran dinamis, bukan ENUM; metode aktif muncul otomatis di form pembayaran
+- **Database migration** — untuk instalasi baru gunakan `database/schema.sql`; database lama membutuhkan migration additif terpisah

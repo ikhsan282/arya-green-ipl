@@ -94,6 +94,9 @@ arya-green-ipl/
 │   │   ├── verify.php         # Verifikasi + auto-entry kas
 │   │   ├── detail.php         # Detail pembayaran
 │   │   └── print_receipt.php  # Cetak kwitansi (print-friendly)
+│   ├── payment_methods/       # Master metode pembayaran (CRUD + QR + auto-verify)
+│   │   ├── index.php          # Daftar metode (aktif/nonaktif, QR, auto-verify)
+│   │   └── form.php           # Tambah/edit metode (rekening, QR, instruksi, urutan)
 │   ├── reports/
 │   │   ├── index.php          # Laporan tagihan per periode
 │   │   ├── export.php         # Export CSV laporan tagihan
@@ -151,6 +154,7 @@ arya-green-ipl/
 - **Tipe Unit** — CRUD; nama tipe, nominal IPL per bulan
 - **Warga / Penghuni** — CRUD; nama, telepon, email, unit; status aktif/nonaktif
 - **Lingkungan / Cluster** — CRUD; manajemen area perumahan
+- **Metode Pembayaran** — CRUD dari UI; nama/kode metode, rekening atau tujuan, atas nama, QR/logo, instruksi, urutan, aktif/nonaktif, dan pengaturan auto-verifikasi
 
 ### Tagihan IPL
 - Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis semua unit `dihuni`
@@ -161,9 +165,10 @@ arya-green-ipl/
 
 ### Pembayaran
 - Catat pembayaran dari tagihan
-- Metode: tunai, transfer, QRIS, lainnya
+- Metode dinamis dari master data (Tunai, Transfer, QRIS, dan metode custom yang ditambahkan admin)
+- Instruksi bayar tampil otomatis sesuai metode yang dipilih
 - Upload bukti bayar (jpg/png/webp/pdf, maks 2 MB)
-- Alur verifikasi: `pending → verified / rejected`
+- Alur verifikasi: auto-verifikasi untuk metode instan (tunai) atau `pending → verified / rejected` untuk metode manual
 - Auto-entry ke buku kas saat verified
 - **Cetak kwitansi** print-friendly dengan terbilang + kolom tanda tangan
 
