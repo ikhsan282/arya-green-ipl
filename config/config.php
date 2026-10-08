@@ -3,7 +3,7 @@
 define('APP_NAME',     'Arya Green Pamulang');
 define('APP_TAGLINE',  'Sistem Manajemen IPL');
 define('APP_VERSION',  '1.0.0');
-define('APP_URL',      'http://localhost/arya-green-ipl'); // change for cPanel
+define('APP_URL',      'http://localhost:8080/arya-green-ipl'); // change for cPanel
 
 // Timezone
 date_default_timezone_set('Asia/Jakarta');
