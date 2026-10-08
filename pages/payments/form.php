@@ -30,20 +30,20 @@ if ($bill_id) {
 $unpaid_bills = [];
 if (!$bill) {
     $role = auth_role();
-    $resident_id = $_SESSION['resident_id'] ?? null;
+    $uid = auth_id();
     
-    // Warga hanya bisa lihat tagihan unit sendiri
-    if ($role === 'warga' && $resident_id) {
+    // Warga hanya bisa lihat tagihan unit yang dia miliki (via residents.user_id)
+    if ($role === 'warga') {
         $stmt = $db->prepare(
             'SELECT b.id, bp.label AS period, u.unit_number, u.block, b.total_amount, r.name AS resident_name
              FROM bills b
              JOIN billing_periods bp ON bp.id=b.billing_period_id
              JOIN units u ON u.id=b.unit_id
              LEFT JOIN residents r ON r.id=b.resident_id
-             WHERE b.status != "sudah_bayar" AND b.resident_id=?
+             WHERE b.status != "sudah_bayar" AND r.user_id=?
              ORDER BY bp.period_year DESC, bp.period_month DESC'
         );
-        $stmt->bind_param('i', $resident_id);
+        $stmt->bind_param('i', $uid);
         $stmt->execute();
         $unpaid_bills = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     } else {
