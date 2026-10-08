@@ -73,9 +73,12 @@ if (!$bill) {
     }
 }
 
+// Warga tidak bisa pilih metode tunai (hanya admin/ketua/bendahara)
+$role = auth_role();
+$tunai_filter = $role === 'warga' ? " AND code != 'tunai'" : '';
 $payment_methods = $db->query(
     'SELECT id, code, name, account_no, account_name, instructions
-     FROM payment_methods WHERE is_active=1 ORDER BY sort_order, name'
+     FROM payment_methods WHERE is_active=1' . $tunai_filter . ' ORDER BY sort_order, name'
 )->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
