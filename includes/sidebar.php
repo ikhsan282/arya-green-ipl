@@ -69,6 +69,15 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
+    <?php if (can('ipl_components.view')): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/ipl_components/index.php"
+         class="nav-link text-white<?= nav_active('/ipl_components') ?>">
+        <i class="bi bi-list-check me-2"></i> Komponen IPL
+      </a>
+    </li>
+    <?php endif; ?>
+
     <?php if (can('payments.view')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/payments/index.php"

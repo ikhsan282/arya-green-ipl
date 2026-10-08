@@ -65,13 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         return $s->get_result()->fetch_row()[0];
     })();
 
-    // Get all active units with their IPL amount
+    // Get all units (dihuni + kosong with charge_when_vacant components)
     $units_res = $db->query(
-        'SELECT u.id AS unit_id, ut.ipl_amount,
+        'SELECT u.id AS unit_id, u.status,
                 (SELECT id FROM residents WHERE unit_id=u.id AND is_active=1 ORDER BY id LIMIT 1) AS resident_id
-         FROM units u JOIN unit_types ut ON ut.id = u.unit_type_id
-         WHERE u.status = "dihuni"'
+         FROM units u WHERE u.status IN ("dihuni","kosong")'
     );
+
+    // Get active components
+    $comp_res = $db->query('SELECT id,name,amount,charge_when_vacant FROM ipl_components WHERE is_active=1 ORDER BY sort_order');
+    $components = $comp_res->fetch_all(MYSQLI_ASSOC);
+
     $generated = 0; $skipped = 0;
     while ($u = $units_res->fetch_assoc()) {
         // Skip if bill already exists
@@ -80,13 +84,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $chk->execute();
         if ($chk->get_result()->fetch_row()) { $skipped++; continue; }
 
-        $amount = (float)$u['ipl_amount'];
+        // Calculate total from applicable components
+        $amount = 0;
+        $applicable = [];
+        foreach ($components as $c) {
+            if ($u['status'] === 'dihuni' || $c['charge_when_vacant']) {
+                $amount += (float)$c['amount'];
+                $applicable[] = $c;
+            }
+        }
+
+        if ($amount == 0) { $skipped++; continue; } // Skip if no components apply
+
+        $db->begin_transaction();
         $ins = $db->prepare(
             'INSERT INTO bills (billing_period_id,unit_id,resident_id,amount,fine_amount,total_amount,due_date)
              VALUES (?,?,?,?,0,?,?)'
         );
         $ins->bind_param('iiidds', $period_id, $u['unit_id'], $u['resident_id'], $amount, $amount, $due);
         $ins->execute();
+        $bill_id = $db->insert_id;
+
+        // Insert breakdown
+        $bc = $db->prepare('INSERT INTO bill_components (bill_id,component_id,component_name,amount) VALUES (?,?,?,?)');
+        foreach ($applicable as $c) {
+            $bc->bind_param('iisd', $bill_id, $c['id'], $c['name'], $c['amount']);
+            $bc->execute();
+        }
+        $db->commit();
         $generated++;
     }
     log_activity('generate', 'billing', "Generated {$generated} bills for {$label}");

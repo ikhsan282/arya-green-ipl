@@ -59,6 +59,9 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   ('billing.generate',        'Generate Tagihan',               'billing'),
   ('billing.edit',            'Edit Tagihan',                   'billing'),
   ('billing.send_reminder',   'Kirim Reminder Email',           'billing'),
+  -- Komponen IPL
+  ('ipl_components.view',     'Lihat Komponen IPL',             'billing'),
+  ('ipl_components.manage',   'Kelola Komponen IPL',            'billing'),
   -- Payments
   ('payments.view',           'Lihat Pembayaran',               'payments'),
   ('payments.create',         'Catat Pembayaran',               'payments'),
@@ -131,6 +134,7 @@ WHERE `name` IN (
   'dashboard.view',
   'units.view','residents.view',
   'billing.view','billing.generate',
+  'ipl_components.view','ipl_components.manage',
   'payments.view','payments.create','payments.verify',
   'payment_methods.view',
   'cashbook.view','cashbook.manage',
@@ -316,6 +320,26 @@ CREATE TABLE `billing_periods` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
+-- IPL Components
+-- charge_when_vacant=1: komponen dasar tetap ditagih saat unit kosong
+-- charge_when_vacant=0: hanya ditagih jika unit dihuni
+-- ------------------------------------------------------------
+CREATE TABLE `ipl_components` (
+  `id`                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`               VARCHAR(100) NOT NULL,
+  `amount`             DECIMAL(12,2) NOT NULL DEFAULT 0,
+  `charge_when_vacant` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_active`          TINYINT(1) NOT NULL DEFAULT 1,
+  `sort_order`         INT NOT NULL DEFAULT 0,
+  `created_at`         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `ipl_components` (`name`,`amount`,`charge_when_vacant`,`sort_order`) VALUES
+  ('Iuran Dasar Lingkungan', 100000.00, 1, 1),
+  ('Layanan Unit Dihuni',    100000.00, 0, 2);
+
+-- ------------------------------------------------------------
 -- Bills (Tagihan)
 -- ------------------------------------------------------------
 CREATE TABLE `bills` (
@@ -336,6 +360,19 @@ CREATE TABLE `bills` (
   FOREIGN KEY (`billing_period_id`) REFERENCES `billing_periods`(`id`) ON UPDATE CASCADE,
   FOREIGN KEY (`unit_id`)           REFERENCES `units`(`id`)           ON UPDATE CASCADE,
   FOREIGN KEY (`resident_id`)       REFERENCES `residents`(`id`)       ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Bill Components (Breakdown Komponen per Tagihan)
+-- ------------------------------------------------------------
+CREATE TABLE `bill_components` (
+  `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `bill_id`        INT UNSIGNED NOT NULL,
+  `component_id`   INT UNSIGNED NOT NULL,
+  `component_name` VARCHAR(100) NOT NULL,
+  `amount`         DECIMAL(12,2) NOT NULL,
+  FOREIGN KEY (`bill_id`)      REFERENCES `bills`(`id`)          ON DELETE CASCADE,
+  FOREIGN KEY (`component_id`) REFERENCES `ipl_components`(`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

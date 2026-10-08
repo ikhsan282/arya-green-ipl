@@ -47,6 +47,11 @@ $payments->bind_param('i', $id);
 $payments->execute();
 $payment_list = $payments->get_result()->fetch_all(MYSQLI_ASSOC);
 
+$component_stmt = $db->prepare('SELECT component_name,amount FROM bill_components WHERE bill_id=? ORDER BY id');
+$component_stmt->bind_param('i', $id);
+$component_stmt->execute();
+$bill_components = $component_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
 $page_title = 'Detail Tagihan';
 include __DIR__ . '/../../includes/header.php';
 include __DIR__ . '/../../includes/sidebar.php';
@@ -70,6 +75,15 @@ include __DIR__ . '/../../includes/sidebar.php';
               <tr><th>Tipe</th><td><?= e($bill['type_name']) ?></td></tr>
               <tr><th>Warga</th><td><?= e($bill['resident_name'] ?? '-') ?></td></tr>
               <tr><th>No. HP</th><td><?= e($bill['resident_phone'] ?? '-') ?></td></tr>
+              <?php if ($bill_components): ?>
+              <tr><th>Komponen</th><td>
+                <table class="table table-sm mb-0 small">
+                  <?php foreach ($bill_components as $bc): ?>
+                  <tr><td><?= e($bc['component_name']) ?></td><td class="text-end"><?= idr((float)$bc['amount']) ?></td></tr>
+                  <?php endforeach; ?>
+                </table>
+              </td></tr>
+              <?php endif; ?>
               <tr><th>IPL</th><td><?= idr((float)$bill['amount']) ?></td></tr>
               <tr><th>Denda</th><td class="text-danger"><?= idr((float)$bill['fine_amount']) ?></td></tr>
               <tr><th>Total</th><td><strong><?= idr((float)$bill['total_amount']) ?></strong></td></tr>
