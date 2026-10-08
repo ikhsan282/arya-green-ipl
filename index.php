@@ -194,12 +194,8 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
   <!-- Header / Navigation -->
   <nav class="navbar navbar-expand-lg navbar-glass sticky-top py-3">
     <div class="container">
-      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark" href="<?= APP_URL ?>">
-        <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:48px;width:auto;object-fit:contain;">
-        <div>
-          <div class="lh-1 text-dark fs-5 fw-bold"><?= e(APP_NAME) ?></div>
-          <small class="text-muted fw-normal" style="font-size:0.75rem"><?= e(APP_TAGLINE) ?></small>
-        </div>
+      <a class="navbar-brand d-flex align-items-center" href="<?= APP_URL ?>">
+        <img src="<?= APP_URL ?>/assets/images/logo.png" alt="<?= e(APP_NAME) ?>" style="height:48px;width:auto;object-fit:contain;">
       </a>
       <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
         <i class="bi bi-list fs-4"></i>
