@@ -10,51 +10,96 @@ $now  = date('Y-m-d');
 $year = (int)date('Y');
 $month= (int)date('n');
 
+$_role = auth_role();
+$_uid  = auth_id();
+
 // ── Stats ──────────────────────────────────────────────────────────────────
-// Total units
-$total_units = $db->query('SELECT COUNT(*) FROM units')->fetch_row()[0];
-// Total residents
-$total_residents = $db->query('SELECT COUNT(*) FROM residents WHERE is_active=1')->fetch_row()[0];
-
-// Current period bills
-$stmt = $db->prepare(
-    'SELECT
-       COUNT(*) AS total,
-       SUM(CASE WHEN status="belum_bayar" THEN 1 ELSE 0 END) AS belum,
-       SUM(CASE WHEN status="sudah_bayar" THEN 1 ELSE 0 END) AS sudah,
-       SUM(CASE WHEN status="terlambat"   THEN 1 ELSE 0 END) AS terlambat,
-       SUM(CASE WHEN status="sudah_bayar" THEN total_amount ELSE 0 END) AS terkumpul,
-       SUM(CASE WHEN status IN ("belum_bayar","terlambat") THEN total_amount ELSE 0 END) AS tunggakan
-     FROM bills b
-     JOIN billing_periods bp ON bp.id = b.billing_period_id
-     WHERE bp.period_year = ? AND bp.period_month = ?'
-);
-$stmt->bind_param('ii', $year, $month);
-$stmt->execute();
-$stats = $stmt->get_result()->fetch_assoc();
-
-// Recent payments (last 8)
-$recent_payments = $db->query(
-    'SELECT p.*, b.amount, bp.label AS period,
-            u.unit_number, u.block, r.name AS resident_name
-     FROM payments p
-     JOIN bills b      ON b.id = p.bill_id
-     JOIN billing_periods bp ON bp.id = b.billing_period_id
-     JOIN units u       ON u.id = b.unit_id
-     LEFT JOIN residents r ON r.id = b.resident_id
-     ORDER BY p.created_at DESC LIMIT 8'
-)->fetch_all(MYSQLI_ASSOC);
-
-// Overdue bills (terlambat)
-$overdue = $db->query(
-    'SELECT b.*, u.unit_number, u.block, r.name AS resident_name, bp.label AS period
-     FROM bills b
-     JOIN units u ON u.id = b.unit_id
-     JOIN billing_periods bp ON bp.id = b.billing_period_id
-     LEFT JOIN residents r ON r.id = b.resident_id
-     WHERE b.status = "terlambat"
-     ORDER BY b.due_date ASC LIMIT 8'
-)->fetch_all(MYSQLI_ASSOC);
+if ($_role === 'warga') {
+    // Warga: data personal saja
+    $total_units = 1; // unit warga sendiri
+    $total_residents = 1;
+    
+    $stmt = $db->prepare(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN b.status="belum_bayar" THEN 1 ELSE 0 END) AS belum,
+                SUM(CASE WHEN b.status="sudah_bayar" THEN 1 ELSE 0 END) AS sudah,
+                SUM(CASE WHEN b.status="terlambat"   THEN 1 ELSE 0 END) AS terlambat,
+                SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount ELSE 0 END) AS terkumpul,
+                SUM(CASE WHEN b.status IN ("belum_bayar","terlambat") THEN b.total_amount ELSE 0 END) AS tunggakan
+         FROM bills b
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         WHERE bp.period_year=? AND bp.period_month=? AND r.user_id=?'
+    );
+    $stmt->bind_param('iii', $year, $month, $_uid);
+    $stmt->execute();
+    $stats = $stmt->get_result()->fetch_assoc();
+    
+    $rp = $db->prepare(
+        'SELECT p.*, b.amount, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+         FROM payments p
+         JOIN bills b ON b.id=p.bill_id
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         JOIN units u ON u.id=b.unit_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         WHERE r.user_id=? ORDER BY p.created_at DESC LIMIT 8'
+    );
+    $rp->bind_param('i', $_uid);
+    $rp->execute();
+    $recent_payments = $rp->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    $od = $db->prepare(
+        'SELECT b.*, u.unit_number, u.block, r.name AS resident_name, bp.label AS period
+         FROM bills b
+         JOIN units u ON u.id=b.unit_id
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         WHERE b.status="terlambat" AND r.user_id=?
+         ORDER BY b.due_date ASC LIMIT 8'
+    );
+    $od->bind_param('i', $_uid);
+    $od->execute();
+    $overdue = $od->get_result()->fetch_all(MYSQLI_ASSOC);
+} else {
+    // Admin: data global
+    $total_units = $db->query('SELECT COUNT(*) FROM units')->fetch_row()[0];
+    $total_residents = $db->query('SELECT COUNT(*) FROM residents WHERE is_active=1')->fetch_row()[0];
+    
+    $stmt = $db->prepare(
+        'SELECT COUNT(*) AS total,
+                SUM(CASE WHEN status="belum_bayar" THEN 1 ELSE 0 END) AS belum,
+                SUM(CASE WHEN status="sudah_bayar" THEN 1 ELSE 0 END) AS sudah,
+                SUM(CASE WHEN status="terlambat"   THEN 1 ELSE 0 END) AS terlambat,
+                SUM(CASE WHEN status="sudah_bayar" THEN total_amount ELSE 0 END) AS terkumpul,
+                SUM(CASE WHEN status IN ("belum_bayar","terlambat") THEN total_amount ELSE 0 END) AS tunggakan
+         FROM bills b
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         WHERE bp.period_year=? AND bp.period_month=?'
+    );
+    $stmt->bind_param('ii', $year, $month);
+    $stmt->execute();
+    $stats = $stmt->get_result()->fetch_assoc();
+    
+    $recent_payments = $db->query(
+        'SELECT p.*, b.amount, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+         FROM payments p
+         JOIN bills b ON b.id=p.bill_id
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         JOIN units u ON u.id=b.unit_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         ORDER BY p.created_at DESC LIMIT 8'
+    )->fetch_all(MYSQLI_ASSOC);
+    
+    $overdue = $db->query(
+        'SELECT b.*, u.unit_number, u.block, r.name AS resident_name, bp.label AS period
+         FROM bills b
+         JOIN units u ON u.id=b.unit_id
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         WHERE b.status="terlambat"
+         ORDER BY b.due_date ASC LIMIT 8'
+    )->fetch_all(MYSQLI_ASSOC);
+}
 
 // Yearly trend for chart
 $trend_stmt = $db->prepare(

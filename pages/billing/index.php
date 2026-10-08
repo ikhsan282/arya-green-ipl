@@ -108,10 +108,19 @@ $search   = clean($_GET['q']      ?? '');
 $page     = max(1, (int)($_GET['page'] ?? 1));
 $per      = 15;
 
+// Warga hanya lihat tagihan unit sendiri
+$_role = auth_role();
+$_uid  = auth_id();
+
 $where  = ['bp.period_year=?', 'bp.period_month=?'];
 $params = [$f_year, $f_month];
 $types  = 'ii';
 
+if ($_role === 'warga') {
+    $where[] = 'r.user_id=?';
+    $params[] = $_uid;
+    $types .= 'i';
+}
 if ($f_status) { $where[] = 'b.status=?'; $params[] = $f_status; $types .= 's'; }
 if ($search)   {
     $where[] = '(u.unit_number LIKE ? OR u.block LIKE ? OR r.name LIKE ?)';

@@ -25,12 +25,20 @@ $units = $db->query(
      ORDER BY u.block, u.unit_number'
 )->fetch_all(MYSQLI_ASSOC);
 
+// Load users dengan role warga untuk dropdown
+$users = $db->query(
+    "SELECT u.id, u.name, u.email FROM users u
+     JOIN roles r ON r.id=u.role_id
+     WHERE r.name='warga' ORDER BY u.name"
+)->fetch_all(MYSQLI_ASSOC);
+
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $data = [
         'unit_id'        => (int)$_POST['unit_id'],
+        'user_id'        => (int)($_POST['user_id'] ?? 0) ?: null,
         'name'           => clean($_POST['name'] ?? ''),
         'id_card_number' => clean($_POST['id_card_number'] ?? ''),
         'phone'          => clean($_POST['phone'] ?? ''),
@@ -50,11 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         if ($editing) {
             $stmt = $db->prepare(
-                'UPDATE residents SET unit_id=?,name=?,id_card_number=?,phone=?,email=?,
+                'UPDATE residents SET unit_id=?,user_id=?,name=?,id_card_number=?,phone=?,email=?,
                  status=?,move_in_date=?,notes=?,is_active=? WHERE id=?'
             );
-            $stmt->bind_param('isssssssii',
-                $data['unit_id'],$data['name'],$data['id_card_number'],
+            $stmt->bind_param('iisssssssii',
+                $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
                 $data['phone'],$data['email'],$data['status'],
                 $data['move_in_date'],$data['notes'],$data['is_active'],$id);
             $stmt->execute();
@@ -62,11 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success','Data warga berhasil diperbarui.');
         } else {
             $stmt = $db->prepare(
-                'INSERT INTO residents (unit_id,name,id_card_number,phone,email,status,move_in_date,notes)
-                 VALUES (?,?,?,?,?,?,?,?)'
+                'INSERT INTO residents (unit_id,user_id,name,id_card_number,phone,email,status,move_in_date,notes)
+                 VALUES (?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->bind_param('isssssss',
-                $data['unit_id'],$data['name'],$data['id_card_number'],
+            $stmt->bind_param('iisssssss',
+                $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
                 $data['phone'],$data['email'],$data['status'],
                 $data['move_in_date'],$data['notes']);
             $stmt->execute();
@@ -103,7 +111,7 @@ include __DIR__ . '/../../includes/sidebar.php';
         <form method="POST">
           <?= csrf_field() ?>
           <div class="row g-3">
-            <div class="col-12">
+            <div class="col-md-6">
               <label class="form-label">Unit <span class="text-danger">*</span></label>
               <select name="unit_id" class="form-select" required>
                 <option value="">— Pilih Unit —</option>
@@ -113,6 +121,18 @@ include __DIR__ . '/../../includes/sidebar.php';
                   </option>
                 <?php endforeach; ?>
               </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Link Akun User</label>
+              <select name="user_id" class="form-select">
+                <option value="">— Belum Punya Akun —</option>
+                <?php foreach ($users as $usr): ?>
+                  <option value="<?= $usr['id'] ?>" <?= ($resident['user_id'] ?? 0) == $usr['id'] ? 'selected' : '' ?>>
+                    <?= e($usr['name']) ?> (<?= e($usr['email']) ?>)
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <small class="text-muted">Jika warga punya akun login, pilih di sini</small>
             </div>
             <div class="col-md-8">
               <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>

@@ -24,6 +24,16 @@ $stmt->execute();
 $bill = $stmt->get_result()->fetch_assoc();
 if (!$bill) { flash('error','Tagihan tidak ditemukan.'); redirect(APP_URL.'/pages/billing/index.php'); }
 
+// Warga hanya boleh lihat tagihan unitnya sendiri
+if (auth_role() === 'warga') {
+    $chk = $db->prepare('SELECT 1 FROM bills b LEFT JOIN residents r ON r.id=b.resident_id WHERE b.id=? AND r.user_id=?');
+    $chk->bind_param('ii', $id, auth_id());
+    $chk->execute();
+    if (!$chk->get_result()->fetch_row()) {
+        flash('error', 'Akses ditolak.'); redirect(APP_URL.'/pages/billing/index.php');
+    }
+}
+
 // Payment history for this bill
 $payments = $db->prepare(
     'SELECT p.*, pm.name AS payment_method_name, u.name AS verified_by_name

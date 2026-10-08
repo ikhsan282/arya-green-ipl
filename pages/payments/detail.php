@@ -28,6 +28,16 @@ $stmt->execute();
 $pay = $stmt->get_result()->fetch_assoc();
 if (!$pay) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pages/payments/index.php'); }
 
+// Warga hanya boleh lihat pembayaran unitnya sendiri
+if (auth_role() === 'warga') {
+    $chk = $db->prepare('SELECT 1 FROM bills b LEFT JOIN residents r ON r.id=b.resident_id WHERE b.id=? AND r.user_id=?');
+    $chk->bind_param('ii', $pay['bill_id'], auth_id());
+    $chk->execute();
+    if (!$chk->get_result()->fetch_row()) {
+        flash('error', 'Akses ditolak.'); redirect(APP_URL.'/pages/payments/index.php');
+    }
+}
+
 $page_title = 'Detail Pembayaran';
 include __DIR__ . '/../../includes/header.php';
 include __DIR__ . '/../../includes/sidebar.php';

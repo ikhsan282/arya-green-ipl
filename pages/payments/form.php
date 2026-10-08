@@ -94,13 +94,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $is_cash = $payment_method !== null && (int)($payment_method['auto_verify'] ?? 0) === 1;
 
-    // Validate bill exists & get amount
+    // Validate bill exists & ownership
     if ($sel_bill_id && empty($errors)) {
-        $bs = $db->prepare('SELECT * FROM bills WHERE id=?');
-        $bs->bind_param('i', $sel_bill_id);
+        $role = auth_role();
+        $uid  = auth_id();
+        if ($role === 'warga') {
+            // Warga hanya boleh bayar tagihan unitnya sendiri
+            $bs = $db->prepare(
+                'SELECT b.*, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+                 FROM bills b
+                 JOIN billing_periods bp ON bp.id=b.billing_period_id
+                 JOIN units u ON u.id=b.unit_id
+                 LEFT JOIN residents r ON r.id=b.resident_id
+                 WHERE b.id=? AND r.user_id=?'
+            );
+            $bs->bind_param('ii', $sel_bill_id, $uid);
+        } else {
+            $bs = $db->prepare('SELECT b.*, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+                FROM bills b
+                JOIN billing_periods bp ON bp.id=b.billing_period_id
+                JOIN units u ON u.id=b.unit_id
+                LEFT JOIN residents r ON r.id=b.resident_id
+                WHERE b.id=?');
+            $bs->bind_param('i', $sel_bill_id);
+        }
         $bs->execute();
         $bill = $bs->get_result()->fetch_assoc();
-        if (!$bill) $errors[] = 'Tagihan tidak valid.';
+        if (!$bill) $errors[] = 'Tagihan tidak valid atau bukan milik Anda.';
     }
 
     // Handle file upload

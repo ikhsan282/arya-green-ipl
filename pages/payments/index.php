@@ -16,6 +16,15 @@ $where  = ['1=1'];
 $params = [];
 $types  = '';
 
+// Warga hanya lihat pembayaran unit sendiri
+$_role = auth_role();
+$_uid  = auth_id();
+if ($_role === 'warga') {
+    $where[] = 'r.user_id=?';
+    $params[] = $_uid;
+    $types .= 'i';
+}
+
 if ($f_status) { $where[] = 'p.status=?';          $params[] = $f_status; $types .= 's'; }
 if ($f_method) { $where[] = 'p.payment_method_id=?'; $params[] = (int)$f_method; $types .= 'i'; }
 if ($search)   {
