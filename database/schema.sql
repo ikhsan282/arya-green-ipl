@@ -336,8 +336,8 @@ CREATE TABLE `ipl_components` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `ipl_components` (`name`,`amount`,`charge_when_vacant`,`sort_order`) VALUES
-  ('Iuran Dasar Lingkungan', 100000.00, 1, 1),
-  ('Layanan Unit Dihuni',    100000.00, 0, 2);
+  ('Iuran Dasar Lingkungan', 150000.00, 1, 1),
+  ('Iuran Sampah',            50000.00, 0, 2);
 
 -- ------------------------------------------------------------
 -- Bills (Tagihan)
