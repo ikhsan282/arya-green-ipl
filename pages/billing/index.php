@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
 
     // Komponen per tipe unit: unit_type_id => [id,name,amount,charge_when_vacant]
     $type_comp_rows = $db->query(
-        'SELECT utc.unit_type_id, c.id, c.name, c.charge_when_vacant, utc.amount
+        'SELECT utc.unit_type_id, c.id, c.name, c.charge_when_vacant, c.amount
          FROM unit_type_components utc
          JOIN ipl_components c ON c.id=utc.component_id
          WHERE c.is_active=1

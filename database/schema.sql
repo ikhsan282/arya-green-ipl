@@ -320,13 +320,14 @@ CREATE TABLE `billing_periods` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- IPL Components (katalog global, nominal di-assign per tipe unit)
+-- IPL Components (master: nama + nominal global)
 -- charge_when_vacant=1: komponen dasar tetap ditagih saat unit kosong
 -- charge_when_vacant=0: hanya ditagih jika unit dihuni
 -- ------------------------------------------------------------
 CREATE TABLE `ipl_components` (
   `id`                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `name`               VARCHAR(100) NOT NULL,
+  `amount`             DECIMAL(12,2) NOT NULL DEFAULT 0,
   `charge_when_vacant` TINYINT(1) NOT NULL DEFAULT 0,
   `is_active`          TINYINT(1) NOT NULL DEFAULT 1,
   `sort_order`         INT NOT NULL DEFAULT 0,
@@ -334,39 +335,42 @@ CREATE TABLE `ipl_components` (
   `updated_at`         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `ipl_components` (`name`,`charge_when_vacant`,`sort_order`) VALUES
-  ('Iuran Dasar Lingkungan', 1, 1),
-  ('Iuran Sampah',           0, 2);
+INSERT INTO `ipl_components` (`name`,`amount`,`charge_when_vacant`,`sort_order`) VALUES
+  ('Iuran Dasar Ruko',        250000.00, 1, 1),
+  ('Iuran Dasar Rumah',       150000.00, 1, 2),
+  ('Iuran Sampah',             50000.00, 0, 3);
 
 -- ------------------------------------------------------------
--- Unit Type Components (nominal komponen per tipe unit)
--- Nominal IPL/bulan tipe unit = SUM(amount) komponen yang di-assign
+-- Unit Type Components (komponen mana yang berlaku per tipe unit)
+-- Nominal IPL/bulan tipe unit = SUM(ipl_components.amount) yang di-assign
 -- ------------------------------------------------------------
 CREATE TABLE `unit_type_components` (
   `id`           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `unit_type_id` INT UNSIGNED NOT NULL,
   `component_id` INT UNSIGNED NOT NULL,
-  `amount`       DECIMAL(12,2) NOT NULL DEFAULT 0,
   UNIQUE KEY `uq_type_component` (`unit_type_id`, `component_id`),
   FOREIGN KEY (`unit_type_id`) REFERENCES `unit_types`(`id`)      ON DELETE CASCADE,
   FOREIGN KEY (`component_id`) REFERENCES `ipl_components`(`id`)  ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Seed: Iuran Dasar Ruko 250rb, Rumah 150rb; Sampah 50rb (semua tipe)
-INSERT IGNORE INTO `unit_type_components` (`unit_type_id`,`component_id`,`amount`)
-SELECT ut.id, c.id, CASE WHEN ut.name = 'Ruko' THEN 250000.00 ELSE 150000.00 END
-FROM `unit_types` ut
-JOIN `ipl_components` c ON c.name = 'Iuran Dasar Lingkungan';
+-- Seed: Ruko → Dasar Ruko + Sampah; Rumah → Dasar Rumah + Sampah
+INSERT IGNORE INTO `unit_type_components` (`unit_type_id`,`component_id`)
+SELECT ut.id, c.id FROM `unit_types` ut
+JOIN `ipl_components` c ON c.name IN ('Iuran Dasar Ruko','Iuran Sampah')
+WHERE ut.name = 'Ruko';
 
-INSERT IGNORE INTO `unit_type_components` (`unit_type_id`,`component_id`,`amount`)
-SELECT ut.id, c.id, 50000.00
-FROM `unit_types` ut
-JOIN `ipl_components` c ON c.name = 'Iuran Sampah';
+INSERT IGNORE INTO `unit_type_components` (`unit_type_id`,`component_id`)
+SELECT ut.id, c.id FROM `unit_types` ut
+JOIN `ipl_components` c ON c.name IN ('Iuran Dasar Rumah','Iuran Sampah')
+WHERE ut.name != 'Ruko';
 
--- Sinkronkan IPL/bulan tipe unit = total komponen
+-- Sinkronkan IPL/bulan tipe unit = total komponen yang di-assign
 UPDATE `unit_types` ut
 SET `ipl_amount` = (
-  SELECT COALESCE(SUM(utc.amount),0) FROM `unit_type_components` utc WHERE utc.unit_type_id = ut.id
+  SELECT COALESCE(SUM(c.amount),0)
+  FROM `unit_type_components` utc
+  JOIN `ipl_components` c ON c.id = utc.component_id
+  WHERE utc.unit_type_id = ut.id
 );
 
 -- ------------------------------------------------------------

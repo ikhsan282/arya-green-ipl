@@ -22,20 +22,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $name = clean($_POST['name'] ?? '');
+    $amount = (float)str_replace(['.', ','], ['', '.'], $_POST['amount'] ?? '0');
     $vacant = isset($_POST['charge_when_vacant']) ? 1 : 0;
     $sort = (int)($_POST['sort_order'] ?? 0);
     if ($name === '') $errors[] = 'Nama komponen wajib diisi.';
+    if ($amount < 0) $errors[] = 'Nominal tidak boleh negatif.';
 
     if (!$errors) {
         if ($id) {
-            $stmt = $db->prepare('UPDATE ipl_components SET name=?,charge_when_vacant=?,sort_order=? WHERE id=?');
-            $stmt->bind_param('siii', $name, $vacant, $sort, $id);
+            $stmt = $db->prepare('UPDATE ipl_components SET name=?,amount=?,charge_when_vacant=?,sort_order=? WHERE id=?');
+            $stmt->bind_param('sdiii', $name, $amount, $vacant, $sort, $id);
         } else {
-            $stmt = $db->prepare('INSERT INTO ipl_components (name,charge_when_vacant,sort_order) VALUES (?,?,?)');
-            $stmt->bind_param('sii', $name, $vacant, $sort);
+            $stmt = $db->prepare('INSERT INTO ipl_components (name,amount,charge_when_vacant,sort_order) VALUES (?,?,?,?)');
+            $stmt->bind_param('sdii', $name, $amount, $vacant, $sort);
         }
         $stmt->execute();
-        flash('success', 'Komponen IPL berhasil disimpan. Assign komponen dan nominalnya pada form Tipe Unit.');
+        $db->query(
+            'UPDATE unit_types ut SET ipl_amount=(
+                SELECT COALESCE(SUM(c.amount),0)
+                FROM unit_type_components utc
+                JOIN ipl_components c ON c.id=utc.component_id
+                WHERE utc.unit_type_id=ut.id
+            )'
+        );
+        flash('success', 'Komponen IPL berhasil disimpan. Nominal total tipe unit diperbarui otomatis.');
         redirect(APP_URL . '/pages/ipl_components/index.php');
     }
 }
@@ -49,8 +59,7 @@ if (!empty($_GET['edit'])) {
     $edit = $stmt->get_result()->fetch_assoc();
 }
 $rows = $db->query(
-    'SELECT c.*, COUNT(utc.id) AS assigned_types,
-            COALESCE(MIN(utc.amount),0) AS min_amount, COALESCE(MAX(utc.amount),0) AS max_amount
+    'SELECT c.*, COUNT(utc.id) AS assigned_types
      FROM ipl_components c
      LEFT JOIN unit_type_components utc ON utc.component_id=c.id
      GROUP BY c.id ORDER BY c.sort_order,c.name'
@@ -68,7 +77,7 @@ include __DIR__ . '/../../includes/sidebar.php';
   <div class="main-content">
     <?= render_flash() ?>
     <?php if ($errors): ?><div class="alert alert-danger"><?= implode('<br>', array_map('e', $errors)) ?></div><?php endif; ?>
-    <div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i> Komponen dibuat di sini. Penetapan komponen dan nominal per bulan dilakukan pada menu <strong>Tipe Unit</strong>. Total IPL tipe unit dihitung otomatis dari komponen yang di-assign.</div>
+    <div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i> Nama dan nominal komponen diatur di sini. Pada menu <strong>Tipe Unit</strong>, komponen hanya dipilih dan nominalnya tidak dapat diubah.</div>
     <div class="row g-3">
       <?php if (can('ipl_components.manage')): ?>
       <div class="col-lg-4">
@@ -76,6 +85,7 @@ include __DIR__ . '/../../includes/sidebar.php';
           <form method="POST">
             <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)($edit['id'] ?? 0) ?>">
             <div class="mb-3"><label class="form-label">Nama</label><input name="name" class="form-control" required value="<?= e($edit['name'] ?? '') ?>"></div>
+            <div class="mb-3"><label class="form-label">Nominal (Rp)</label><input type="number" name="amount" min="0" step="1000" class="form-control" required value="<?= e($edit['amount'] ?? 0) ?>"></div>
             <div class="mb-3"><label class="form-label">Urutan</label><input type="number" name="sort_order" class="form-control" value="<?= (int)($edit['sort_order'] ?? 0) ?>"></div>
             <div class="form-check mb-3"><input type="checkbox" name="charge_when_vacant" class="form-check-input" id="vacant" <?= !empty($edit['charge_when_vacant']) ? 'checked' : '' ?>><label for="vacant" class="form-check-label">Tetap ditagih saat unit kosong (komponen dasar)</label></div>
             <button class="btn btn-success">Simpan</button>
@@ -86,10 +96,11 @@ include __DIR__ . '/../../includes/sidebar.php';
       <?php endif; ?>
       <div class="<?= can('ipl_components.manage') ? 'col-lg-8' : 'col-12' ?>">
         <div class="card"><div class="card-header">Daftar Komponen</div><div class="table-responsive"><table class="table mb-0">
-          <thead><tr><th>Nama</th><th>Nominal per Tipe</th><th>Berlaku</th><th>Status</th><?php if(can('ipl_components.manage')):?><th>Aksi</th><?php endif;?></tr></thead><tbody>
+          <thead><tr><th>Nama</th><th>Nominal</th><th>Dipakai</th><th>Berlaku</th><th>Status</th><?php if(can('ipl_components.manage')):?><th>Aksi</th><?php endif;?></tr></thead><tbody>
           <?php foreach($rows as $r): ?><tr>
             <td><?= e($r['name']) ?></td>
-            <td><?= (int)$r['assigned_types'] ?> tipe<?= $r['assigned_types'] ? ': '.idr((float)$r['min_amount']).($r['min_amount'] != $r['max_amount'] ? ' – '.idr((float)$r['max_amount']) : '') : '' ?></td>
+            <td><?= idr((float)$r['amount']) ?></td>
+            <td><?= (int)$r['assigned_types'] ?> tipe</td>
             <td><?= $r['charge_when_vacant'] ? 'Semua unit' : 'Hanya unit dihuni' ?></td>
             <td><span class="badge bg-<?= $r['is_active']?'success':'secondary' ?>"><?= $r['is_active']?'Aktif':'Nonaktif' ?></span></td>
             <?php if(can('ipl_components.manage')):?><td class="text-nowrap"><a href="?edit=<?=$r['id']?>" class="btn btn-sm btn-outline-primary">Edit</a><form method="POST" class="d-inline"><?=csrf_field()?><input type="hidden" name="_action" value="toggle"><input type="hidden" name="id" value="<?=$r['id']?>"><button class="btn btn-sm btn-outline-secondary"><?=$r['is_active']?'Nonaktifkan':'Aktifkan'?></button></form></td><?php endif;?>

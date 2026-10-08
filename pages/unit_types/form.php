@@ -19,17 +19,17 @@ if ($editing) {
     $type = [];
 }
 
-// Katalog komponen aktif
+// Katalog komponen aktif dengan nominal
 $components = $db->query('SELECT * FROM ipl_components WHERE is_active=1 ORDER BY sort_order, name')->fetch_all(MYSQLI_ASSOC);
 
-// Assigned map untuk tipe ini: component_id => amount
+// Assigned: component_id yang di-centang
 $assigned = [];
 if ($editing) {
-    $stmt = $db->prepare('SELECT component_id, amount FROM unit_type_components WHERE unit_type_id=?');
+    $stmt = $db->prepare('SELECT component_id FROM unit_type_components WHERE unit_type_id=?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
     foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        $assigned[(int)$r['component_id']] = (float)$r['amount'];
+        $assigned[] = (int)$r['component_id'];
     }
 }
 
@@ -41,18 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'name'        => clean($_POST['name']        ?? ''),
         'description' => clean($_POST['description'] ?? ''),
     ];
-    $comp_amounts = [];           // component_id => amount (hanya yang dicentang)
+    $comp_ids = [];
     foreach ($components as $c) {
-        $cid = (int)$c['id'];
-        if (!isset($_POST['comp_on'][$cid])) continue;
-        $amt = (float)str_replace(['.', ','], ['', '.'], $_POST['comp_amount'][$cid] ?? '0');
-        if ($amt < 0) { $errors[] = 'Nominal komponen "'.$c['name'].'" tidak boleh negatif.'; continue; }
-        $comp_amounts[$cid] = $amt;
+        if (isset($_POST['comp_on'][(int)$c['id']])) {
+            $comp_ids[] = (int)$c['id'];
+        }
     }
-    $ipl_amount = array_sum($comp_amounts);   // total otomatis
-
+    
     if (!$data['name']) $errors[] = 'Nama tipe wajib diisi.';
-    if ($ipl_amount <= 0) $errors[] = 'Minimal satu komponen harus di-assign dengan nominal.';
+    if (empty($comp_ids)) $errors[] = 'Minimal satu komponen harus di-assign.';
 
     // Cek duplikat nama
     if (empty($errors)) {
@@ -65,6 +62,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $db->begin_transaction();
         try {
+            // Hitung total IPL dari komponen yang di-assign
+            $placeholders = implode(',', array_fill(0, count($comp_ids), '?'));
+            $stmt = $db->prepare("SELECT SUM(amount) FROM ipl_components WHERE id IN ($placeholders)");
+            $stmt->bind_param(str_repeat('i', count($comp_ids)), ...$comp_ids);
+            $stmt->execute();
+            $ipl_amount = (float)$stmt->get_result()->fetch_row()[0];
+            
             if ($editing) {
                 $stmt = $db->prepare('UPDATE unit_types SET name=?, description=?, ipl_amount=? WHERE id=?');
                 $stmt->bind_param('ssdi', $data['name'], $data['description'], $ipl_amount, $id);
@@ -75,15 +79,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $id = $db->insert_id;
             }
+            
             // Sinkronkan assignment komponen
             $stmt = $db->prepare('DELETE FROM unit_type_components WHERE unit_type_id=?');
             $stmt->bind_param('i', $id);
             $stmt->execute();
-            $stmt = $db->prepare('INSERT INTO unit_type_components (unit_type_id, component_id, amount) VALUES (?,?,?)');
-            foreach ($comp_amounts as $cid => $amt) {
-                $stmt->bind_param('iid', $id, $cid, $amt);
+            
+            $stmt = $db->prepare('INSERT INTO unit_type_components (unit_type_id, component_id) VALUES (?,?)');
+            foreach ($comp_ids as $cid) {
+                $stmt->bind_param('ii', $id, $cid);
                 $stmt->execute();
             }
+            
             $db->commit();
             log_activity($editing ? 'update' : 'create', 'unit_types', 'Unit type ' . $data['name'] . ' saved (IPL ' . $ipl_amount . ')');
             flash('success', 'Tipe unit berhasil disimpan. Total IPL: Rp ' . number_format($ipl_amount, 0, ',', '.'));
@@ -95,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     $type = array_merge($type, $data);
-    $assigned = $comp_amounts;
+    $assigned = $comp_ids;
 }
 
 $page_title = $editing ? 'Edit Tipe Unit' : 'Tambah Tipe Unit';
@@ -135,26 +142,27 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="col-12">
               <label class="form-label fw-semibold">Komponen IPL <span class="text-danger">*</span></label>
+              <div class="alert alert-info small mb-2">
+                <i class="bi bi-info-circle me-1"></i> Centang komponen yang berlaku untuk tipe ini. Nominal diatur di menu <strong>Komponen IPL</strong>.
+              </div>
               <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0" id="compTable">
-                  <thead><tr><th style="width:36px"></th><th>Komponen</th><th>Berlaku</th><th style="width:180px">Nominal (Rp)</th></tr></thead>
+                  <thead><tr><th style="width:36px"></th><th>Komponen</th><th>Berlaku</th><th class="text-end">Nominal</th></tr></thead>
                   <tbody>
-                  <?php foreach ($components as $c): $cid = (int)$c['id']; $on = array_key_exists($cid, $assigned); ?>
+                  <?php foreach ($components as $c): $cid = (int)$c['id']; $on = in_array($cid, $assigned); ?>
                     <tr>
-                      <td><input type="checkbox" class="form-check-input comp-check" data-idx="<?= $cid ?>"
+                      <td><input type="checkbox" class="form-check-input comp-check" data-amount="<?= $c['amount'] ?>"
                                  name="comp_on[<?= $cid ?>]" value="1" <?= $on ? 'checked' : '' ?>></td>
                       <td><strong><?= e($c['name']) ?></strong></td>
                       <td class="small text-muted"><?= $c['charge_when_vacant'] ? 'Semua unit' : 'Hanya dihuni' ?></td>
-                      <td><input type="text" class="form-control form-control-sm text-end comp-amount" data-idx="<?= $cid ?>"
-                                 name="comp_amount[<?= $cid ?>]" inputmode="numeric" data-rupiah
-                                 value="<?= e(isset($assigned[$cid]) ? number_format($assigned[$cid], 0, ',', '.') : '') ?>" disabled></td>
+                      <td class="text-end text-muted"><?= idr((float)$c['amount']) ?></td>
                     </tr>
                   <?php endforeach; ?>
                   </tbody>
                   <tfoot>
                     <tr class="table-light">
                       <td colspan="3" class="text-end fw-semibold">Total IPL / Bulan</td>
-                      <td class="text-end fw-bold text-success" id="iplTotal"><?= e(number_format(array_sum($assigned), 0, ',', '.')) ?></td>
+                      <td class="text-end fw-bold text-success" id="iplTotal">Rp 0</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -175,22 +183,14 @@ include __DIR__ . '/../../includes/sidebar.php';
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const totalEl = document.getElementById('iplTotal');
-  const parseRp = v => parseFloat(String(v).replace(/[^0-9]/g, '')) || 0;
-
   function recalc() {
     let total = 0;
-    document.querySelectorAll('.comp-check').forEach(chk => {
-      const cid = chk.dataset.idx;
-      const amt = document.querySelector('.comp-amount[data-idx="' + cid + '"]') ||
-                  document.querySelector('input[name="comp_amount[' + cid + ']"]');
-      if (!amt) return;
-      amt.disabled = !chk.checked;
-      if (chk.checked) total += parseRp(amt.value);
+    document.querySelectorAll('.comp-check:checked').forEach(chk => {
+      total += parseFloat(chk.dataset.amount) || 0;
     });
     totalEl.textContent = 'Rp ' + total.toLocaleString('id-ID');
   }
   document.querySelectorAll('.comp-check').forEach(chk => chk.addEventListener('change', recalc));
-  document.querySelectorAll('.comp-amount').forEach(inp => inp.addEventListener('input', recalc));
   recalc();
 });
 </script>
