@@ -158,17 +158,33 @@ $stmt->execute();
 $bills = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Summary for period
-$sum = $db->prepare(
-    'SELECT SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount ELSE 0 END) AS terkumpul,
-            SUM(CASE WHEN b.status!="sudah_bayar" THEN b.total_amount ELSE 0 END) AS tunggakan,
-            COUNT(*) AS total,
-            SUM(b.status="sudah_bayar") AS lunas,
-            SUM(b.status="belum_bayar") AS belum,
-            SUM(b.status="terlambat") AS terlambat
-     FROM bills b JOIN billing_periods bp ON bp.id=b.billing_period_id
-     WHERE bp.period_year=? AND bp.period_month=?'
-);
-$sum->bind_param('ii', $f_year, $f_month);
+if ($_role === 'warga') {
+    $sum = $db->prepare(
+        'SELECT SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount ELSE 0 END) AS terkumpul,
+                SUM(CASE WHEN b.status!="sudah_bayar" THEN b.total_amount ELSE 0 END) AS tunggakan,
+                COUNT(*) AS total,
+                SUM(b.status="sudah_bayar") AS lunas,
+                SUM(b.status="belum_bayar") AS belum,
+                SUM(b.status="terlambat") AS terlambat
+         FROM bills b
+         JOIN billing_periods bp ON bp.id=b.billing_period_id
+         LEFT JOIN residents r ON r.id=b.resident_id
+         WHERE bp.period_year=? AND bp.period_month=? AND r.user_id=?'
+    );
+    $sum->bind_param('iii', $f_year, $f_month, $_uid);
+} else {
+    $sum = $db->prepare(
+        'SELECT SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount ELSE 0 END) AS terkumpul,
+                SUM(CASE WHEN b.status!="sudah_bayar" THEN b.total_amount ELSE 0 END) AS tunggakan,
+                COUNT(*) AS total,
+                SUM(b.status="sudah_bayar") AS lunas,
+                SUM(b.status="belum_bayar") AS belum,
+                SUM(b.status="terlambat") AS terlambat
+         FROM bills b JOIN billing_periods bp ON bp.id=b.billing_period_id
+         WHERE bp.period_year=? AND bp.period_month=?'
+    );
+    $sum->bind_param('ii', $f_year, $f_month);
+}
 $sum->execute();
 $summary = $sum->get_result()->fetch_assoc();
 
