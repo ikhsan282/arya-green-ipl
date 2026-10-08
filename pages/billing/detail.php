@@ -27,7 +27,8 @@ if (!$bill) { flash('error','Tagihan tidak ditemukan.'); redirect(APP_URL.'/page
 // Warga hanya boleh lihat tagihan unitnya sendiri
 if (auth_role() === 'warga') {
     $chk = $db->prepare('SELECT 1 FROM bills b LEFT JOIN residents r ON r.id=b.resident_id WHERE b.id=? AND r.user_id=?');
-    $chk->bind_param('ii', $id, auth_id());
+    $uid = auth_id();
+    $chk->bind_param('ii', $id, $uid);
     $chk->execute();
     if (!$chk->get_result()->fetch_row()) {
         flash('error', 'Akses ditolak.'); redirect(APP_URL.'/pages/billing/index.php');

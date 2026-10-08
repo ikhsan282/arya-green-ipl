@@ -184,12 +184,10 @@ function attempt_login(string $username, string $password): array {
     session_regenerate_id(true);
 
     $_SESSION['user_id']      = $user['id'];
-    $_SESSION['resident_id']  = $user['resident_id'] ?? null;
     $_SESSION['auth_user']    = [
-        'id'          => $user['id'],
-        'name'        => $user['name'],
-        'email'       => $user['email'],
-        'resident_id' => $user['resident_id'] ?? null,
+        'id'     => $user['id'],
+        'name'   => $user['name'],
+        'email'  => $user['email'],
         'role'   => $user['role'],
         'role_id'=> $user['role_id'],
     ];

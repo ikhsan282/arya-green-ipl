@@ -12,18 +12,31 @@ $errors  = [];
 // Load bill if pre-selected
 $bill = null;
 if ($bill_id) {
-    $stmt = $db->prepare(
-        'SELECT b.*, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
-         FROM bills b
-         JOIN billing_periods bp ON bp.id=b.billing_period_id
-         JOIN units u ON u.id=b.unit_id
-         LEFT JOIN residents r ON r.id=b.resident_id
-         WHERE b.id=? AND b.status != "sudah_bayar"'
-    );
-    $stmt->bind_param('i', $bill_id);
+    if (auth_role() === 'warga') {
+        $stmt = $db->prepare(
+            'SELECT b.*, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+             FROM bills b
+             JOIN billing_periods bp ON bp.id=b.billing_period_id
+             JOIN units u ON u.id=b.unit_id
+             LEFT JOIN residents r ON r.id=b.resident_id
+             WHERE b.id=? AND b.status != "sudah_bayar" AND r.user_id=?'
+        );
+        $uid = auth_id();
+        $stmt->bind_param('ii', $bill_id, $uid);
+    } else {
+        $stmt = $db->prepare(
+            'SELECT b.*, bp.label AS period, u.unit_number, u.block, r.name AS resident_name
+             FROM bills b
+             JOIN billing_periods bp ON bp.id=b.billing_period_id
+             JOIN units u ON u.id=b.unit_id
+             LEFT JOIN residents r ON r.id=b.resident_id
+             WHERE b.id=? AND b.status != "sudah_bayar"'
+        );
+        $stmt->bind_param('i', $bill_id);
+    }
     $stmt->execute();
     $bill = $stmt->get_result()->fetch_assoc();
-    if (!$bill) { flash('error','Tagihan tidak ditemukan atau sudah lunas.'); redirect(APP_URL.'/pages/billing/index.php'); }
+    if (!$bill) { flash('error','Tagihan tidak ditemukan, sudah lunas, atau bukan milik Anda.'); redirect(APP_URL.'/pages/billing/index.php'); }
 }
 
 // Load unpaid bills for dropdown if no bill_id
