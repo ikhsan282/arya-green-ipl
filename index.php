@@ -185,7 +185,11 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
     .footer-section {
       background: var(--brand-dark);
       color: rgba(255, 255, 255, 0.75);
-      padding: 3.5rem 0 2rem;
+    }
+    @media (max-width: 768px) {
+      .hero-section { padding: 3rem 0 2rem; }
+      .section-title { font-size: 1.75rem; }
+      .stat-box { padding: 1rem; }
     }
   </style>
 </head>
@@ -207,9 +211,6 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
           </li>
           <li class="nav-item">
             <a class="nav-link text-dark fw-medium" href="#transparansi">Transparansi Kas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link text-dark fw-medium" href="#pembayaran">Metode Bayar</a>
           </li>
           <li class="nav-item">
             <a class="nav-link text-dark fw-medium" href="<?= APP_URL ?>/pages/public/kas.php">
@@ -395,64 +396,6 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
     </div>
   </section>
 
-  <!-- Payment Methods Section -->
-  <section class="py-5" id="pembayaran">
-    <div class="container py-4">
-      <div class="row align-items-center gy-4">
-        <div class="col-lg-5">
-          <div class="badge-pill mb-2">Pembayaran Fleksibel</div>
-          <h2 class="section-title h1 mb-3">Kanal Pembayaran Resmi</h2>
-          <p class="text-muted mb-4">
-            Pengurus menyediakan berbagai opsi pembayaran yang aman dan tercatat otomatis ke dalam pembukuan iuran warga.
-          </p>
-          <div class="d-flex flex-column gap-3">
-            <div class="d-flex align-items-start gap-3">
-              <div class="text-success fs-4"><i class="bi bi-check-circle-fill"></i></div>
-              <div>
-                <h6 class="fw-bold mb-1">Verifikasi Otomatis</h6>
-                <p class="text-muted small mb-0">Pembayaran tunai langsung lunas otomatis, sedangkan metode transfer diverifikasi pengurus untuk akurasi.</p>
-              </div>
-            </div>
-            <div class="d-flex align-items-start gap-3">
-              <div class="text-success fs-4"><i class="bi bi-check-circle-fill"></i></div>
-              <div>
-                <h6 class="fw-bold mb-1">Bukti Bayar Tersimpan Aman</h6>
-                <p class="text-muted small mb-0">Foto bukti transfer tersimpan rapi dan dapat ditinjau kapan saja dari akun masing-masing.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-7">
-          <div class="row g-3">
-            <?php if ($methods): ?>
-              <?php foreach ($methods as $m): ?>
-                <div class="col-sm-6">
-                  <div class="p-3 rounded-3 border h-100 bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                      <span class="fw-bold text-dark"><?= e($m['name']) ?></span>
-                      <i class="bi bi-credit-card-2-front text-success"></i>
-                    </div>
-                    <?php if ($m['account_no']): ?>
-                      <div class="font-monospace fw-semibold fs-6 text-primary"><?= e($m['account_no']) ?></div>
-                      <small class="text-muted d-block">a.n. <?= e($m['account_name'] ?: APP_NAME) ?></small>
-                    <?php else: ?>
-                      <small class="text-muted">Metode bayar langsung ke bendahara lingkungan.</small>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <div class="col-12">
-                <div class="alert alert-info mb-0">Kanal pembayaran dapat dilihat pada form pembayaran setelah login.</div>
-              </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- CTA Section -->
   <section class="py-5" style="background: linear-gradient(135deg, var(--brand-dark), var(--brand-primary)); color:#ffffff;">
     <div class="container py-4 text-center">
@@ -474,36 +417,21 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
   <!-- Footer -->
   <footer class="footer-section">
     <div class="container">
-      <div class="row gy-4 mb-4">
-        <div class="col-md-6">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:40px;width:auto;object-fit:contain;">
-            <h5 class="text-white fw-bold mb-0"><?= e(APP_NAME) ?></h5>
+      <div class="row align-items-center py-4">
+        <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+          <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-2">
+            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="Logo" style="height:32px;width:auto;object-fit:contain;">
+            <span class="text-white fw-semibold"><?= e(APP_NAME) ?></span>
           </div>
-          <p class="small text-white-50 mb-2">
-            <?= e(APP_TAGLINE) ?> — Aplikasi pengelolaan iuran dan operasional lingkungan perumahan Arya Green Pamulang.
-          </p>
-          <small class="text-white-50 d-block"><i class="bi bi-geo-alt me-1"></i>Pamulang, Tangerang Selatan, Banten</small>
-          <small class="text-white-50 d-block mt-1"><i class="bi bi-building me-1"></i>Developer: Brantas Abipraya Properti (BUMN)</small>
+          <p class="small text-white-50 mb-0"><?= e(APP_TAGLINE) ?></p>
         </div>
-        <div class="col-md-3">
-          <h6 class="text-white fw-bold mb-3">Tautan Publik</h6>
-          <ul class="list-unstyled small d-flex flex-column gap-2 mb-0">
-            <li><a href="<?= APP_URL ?>/auth/login.php" class="text-white-50 text-decoration-none">Portal Login</a></li>
-            <li><a href="<?= APP_URL ?>/pages/public/kas.php" class="text-white-50 text-decoration-none">Transparansi Kas</a></li>
-            <li><a href="<?= APP_URL ?>/auth/forgot-password.php" class="text-white-50 text-decoration-none">Lupa Password</a></li>
-          </ul>
+        <div class="col-md-6 text-center text-md-end">
+          <div class="d-flex flex-wrap justify-content-center justify-content-md-end gap-3 mb-2">
+            <a href="<?= APP_URL ?>/auth/login.php" class="text-white-50 text-decoration-none small">Portal Login</a>
+            <a href="<?= APP_URL ?>/pages/public/kas.php" class="text-white-50 text-decoration-none small">Kas Terbuka</a>
+          </div>
+          <small class="text-white-50">&copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. v<?= e(APP_VERSION) ?></small>
         </div>
-        <div class="col-md-3">
-          <h6 class="text-white fw-bold mb-3">Dukungan Pengurus</h6>
-          <p class="small text-white-50 mb-2">
-            Mengalami kendala akun atau butuh data penghuni baru? Hubungi pengurus RT / bendahara setempat.
-          </p>
-          <span class="badge bg-success">Versi <?= e(APP_VERSION) ?></span>
-        </div>
-      </div>
-      <div class="border-top border-secondary pt-3 text-center small text-white-50">
-        &copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. Hak cipta dilindungi undang-undang.
       </div>
     </div>
   </footer>
