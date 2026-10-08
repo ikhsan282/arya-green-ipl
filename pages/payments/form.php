@@ -104,7 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pms->bind_param('i', $pm_id);
         $pms->execute();
         $payment_method = $pms->get_result()->fetch_assoc();
-        if (!$payment_method) $errors[] = 'Metode pembayaran tidak valid atau nonaktif.';
+        if (!$payment_method) {
+            $errors[] = 'Metode pembayaran tidak valid atau nonaktif.';
+        } elseif (auth_role() === 'warga' && $payment_method['code'] === 'tunai') {
+            // Wajib divalidasi di server; dropdown saja dapat dimanipulasi.
+            $payment_method = null;
+            $errors[] = 'Pembayaran tunai hanya dapat dicatat oleh pengurus.';
+        }
     } elseif (!$pm_id) {
         $errors[] = 'Pilih metode pembayaran.';
     }
