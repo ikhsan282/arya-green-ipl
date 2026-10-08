@@ -65,16 +65,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         return $s->get_result()->fetch_row()[0];
     })();
 
-    // Get all units (dihuni + kosong with charge_when_vacant components)
+    // Get all units (dihuni + kosong dengan komponen dasar)
     $units_res = $db->query(
-        'SELECT u.id AS unit_id, u.status,
+        'SELECT u.id AS unit_id, u.status, u.unit_type_id,
                 (SELECT id FROM residents WHERE unit_id=u.id AND is_active=1 ORDER BY id LIMIT 1) AS resident_id
          FROM units u WHERE u.status IN ("dihuni","kosong")'
     );
 
-    // Get active components
-    $comp_res = $db->query('SELECT id,name,amount,charge_when_vacant FROM ipl_components WHERE is_active=1 ORDER BY sort_order');
-    $components = $comp_res->fetch_all(MYSQLI_ASSOC);
+    // Komponen per tipe unit: unit_type_id => [id,name,amount,charge_when_vacant]
+    $type_comp_rows = $db->query(
+        'SELECT utc.unit_type_id, c.id, c.name, c.charge_when_vacant, utc.amount
+         FROM unit_type_components utc
+         JOIN ipl_components c ON c.id=utc.component_id
+         WHERE c.is_active=1
+         ORDER BY c.sort_order'
+    )->fetch_all(MYSQLI_ASSOC);
+    $type_components = [];
+    foreach ($type_comp_rows as $tc) {
+        $type_components[$tc['unit_type_id']][] = $tc;
+    }
 
     $generated = 0; $skipped = 0;
     while ($u = $units_res->fetch_assoc()) {
@@ -84,17 +93,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $chk->execute();
         if ($chk->get_result()->fetch_row()) { $skipped++; continue; }
 
-        // Calculate total from applicable components
+        // Komponen yang berlaku untuk tipe unit ini
+        $all_comps = $type_components[$u['unit_type_id']] ?? [];
         $amount = 0;
         $applicable = [];
-        foreach ($components as $c) {
+        foreach ($all_comps as $c) {
             if ($u['status'] === 'dihuni' || $c['charge_when_vacant']) {
                 $amount += (float)$c['amount'];
                 $applicable[] = $c;
             }
         }
 
-        if ($amount == 0) { $skipped++; continue; } // Skip if no components apply
+        if ($amount == 0) { $skipped++; continue; } // Skip jika tidak ada komponen berlaku
 
         $db->begin_transaction();
         $ins = $db->prepare(
@@ -105,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $ins->execute();
         $bill_id = $db->insert_id;
 
-        // Insert breakdown
+        // Insert breakdown komponen
         $bc = $db->prepare('INSERT INTO bill_components (bill_id,component_id,component_name,amount) VALUES (?,?,?,?)');
         foreach ($applicable as $c) {
             $bc->bind_param('iisd', $bill_id, $c['id'], $c['name'], $c['amount']);

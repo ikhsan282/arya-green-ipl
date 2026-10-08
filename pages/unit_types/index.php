@@ -35,6 +35,18 @@ $types = $db->query(
      ORDER BY ut.name'
 )->fetch_all(MYSQLI_ASSOC);
 
+// Komponen per tipe: unit_type_id => list "nama (Rp)"
+$comp_rows = $db->query(
+    'SELECT utc.unit_type_id, c.name, utc.amount
+     FROM unit_type_components utc
+     JOIN ipl_components c ON c.id = utc.component_id
+     ORDER BY c.sort_order'
+)->fetch_all(MYSQLI_ASSOC);
+$comp_map = [];
+foreach ($comp_rows as $cr) {
+    $comp_map[$cr['unit_type_id']][] = e($cr['name']) . ' (' . idr((float)$cr['amount']) . ')';
+}
+
 $page_title = 'Tipe Unit';
 include __DIR__ . '/../../includes/header.php';
 include __DIR__ . '/../../includes/sidebar.php';
@@ -67,6 +79,7 @@ include __DIR__ . '/../../includes/sidebar.php';
               <th>Nama Tipe</th>
               <th>Deskripsi</th>
               <th class="text-end">IPL/Bulan</th>
+              <th>Komponen</th>
               <th class="text-center">Jumlah Unit</th>
               <th>Aksi</th>
             </tr></thead>
@@ -79,6 +92,13 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <td><strong><?= e($t['name']) ?></strong></td>
                 <td class="text-muted small"><?= e($t['description'] ?: '—') ?></td>
                 <td class="text-end fw-semibold text-success"><?= idr((float)$t['ipl_amount']) ?></td>
+                <td class="small">
+                  <?php if (!empty($comp_map[$t['id']])): ?>
+                    <?= implode('<br>', $comp_map[$t['id']]) ?>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
+                </td>
                 <td class="text-center">
                   <span class="badge bg-secondary"><?= (int)$t['unit_count'] ?></span>
                 </td>
