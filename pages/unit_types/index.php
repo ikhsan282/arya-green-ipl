@@ -35,16 +35,17 @@ $types = $db->query(
      ORDER BY ut.name'
 )->fetch_all(MYSQLI_ASSOC);
 
-// Komponen per tipe: unit_type_id => list "nama (Rp)"
+// Komponen per tipe: unit_type_id => list "nama: Rp X"
 $comp_rows = $db->query(
-    'SELECT utc.unit_type_id, c.name, utc.amount
+    'SELECT utc.unit_type_id, c.name, c.amount
      FROM unit_type_components utc
      JOIN ipl_components c ON c.id = utc.component_id
+     WHERE c.is_active = 1
      ORDER BY c.sort_order'
 )->fetch_all(MYSQLI_ASSOC);
 $comp_map = [];
 foreach ($comp_rows as $cr) {
-    $comp_map[$cr['unit_type_id']][] = e($cr['name']) . ' (' . idr((float)$cr['amount']) . ')';
+    $comp_map[$cr['unit_type_id']][] = e($cr['name']) . ': ' . idr((float)$cr['amount']);
 }
 
 $page_title = 'Tipe Unit';
