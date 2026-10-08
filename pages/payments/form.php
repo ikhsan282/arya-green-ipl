@@ -29,15 +29,35 @@ if ($bill_id) {
 // Load unpaid bills for dropdown if no bill_id
 $unpaid_bills = [];
 if (!$bill) {
-    $unpaid_bills = $db->query(
-        'SELECT b.id, bp.label AS period, u.unit_number, u.block, b.total_amount, r.name AS resident_name
-         FROM bills b
-         JOIN billing_periods bp ON bp.id=b.billing_period_id
-         JOIN units u ON u.id=b.unit_id
-         LEFT JOIN residents r ON r.id=b.resident_id
-         WHERE b.status != "sudah_bayar"
-         ORDER BY bp.period_year DESC, bp.period_month DESC, u.block, u.unit_number'
-    )->fetch_all(MYSQLI_ASSOC);
+    $role = auth_role();
+    $resident_id = $_SESSION['resident_id'] ?? null;
+    
+    // Warga hanya bisa lihat tagihan unit sendiri
+    if ($role === 'warga' && $resident_id) {
+        $stmt = $db->prepare(
+            'SELECT b.id, bp.label AS period, u.unit_number, u.block, b.total_amount, r.name AS resident_name
+             FROM bills b
+             JOIN billing_periods bp ON bp.id=b.billing_period_id
+             JOIN units u ON u.id=b.unit_id
+             LEFT JOIN residents r ON r.id=b.resident_id
+             WHERE b.status != "sudah_bayar" AND b.resident_id=?
+             ORDER BY bp.period_year DESC, bp.period_month DESC'
+        );
+        $stmt->bind_param('i', $resident_id);
+        $stmt->execute();
+        $unpaid_bills = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } else {
+        // Admin/ketua/bendahara lihat semua
+        $unpaid_bills = $db->query(
+            'SELECT b.id, bp.label AS period, u.unit_number, u.block, b.total_amount, r.name AS resident_name
+             FROM bills b
+             JOIN billing_periods bp ON bp.id=b.billing_period_id
+             JOIN units u ON u.id=b.unit_id
+             LEFT JOIN residents r ON r.id=b.resident_id
+             WHERE b.status != "sudah_bayar"
+             ORDER BY bp.period_year DESC, bp.period_month DESC, u.block, u.unit_number'
+        )->fetch_all(MYSQLI_ASSOC);
+    }
 }
 
 $payment_methods = $db->query(

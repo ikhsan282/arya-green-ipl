@@ -170,11 +170,13 @@ CREATE TABLE `users` (
   `verification_token` VARCHAR(100) DEFAULT NULL,
   `reset_token`        VARCHAR(100) DEFAULT NULL,
   `reset_token_expires`DATETIME     DEFAULT NULL,
+  `resident_id`        INT UNSIGNED DEFAULT NULL,
   `is_active`          TINYINT(1)   NOT NULL DEFAULT 1,
   `last_login`         DATETIME     DEFAULT NULL,
   `created_at`         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
   `updated_at`         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE CASCADE
+  FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE CASCADE,
+  FOREIGN KEY (`resident_id`) REFERENCES `residents`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Default users (password = P@ssw0rd untuk semua)
