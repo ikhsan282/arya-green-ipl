@@ -49,8 +49,8 @@ $page_title = 'Cetak Kwitansi';
   <meta charset="UTF-8">
   <title>Kwitansi Pembayaran IPL - <?= e($pay['block'].'-'.$pay['unit_number']) ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     @media print {
       .no-print { display: none !important; }

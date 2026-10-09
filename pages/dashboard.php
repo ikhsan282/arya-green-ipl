@@ -312,7 +312,7 @@ include __DIR__ . '/../includes/sidebar.php';
     </div>
 
   </div><!-- /.main-content -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
 new Chart(document.getElementById('dashChart'), {
   type: 'bar',

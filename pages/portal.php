@@ -73,8 +73,8 @@ $page_title = 'Portal Warga';
   <meta name="apple-mobile-web-app-title" content="<?= e(APP_NAME) ?>">
   <title><?= e(APP_NAME) ?> — Portal Warga</title>
   <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.min.css">
   <script>
     // Anti-FOUC: terapkan tema sebelum render
     (function(){try{var t=localStorage.getItem('agipl_theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-bs-theme',t);}catch(e){}})();
@@ -311,7 +311,7 @@ $page_title = 'Portal Warga';
   </a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= APP_URL ?>/assets/js/app.js"></script>
 <script src="<?= APP_URL ?>/assets/js/offline.js"></script>
 <script>

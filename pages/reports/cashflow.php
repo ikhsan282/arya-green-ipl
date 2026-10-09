@@ -238,7 +238,7 @@ include __DIR__ . '/../../includes/sidebar.php';
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
 const ctx = document.getElementById('cashflowChart');
 new Chart(ctx, {
