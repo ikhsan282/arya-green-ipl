@@ -95,7 +95,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="col-md-6">
               <label class="form-label">Tipe Unit <span class="text-danger">*</span></label>
-              <select name="unit_type_id" class="form-select" required>
+              <select name="unit_type_id" class="form-select ts-select" required>
                 <option value="">— Pilih Tipe —</option>
                 <?php foreach ($unit_types as $t): ?>
                   <option value="<?= $t['id'] ?>" <?= ($unit['unit_type_id'] ?? '') == $t['id'] ? 'selected' : '' ?>>

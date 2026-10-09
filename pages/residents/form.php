@@ -113,7 +113,7 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Unit <span class="text-danger">*</span></label>
-              <select name="unit_id" class="form-select" required>
+              <select name="unit_id" class="form-select ts-select" required>
                 <option value="">— Pilih Unit —</option>
                 <?php foreach ($units as $u): ?>
                   <option value="<?= $u['id'] ?>" <?= ($resident['unit_id'] ?? '') == $u['id'] ? 'selected' : '' ?>>
@@ -124,7 +124,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="col-md-6">
               <label class="form-label">Link Akun User</label>
-              <select name="user_id" class="form-select">
+              <select name="user_id" class="form-select ts-select">
                 <option value="">— Belum Punya Akun —</option>
                 <?php foreach ($users as $usr): ?>
                   <option value="<?= $usr['id'] ?>" <?= ($resident['user_id'] ?? 0) == $usr['id'] ? 'selected' : '' ?>>

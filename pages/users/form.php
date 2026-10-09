@@ -112,7 +112,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="col-md-4">
               <label class="form-label">Role <span class="text-danger">*</span></label>
-              <select name="role_id" class="form-select" <?= $self ? 'disabled' : '' ?>>
+              <select name="role_id" class="form-select ts-select" <?= $self ? 'disabled' : '' ?>>
                 <?php foreach ($roles as $r): ?>
                   <option value="<?= $r['id'] ?>" <?= ($user['role_id']??4)==$r['id']?'selected':'' ?>><?= e($r['label']) ?></option>
                 <?php endforeach; ?>

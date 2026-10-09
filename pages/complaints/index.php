@@ -227,7 +227,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             <?php endforeach; ?>
           </select></div>
         <div class="mb-2"><label class="form-label">Ditugaskan ke</label>
-          <select name="assigned_to" id="statusAssign" class="form-select form-select-sm">
+          <select name="assigned_to" id="statusAssign" class="form-select form-select-sm ts-select">
             <option value="">— Pilih petugas —</option>
             <?php foreach ($officers as $o): ?>
               <option value="<?= $o['id'] ?>"><?= e($o['name']) ?></option>

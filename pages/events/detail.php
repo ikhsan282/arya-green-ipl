@@ -74,7 +74,7 @@ include __DIR__ . '/../../includes/sidebar.php';
               <input type="hidden" name="event_id" value="<?= $id ?>">
               <div class="mb-2">
                 <label class="form-label">Warga</label>
-                <select name="resident_id" class="form-select form-select-sm" required>
+                <select name="resident_id" class="form-select form-select-sm ts-select" required>
                   <option value="">— Pilih —</option>
                   <?php foreach ($all_res as $r): ?>
                     <option value="<?= $r['id'] ?>"><?= e($r['name']) ?> (<?= e($r['block'].'-'.$r['unit_number']) ?>)</option>

@@ -186,7 +186,7 @@ include __DIR__ . '/../../includes/sidebar.php';
           </div>
           <div class="col-md-4">
             <label class="form-label">Warga <small class="text-muted">(opsional)</small></label>
-            <select name="resident_id" class="form-select form-select-sm">
+            <select name="resident_id" class="form-select form-select-sm ts-select">
               <option value="">— Pilih warga —</option>
               <?php foreach ($residents as $res): ?>
                 <option value="<?= $res['id'] ?>"><?= e($res['name']) ?></option>
