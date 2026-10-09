@@ -7,6 +7,29 @@ require_permission('billing.send_reminder');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+
+    if (($_POST['action'] ?? '') === 'test_email') {
+        $test_email = trim((string)($_POST['test_email'] ?? ''));
+        if (!filter_var($test_email, FILTER_VALIDATE_EMAIL)) {
+            flash('error', 'Alamat email tujuan tidak valid.');
+            redirect(APP_URL . '/pages/billing/send_reminders.php');
+        }
+
+        $subject = '[TEST] Verifikasi Konfigurasi Email — ' . APP_NAME;
+        $body = mail_template(
+            'Test Konfigurasi Email',
+            '<p>Email test berhasil diproses oleh sistem.</p>'
+            . '<p>Jika pesan ini diterima, konfigurasi email saat ini dapat digunakan.</p>'
+        );
+        $ok = send_mail($test_email, $subject, $body);
+        log_email('test_email', $test_email, '', $subject, 0, $ok);
+        log_activity('test_email', 'billing', 'Test email dikirim ke ' . $test_email);
+        flash($ok ? 'success' : 'error', $ok
+            ? 'Email test berhasil dikirim ke ' . $test_email . '.'
+            : 'Email test gagal dikirim. Periksa konfigurasi dan log server.');
+        redirect(APP_URL . '/pages/billing/send_reminders.php');
+    }
+
     $counts = run_email_reminders();
     log_activity('send_reminder', 'billing',
         "Reminder sent — due:{$counts['due']} overdue:{$counts['overdue']} skipped:{$counts['skipped']}");
@@ -75,6 +98,29 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="fw-bold fs-3 text-secondary"><?= $no_email_count ?></div>
           <div class="text-muted small"><i class="bi bi-envelope-slash me-1"></i>Tanpa Email</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Test Email -->
+    <div class="card mb-3" style="max-width:560px">
+      <div class="card-header"><i class="bi bi-envelope-check me-1 text-info"></i> Test Konfigurasi Email</div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Kirim email test untuk memverifikasi konfigurasi email sistem tanpa mengganggu data warga atau tagihan.
+        </p>
+        <form method="POST" class="row g-2 align-items-end">
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" value="test_email">
+          <div class="col-md-8">
+            <label class="form-label small mb-1">Email Tujuan</label>
+            <input type="email" name="test_email" class="form-control" placeholder="admin@example.com" required>
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-info w-100">
+              <i class="bi bi-envelope-check me-1"></i> Kirim Email Test
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
