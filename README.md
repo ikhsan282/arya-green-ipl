@@ -3,12 +3,15 @@
 Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP Native + MySQLi + Bootstrap 5.
 
 ## Stack
-- PHP 8.5+ (Native, no framework)
-- MySQLi with prepared statements
-- Bootstrap 5.3 + Bootstrap Icons (CDN)
-- Chart.js 4.4 (CDN)
+- PHP 8.5+ (Native, tanpa framework)
+- MySQLi dengan prepared statements
 - MySQL / MariaDB
-- PWA-ready (manifest.json + service worker)
+- Bootstrap 5.3.8 + Bootstrap Icons 1.13.2 (CDN)
+- Chart.js 4.5.1 (CDN)
+- Tom Select 2.3.1 (CDN)
+- Vanilla JavaScript
+- PWA (Web App Manifest + Service Worker)
+- TCPDF untuk kwitansi PDF dan generator XLSX native tanpa Composer
 
 ## Instalasi
 
@@ -17,7 +20,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 mysql -u root -p < database/schema.sql
 ```
 
-> Schema sudah lengkap di 1 file: 27 tabel, 4 role (super_admin/ketua/bendahara/warga), 4 default user dengan password `P@ssw0rd`.
+> Schema sudah lengkap di 1 file: 29 tabel, 4 role (super_admin/ketua/bendahara/warga), 4 default user dengan password `P@ssw0rd`.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:
@@ -140,7 +143,7 @@ arya-green-ipl/
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
 └── database/
-    ├── schema.sql             # DDL lengkap semua modul (27 tabel)
+    ├── schema.sql             # DDL lengkap semua modul (29 tabel)
     └── README.md              # Database setup guide
 ```
 
