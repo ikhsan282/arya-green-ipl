@@ -34,8 +34,7 @@ if ($params) $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-if (($_GET['format'] ?? '') === 'xlsx') {
-    require_once __DIR__ . '/../../includes/xlsx.php';
+if (in_array($_GET['format'] ?? '', ['xlsx', 'pdf'], true)) {
     $data = [['No','Unit','Nama Warga','No. HP','Jumlah Bulan','Periode Nunggak','Total Tunggakan']];
     foreach ($rows as $i => $r) {
         $data[] = [
@@ -48,6 +47,11 @@ if (($_GET['format'] ?? '') === 'xlsx') {
             (float)$r['total_tunggakan'],
         ];
     }
+    if (($_GET['format'] ?? '') === 'pdf') {
+        require_once __DIR__ . '/../../includes/pdf.php';
+        pdf_download('rekap_tunggakan_' . date('Ymd') . '.pdf', 'Rekap Tunggakan', $data);
+    }
+    require_once __DIR__ . '/../../includes/xlsx.php';
     xlsx_download('rekap_tunggakan_' . date('Ymd') . '.xlsx', ['Tunggakan' => $data]);
 }
 

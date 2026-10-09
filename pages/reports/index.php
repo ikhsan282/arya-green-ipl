@@ -112,6 +112,9 @@ include __DIR__ . '/../../includes/sidebar.php';
             <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>" class="btn btn-sm btn-outline-success">
               <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
             </a>
+            <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>&format=pdf" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
             <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>&format=xlsx" class="btn btn-sm btn-success">
               <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>

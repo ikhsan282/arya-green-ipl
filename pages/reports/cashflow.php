@@ -93,6 +93,9 @@ include __DIR__ . '/../../includes/sidebar.php';
             <a href="cashflow_export.php?year=<?= $f_year ?>" class="btn btn-sm btn-outline-success">
               <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
             </a>
+            <a href="cashflow_export.php?year=<?= $f_year ?>&format=pdf" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
             <a href="cashflow_export.php?year=<?= $f_year ?>&format=xlsx" class="btn btn-sm btn-success">
               <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>

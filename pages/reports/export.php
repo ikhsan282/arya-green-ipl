@@ -27,8 +27,7 @@ $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $label    = bulan_indo($f_month) . '_' . $f_year;
 $status_map = ['belum_bayar' => 'Belum Bayar', 'sudah_bayar' => 'Sudah Bayar', 'terlambat' => 'Terlambat'];
 
-if (($_GET['format'] ?? '') === 'xlsx') {
-    require_once __DIR__ . '/../../includes/xlsx.php';
+if (in_array($_GET['format'] ?? '', ['xlsx', 'pdf'], true)) {
     $data = [['No','Unit','Tipe','Nama Warga','No. HP','IPL','Denda','Total','Status','Tgl Bayar']];
     foreach ($rows as $i => $r) {
         $data[] = [
@@ -44,6 +43,11 @@ if (($_GET['format'] ?? '') === 'xlsx') {
             $r['paid_date'] ? date('d/m/Y', strtotime($r['paid_date'])) : '-',
         ];
     }
+    if (($_GET['format'] ?? '') === 'pdf') {
+        require_once __DIR__ . '/../../includes/pdf.php';
+        pdf_download("laporan_ipl_{$label}.pdf", "Laporan IPL {$label}", $data);
+    }
+    require_once __DIR__ . '/../../includes/xlsx.php';
     xlsx_download("laporan_ipl_{$label}.xlsx", ['Laporan IPL' => $data]);
 }
 
