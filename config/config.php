@@ -38,7 +38,7 @@ define('LOGIN_LOCKOUT_TIME',     900);   // 15 menit (dalam detik)
 define('FINE_PER_DAY', 5000);
 
 // Error reporting (set to 0 on production)
-define('APP_DEBUG', true);
+define('APP_DEBUG', false); // set true only for local development
 if (APP_DEBUG) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
