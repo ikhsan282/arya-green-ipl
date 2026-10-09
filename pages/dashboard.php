@@ -124,6 +124,53 @@ for ($m = 1; $m <= 12; $m++) {
     $chart_nunggak[] = (float)($trend_map[$m]['tunggakan'] ?? 0);
 }
 
+// ── Real-time Financial Dashboard Data ────────────────────────────────────
+// 1. Saldo kas terkini
+$saldo_stmt = $db->query(
+    'SELECT 
+        COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS total_in,
+        COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS total_out
+     FROM cash_book'
+);
+$saldo_data = $saldo_stmt->fetch_assoc();
+$saldo_kas = (float)$saldo_data['total_in'] - (float)$saldo_data['total_out'];
+
+// 2. Cash flow 7 hari terakhir
+$cashflow_stmt = $db->query(
+    'SELECT DATE(trx_date) AS tanggal,
+            COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS masuk,
+            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS keluar
+     FROM cash_book
+     WHERE trx_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+     GROUP BY DATE(trx_date)
+     ORDER BY tanggal ASC'
+);
+$cashflow_rows = $cashflow_stmt->fetch_all(MYSQLI_ASSOC);
+$cashflow_map = array_column($cashflow_rows, null, 'tanggal');
+$cf_labels = [];
+$cf_masuk = [];
+$cf_keluar = [];
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $cf_labels[] = date('d M', strtotime($date));
+    $cf_masuk[] = (float)($cashflow_map[$date]['masuk'] ?? 0);
+    $cf_keluar[] = (float)($cashflow_map[$date]['keluar'] ?? 0);
+}
+
+// 3. Top 5 pengeluaran bulan ini
+$expense_stmt = $db->prepare(
+    'SELECT category, SUM(amount) AS total
+     FROM cash_book
+     WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?
+     GROUP BY category
+     ORDER BY total DESC
+     LIMIT 5'
+);
+$expense_stmt->bind_param('ii', $year, $month);
+$expense_stmt->execute();
+$top_expenses = $expense_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$total_expense = array_sum(array_column($top_expenses, 'total'));
+
 $page_title = 'Dashboard';
 include __DIR__ . '/../includes/header.php';
 include __DIR__ . '/../includes/sidebar.php';
@@ -311,9 +358,97 @@ include __DIR__ . '/../includes/sidebar.php';
       <div class="card-body"><canvas id="dashChart" height="90"></canvas></div>
     </div>
 
+    <?php if ($_role !== 'warga'): ?>
+    <!-- Real-time Financial Dashboard -->
+    <div class="row g-3 mt-3">
+      <!-- Saldo Kas Terkini -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-header">
+            <i class="bi bi-wallet2 me-1 text-primary"></i> Saldo Kas Terkini
+          </div>
+          <div class="card-body text-center">
+            <div class="display-6 fw-bold <?= $saldo_kas >= 0 ? 'text-success' : 'text-danger' ?>">
+              <?= idr($saldo_kas) ?>
+            </div>
+            <div class="mt-2">
+              <span class="badge <?= $saldo_kas >= 0 ? 'bg-success' : 'bg-danger' ?>">
+                <?= $saldo_kas >= 0 ? 'Positif' : 'Defisit' ?>
+              </span>
+            </div>
+            <hr>
+            <div class="row text-muted small">
+              <div class="col-6">
+                <div>Pemasukan</div>
+                <div class="fw-bold text-success"><?= idr((float)$saldo_data['total_in']) ?></div>
+              </div>
+              <div class="col-6">
+                <div>Pengeluaran</div>
+                <div class="fw-bold text-danger"><?= idr((float)$saldo_data['total_out']) ?></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 5 Pengeluaran -->
+      <div class="col-md-8">
+        <div class="card h-100">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-graph-down me-1 text-danger"></i> Top 5 Pengeluaran — <?= period_label($year, $month) ?></span>
+            <?php if (can('cashbook.view')): ?>
+            <a href="<?= APP_URL ?>/pages/cashbook/index.php" class="btn btn-sm btn-outline-secondary">Lihat Buku Kas</a>
+            <?php endif; ?>
+          </div>
+          <div class="card-body p-0">
+            <?php if (empty($top_expenses)): ?>
+              <div class="p-3 text-muted small">Belum ada pengeluaran bulan ini.</div>
+            <?php else: ?>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Kategori</th>
+                    <th class="text-end">Jumlah</th>
+                    <th class="text-end">Persentase</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($top_expenses as $exp): 
+                    $pct = $total_expense > 0 ? round(($exp['total'] / $total_expense) * 100, 1) : 0;
+                  ?>
+                  <tr>
+                    <td><?= e($exp['category']) ?></td>
+                    <td class="text-end"><?= idr((float)$exp['total']) ?></td>
+                    <td class="text-end">
+                      <span class="badge bg-secondary"><?= $pct ?>%</span>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grafik Kas Masuk/Keluar 7 Hari -->
+    <div class="card mt-3">
+      <div class="card-header">
+        <i class="bi bi-graph-up-arrow me-1 text-info"></i> Arus Kas 7 Hari Terakhir
+      </div>
+      <div class="card-body">
+        <canvas id="cashFlowChart" height="80"></canvas>
+      </div>
+    </div>
+    <?php endif; ?>
+
   </div><!-- /.main-content -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
+// Tren Pembayaran Tahunan
 new Chart(document.getElementById('dashChart'), {
   type: 'bar',
   data: {
@@ -345,5 +480,56 @@ new Chart(document.getElementById('dashChart'), {
     }
   }
 });
+
+<?php if ($_role !== 'warga'): ?>
+// Arus Kas 7 Hari
+new Chart(document.getElementById('cashFlowChart'), {
+  type: 'line',
+  data: {
+    labels: <?= json_encode($cf_labels) ?>,
+    datasets: [
+      {
+        label: 'Pemasukan',
+        data: <?= json_encode($cf_masuk) ?>,
+        backgroundColor: 'rgba(25,135,84,0.1)',
+        borderColor: 'rgba(25,135,84,1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'Pengeluaran',
+        data: <?= json_encode($cf_keluar) ?>,
+        backgroundColor: 'rgba(220,53,69,0.1)',
+        borderColor: 'rgba(220,53,69,1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { 
+      legend: { position: 'top' },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return context.dataset.label + ': Rp ' + context.parsed.y.toLocaleString('id-ID');
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { 
+          callback: v => 'Rp ' + (v/1000).toFixed(0) + 'k' 
+        }
+      }
+    }
+  }
+});
+<?php endif; ?>
 </script>
 <?php include __DIR__ . '/../includes/footer.php'; ?>

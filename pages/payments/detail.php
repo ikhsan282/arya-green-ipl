@@ -82,6 +82,9 @@ include __DIR__ . '/../../includes/sidebar.php';
               <a href="print_receipt.php?id=<?= $id ?>" target="_blank" class="btn btn-outline-primary btn-sm ms-2">
                 <i class="bi bi-printer me-1"></i> Cetak Kwitansi
               </a>
+              <a href="download_receipt_pdf.php?id=<?= $id ?>" target="_blank" class="btn btn-outline-success btn-sm ms-2">
+                <i class="bi bi-file-pdf me-1"></i> Download PDF
+              </a>
               <?php if (in_array(auth_user()['role'] ?? '', ['super_admin', 'ketua'])): ?>
               <a href="unverify.php?id=<?= $id ?>" class="btn btn-outline-danger btn-sm ms-2">
                 <i class="bi bi-x-circle me-1"></i> Batalkan Verifikasi
