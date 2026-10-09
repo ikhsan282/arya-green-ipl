@@ -110,7 +110,10 @@ include __DIR__ . '/../../includes/sidebar.php';
               <i class="bi bi-printer me-1"></i>Cetak
             </button>
             <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>" class="btn btn-sm btn-outline-success">
-              <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
+            </a>
+            <a href="export.php?year=<?= $f_year ?>&month=<?= $f_month ?>&format=xlsx" class="btn btn-sm btn-success">
+              <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
           </div>
         </form>

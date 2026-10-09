@@ -114,11 +114,11 @@ arya-green-ipl/
 │   │   └── form.php           # Tambah/edit metode (rekening, QR, instruksi, urutan)
 │   ├── reports/
 │   │   ├── index.php          # Laporan tagihan per periode
-│   │   ├── export.php         # Export CSV laporan tagihan
+│   │   ├── export.php         # Export CSV/XLSX laporan tagihan
 │   │   ├── arrears.php        # Rekap tunggakan multi-periode
-│   │   ├── arrears_export.php # Export CSV tunggakan
+│   │   ├── arrears_export.php # Export CSV/XLSX tunggakan
 │   │   ├── cashflow.php       # Laporan arus kas gabungan + chart
-│   │   └── cashflow_export.php# Export CSV arus kas
+│   │   └── cashflow_export.php# Export CSV/XLSX arus kas
 │   ├── cashbook/              # Buku kas pemasukan & pengeluaran
 │   ├── expense/               # Approval pengeluaran
 │   ├── inventory/
@@ -192,8 +192,8 @@ arya-green-ipl/
 - **Laporan Arus Kas Gabungan** — bar+line chart, breakdown per kategori, export CSV
 
 ### Laporan
-- Laporan tagihan per periode + export CSV
-- **Rekap tunggakan multi-periode** — warga nunggak lintas bulan, badge merah ≥3 bulan, export CSV
+- Laporan tagihan per periode + export CSV/Excel (`.xlsx`)
+- **Rekap tunggakan multi-periode** — warga nunggak lintas bulan, badge merah ≥3 bulan, export CSV/Excel
 - Tren koleksi tahunan
 
 ### Komunitas & Warga
@@ -239,5 +239,5 @@ arya-green-ipl/
 - **Email Template HTML Responsif** — branding gradasi, tombol CTA (VML fallback Outlook), preheader inbox, footer link portal & kas publik, plain-text fallback multipart/alternative
 - **PWA Install Prompt** — `beforeinstallprompt` handler di `portal.php` (Android/Chrome/Edge), panduan manual "Bagikan → Tambah ke Layar Utama" untuk iOS Safari, dismiss persisten di `localStorage`
 - **Offline Fallback & Outbox Sync** — `offline.html` halaman ramah pengguna, `sw.js` IndexedDB outbox + Background Sync API, antrian POST aduan & polling saat offline dikirim otomatis saat online
-- **Export CSV Encoding** — UTF-8 BOM + `Content-Disposition: attachment; filename*=UTF-8''...` (RFC 6266/5987) untuk nama file non-ASCII & spasi
+- **Export CSV/Excel** — CSV memakai UTF-8 BOM + `Content-Disposition: attachment; filename*=UTF-8''...`; Excel dibuat sebagai OOXML `.xlsx` native tanpa ekstensi PHP tambahan
 - **Dark Mode Toggle** — CSS custom properties + `data-bs-theme`, persisten di `localStorage`, default mengikuti `prefers-color-scheme`, anti-FOUC inline script di `header.php`

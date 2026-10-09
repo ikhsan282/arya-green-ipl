@@ -21,6 +21,20 @@ $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $by_month = array_column($rows, null, 'm');
 
+if (($_GET['format'] ?? '') === 'xlsx') {
+    require_once __DIR__ . '/../../includes/xlsx.php';
+    $data = [['Bulan', 'Pemasukan', 'Pengeluaran', 'Surplus/Defisit', 'Saldo Kumulatif']];
+    $cumulative = 0;
+    for ($m = 1; $m <= 12; $m++) {
+        $masuk  = (float)($by_month[$m]['masuk']  ?? 0);
+        $keluar = (float)($by_month[$m]['keluar'] ?? 0);
+        $net    = $masuk - $keluar;
+        $cumulative += $net;
+        $data[] = [bulan_indo($m).' '.$f_year, $masuk, $keluar, $net, $cumulative];
+    }
+    xlsx_download('arus_kas_' . $f_year . '.xlsx', ['Arus Kas' => $data]);
+}
+
 $filename = 'arus_kas_' . $f_year . '.csv';
 header_csv_download($filename);
 

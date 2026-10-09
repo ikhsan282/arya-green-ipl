@@ -25,6 +25,28 @@ $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 $label    = bulan_indo($f_month) . '_' . $f_year;
+$status_map = ['belum_bayar' => 'Belum Bayar', 'sudah_bayar' => 'Sudah Bayar', 'terlambat' => 'Terlambat'];
+
+if (($_GET['format'] ?? '') === 'xlsx') {
+    require_once __DIR__ . '/../../includes/xlsx.php';
+    $data = [['No','Unit','Tipe','Nama Warga','No. HP','IPL','Denda','Total','Status','Tgl Bayar']];
+    foreach ($rows as $i => $r) {
+        $data[] = [
+            $i + 1,
+            $r['block'] . '-' . $r['unit_number'],
+            $r['type_name'],
+            $r['resident_name'] ?? '-',
+            $r['phone'] ?? '-',
+            (float)$r['amount'],
+            (float)$r['fine_amount'],
+            (float)$r['total_amount'],
+            $status_map[$r['status']] ?? $r['status'],
+            $r['paid_date'] ? date('d/m/Y', strtotime($r['paid_date'])) : '-',
+        ];
+    }
+    xlsx_download("laporan_ipl_{$label}.xlsx", ['Laporan IPL' => $data]);
+}
+
 $filename = "laporan_ipl_{$label}.csv";
 
 header_csv_download($filename);
@@ -34,12 +56,6 @@ $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");
 
 fputcsv($out, ['No','Unit','Tipe','Nama Warga','No. HP','IPL','Denda','Total','Status','Tgl Bayar']);
-
-$status_map = [
-    'belum_bayar' => 'Belum Bayar',
-    'sudah_bayar' => 'Sudah Bayar',
-    'terlambat'   => 'Terlambat',
-];
 
 foreach ($rows as $i => $r) {
     fputcsv($out, [

@@ -91,7 +91,10 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="col-auto d-flex gap-2">
             <button class="btn btn-sm btn-success"><i class="bi bi-search me-1"></i>Tampilkan</button>
             <a href="cashflow_export.php?year=<?= $f_year ?>" class="btn btn-sm btn-outline-success">
-              <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
+            </a>
+            <a href="cashflow_export.php?year=<?= $f_year ?>&format=xlsx" class="btn btn-sm btn-success">
+              <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
               <i class="bi bi-printer me-1"></i>Cetak

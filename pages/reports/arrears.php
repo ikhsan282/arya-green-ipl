@@ -95,7 +95,10 @@ include __DIR__ . '/../../includes/sidebar.php';
             <button class="btn btn-sm btn-success"><i class="bi bi-search me-1"></i>Cari</button>
             <a href="arrears.php" class="btn btn-sm btn-outline-secondary">Reset</a>
             <a href="arrears_export.php?q=<?= urlencode($search) ?>" class="btn btn-sm btn-outline-danger">
-              <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+              <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
+            </a>
+            <a href="arrears_export.php?q=<?= urlencode($search) ?>&format=xlsx" class="btn btn-sm btn-danger">
+              <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
               <i class="bi bi-printer me-1"></i>Cetak

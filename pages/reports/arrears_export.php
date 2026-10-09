@@ -34,6 +34,23 @@ if ($params) $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+if (($_GET['format'] ?? '') === 'xlsx') {
+    require_once __DIR__ . '/../../includes/xlsx.php';
+    $data = [['No','Unit','Nama Warga','No. HP','Jumlah Bulan','Periode Nunggak','Total Tunggakan']];
+    foreach ($rows as $i => $r) {
+        $data[] = [
+            $i + 1,
+            $r['block'] . '-' . $r['unit_number'],
+            $r['resident_name'] ?? '-',
+            $r['phone'] ?? '-',
+            (int)$r['jumlah_periode'],
+            $r['daftar_periode'],
+            (float)$r['total_tunggakan'],
+        ];
+    }
+    xlsx_download('rekap_tunggakan_' . date('Ymd') . '.xlsx', ['Tunggakan' => $data]);
+}
+
 $filename = 'rekap_tunggakan_' . date('Ymd') . '.csv';
 header_csv_download($filename);
 
