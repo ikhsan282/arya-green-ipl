@@ -43,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
     $year  = (int)$_POST['gen_year'];
     $month = (int)$_POST['gen_month'];
     $due   = clean($_POST['due_date'] ?? '');
+    $only_mapped = isset($_POST['only_mapped']);
 
     if ($year < 2020 || $month < 1 || $month > 12 || !$due) {
         flash('error', 'Periode atau tanggal jatuh tempo tidak valid.');
@@ -65,11 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         return $s->get_result()->fetch_row()[0];
     })();
 
-    // Get all units (dihuni + kosong dengan komponen dasar)
+    // Get units: filter by mapping if checkbox checked
+    $unit_where = 'u.status IN ("dihuni","kosong")';
+    if ($only_mapped) {
+        $unit_where .= ' AND EXISTS(SELECT 1 FROM residents WHERE unit_id=u.id AND is_active=1)';
+    }
     $units_res = $db->query(
-        'SELECT u.id AS unit_id, u.status, u.unit_type_id,
+        "SELECT u.id AS unit_id, u.status, u.unit_type_id,
                 (SELECT id FROM residents WHERE unit_id=u.id AND is_active=1 ORDER BY id LIMIT 1) AS resident_id
-         FROM units u WHERE u.status IN ("dihuni","kosong")'
+         FROM units u WHERE {$unit_where}"
     );
 
     // Komponen per tipe unit: unit_type_id => [id,name,amount,charge_when_vacant]
@@ -124,8 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $db->commit();
         $generated++;
     }
-    log_activity('generate', 'billing', "Generated {$generated} bills for {$label}");
-    flash('success', "Berhasil generate {$generated} tagihan untuk {$label}." . ($skipped ? " {$skipped} sudah ada, dilewati." : ''));
+    log_activity('generate', 'billing', "Generated {$generated} bills for {$label}" . ($only_mapped ? ' (only mapped units)' : ''));
+    flash('success', "Berhasil generate {$generated} tagihan untuk {$label}" . ($only_mapped ? " (hanya unit dengan warga aktif)" : "") . "." . ($skipped ? " {$skipped} sudah ada/dilewati." : ''));
     redirect(APP_URL . '/pages/billing/index.php');
 }
 
@@ -261,6 +266,12 @@ include __DIR__ . '/../../includes/sidebar.php';
             <label class="form-label">Jatuh Tempo</label>
             <input type="date" name="due_date" class="form-control form-control-sm"
                    value="<?= date('Y-m-') . '20' ?>" required>
+          </div>
+          <div class="col-auto">
+            <div class="form-check mt-4">
+              <input type="checkbox" name="only_mapped" value="1" class="form-check-input" id="onlyMapped" checked>
+              <label class="form-check-label small" for="onlyMapped">Hanya unit dengan warga aktif</label>
+            </div>
           </div>
           <div class="col-auto">
             <button type="submit" class="btn btn-warning btn-sm"
