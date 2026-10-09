@@ -1,0 +1,27 @@
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Security Headers
+Header set X-Frame-Options "DENY"
+Header set X-Content-Type-Options "nosniff"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+Header unset X-Powered-By
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(config|database|\.env|composer\.(json|lock)|package\.json)">
+    Require all denied
+</FilesMatch>
+
+# PHP security (if not set in php.ini)
+php_flag display_errors Off
+php_flag log_errors On
+php_value session.cookie_secure 1
+php_value session.cookie_httponly 1
+php_value session.cookie_samesite Strict
+php_value upload_max_filesize 2M
+php_value post_max_size 3M
