@@ -45,6 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', 'Pilih file CSV terlebih dahulu.');
             redirect(APP_URL.'/pages/onboarding/index.php?step=2');
         }
+        // Security: validate file size (max 2MB)
+        if ($_FILES['csv_file']['size'] > 2 * 1024 * 1024) {
+            flash('error', 'File CSV maksimal 2MB');
+            redirect(APP_URL.'/pages/onboarding/index.php?step=2');
+        }
         $file = $_FILES['csv_file']['tmp_name'];
         $preview = [];
         if (($handle = fopen($file, 'r')) !== false) {
