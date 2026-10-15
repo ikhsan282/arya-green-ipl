@@ -138,7 +138,7 @@ arya-green-ipl/
 │   ├── users/                 # CRUD user
 │   ├── roles/                 # Permission editor per role
 │   ├── public/
-│   │   └── kas.php            # Halaman publik rekap kas (tanpa login)
+│   │   └── (tidak ada halaman kas publik — akses kas hanya via login)
 │   └── 403.php
 ├── uploads/
 │   └── payment_proofs/        # Bukti pembayaran (jpg/png/webp/pdf)
@@ -153,7 +153,7 @@ arya-green-ipl/
 | Super Admin | Semua fitur |
 | Ketua | Semua kecuali hapus user & edit role |
 | Bendahara | Tagihan, pembayaran, laporan, kas |
-| Warga | Read-only semua |
+| Warga | Read-only tagihan & data sendiri (tanpa akses kas) |
 
 ---
 
@@ -189,9 +189,8 @@ arya-green-ipl/
 - **Cetak kwitansi** print-friendly dengan terbilang + kolom tanda tangan
 
 ### Keuangan
-- **Buku Kas** — pemasukan & pengeluaran, auto-entry dari pembayaran IPL
+- **Buku Kas** — pemasukan & pengeluaran, auto-entry dari pembayaran IPL; akses hanya untuk user yang login (`cashbook.view`)
 - **Approval Pengeluaran** — ajukan → setujui/tolak → auto-catat ke kas
-- **Rekap Kas Publik** — halaman publik tanpa login
 - **Laporan Arus Kas Gabungan** — bar+line chart, breakdown per kategori, export CSV
 
 ### Laporan
@@ -239,7 +238,7 @@ arya-green-ipl/
 - **Upload Protection** — `.htaccess` default-deny, whitelist hanya `.jpg/.jpeg/.png/.webp/.pdf`, dual Apache 2.2/2.4 syntax
 
 ### UX & PWA Lanjutan
-- **Email Template HTML Responsif** — branding gradasi, tombol CTA (VML fallback Outlook), preheader inbox, footer link portal & kas publik, plain-text fallback multipart/alternative
+- **Email Template HTML Responsif** — branding gradasi, tombol CTA (VML fallback Outlook), preheader inbox, footer link portal, plain-text fallback multipart/alternative
 - **PWA Install Prompt** — `beforeinstallprompt` handler di `portal.php` (Android/Chrome/Edge), panduan manual "Bagikan → Tambah ke Layar Utama" untuk iOS Safari, dismiss persisten di `localStorage`
 - **Offline Fallback & Outbox Sync** — `offline.html` halaman ramah pengguna, `sw.js` IndexedDB outbox + Background Sync API, antrian POST aduan & polling saat offline dikirim otomatis saat online
 - **Export CSV/Excel** — CSV memakai UTF-8 BOM + `Content-Disposition: attachment; filename*=UTF-8''...`; Excel dibuat sebagai OOXML `.xlsx` native tanpa ekstensi PHP tambahan
