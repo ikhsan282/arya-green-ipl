@@ -414,8 +414,6 @@ HTML;
               <p style="margin:0 0 8px 0;">Email ini dikirim secara otomatis oleh sistem. Mohon untuk tidak membalas email ini secara langsung.</p>
               <p style="margin:0;">
                 <a href="{$app_url}" target="_blank" style="color:#198754;text-decoration:none;font-weight:500;">Buka Portal Warga</a>
-                &bull;
-                <a href="{$app_url}/pages/public/kas.php" target="_blank" style="color:#198754;text-decoration:none;font-weight:500;">Kas Publik</a>
               </p>
             </td>
           </tr>

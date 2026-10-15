@@ -26,11 +26,6 @@
       "name": "Tagihan Saya",
       "url": "/arya-green-ipl/pages/billing/index.php",
       "icons": [{"src": "/arya-green-ipl/assets/icons/icon-192.png", "sizes": "192x192"}]
-    },
-    {
-      "name": "Kas Publik",
-      "url": "/arya-green-ipl/pages/public/kas.php",
-      "icons": [{"src": "/arya-green-ipl/assets/icons/icon-192.png", "sizes": "192x192"}]
     }
   ]
 }

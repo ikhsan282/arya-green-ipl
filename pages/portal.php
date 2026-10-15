@@ -272,10 +272,10 @@ $page_title = 'Portal Warga';
       </a>
     </div>
     <div class="col-6">
-      <a href="<?= APP_URL ?>/pages/public/kas.php" target="_blank" class="card text-decoration-none">
+      <a href="<?= APP_URL ?>/pages/billing/index.php" class="card text-decoration-none">
         <div class="card-body text-center py-3">
-          <i class="bi bi-eye fs-2 text-success"></i>
-          <div class="small fw-semibold mt-1">Kas Publik</div>
+          <i class="bi bi-receipt fs-2 text-success"></i>
+          <div class="small fw-semibold mt-1">Tagihan Saya</div>
         </div>
       </a>
     </div>

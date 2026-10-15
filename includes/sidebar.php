@@ -221,14 +221,6 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
-    <!-- Transparansi Publik -->
-    <li class="nav-item">
-      <a href="<?= APP_URL ?>/pages/public/kas.php" target="_blank"
-         class="nav-link text-white-50<?= nav_active('/public/kas') ?>">
-        <i class="bi bi-eye me-2"></i> Kas Publik <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.7rem"></i>
-      </a>
-    </li>
-
     <!-- ── Pengaturan ── -->
     <?php if (can('users.view') || can('roles.manage') || can('environments.view')): ?>
     <li class="nav-item mt-2">

@@ -24,18 +24,6 @@ if ($q_units) {
     $total_dihuni = (int)($u_row['dihuni'] ?? 0);
 }
 
-// Saldo kas bulan berjalan
-$cur_year = (int)date('Y');
-$cur_month = (int)date('n');
-$q_kas = $db->prepare('SELECT
-    COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0) -
-    COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS saldo_bulan
-    FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?');
-$q_kas->bind_param('ii', $cur_year, $cur_month);
-$q_kas->execute();
-$kas_row = $q_kas->get_result()->fetch_assoc();
-$saldo_bulan = (float)($kas_row['saldo_bulan'] ?? 0);
-
 // Polling aktif (jika ada)
 $now = date('Y-m-d H:i:s');
 $q_poll = $db->prepare('SELECT title, ends_at FROM polls WHERE is_public=1 AND ends_at >= ? ORDER BY created_at DESC LIMIT 1');
@@ -210,12 +198,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             <a class="nav-link text-dark fw-medium" href="#fitur">Fitur Lingkungan</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link text-dark fw-medium" href="#transparansi">Transparansi Kas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link text-dark fw-medium" href="<?= APP_URL ?>/pages/public/kas.php">
-              <i class="bi bi-wallet2 me-1 text-success"></i>Kas Terbuka
-            </a>
+            <a class="nav-link text-dark fw-medium" href="#transparansi">Laporan Kas</a>
           </li>
           <li class="nav-item ms-lg-2">
             <a class="btn btn-brand w-100" href="<?= APP_URL ?>/auth/login.php">
@@ -244,9 +227,6 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
           <div class="d-flex flex-wrap gap-3">
             <a href="<?= APP_URL ?>/auth/login.php" class="btn btn-brand btn-lg">
               <i class="bi bi-door-open-fill me-1"></i> Masuk ke Portal Warga
-            </a>
-            <a href="<?= APP_URL ?>/pages/public/kas.php" class="btn btn-brand-outline btn-lg">
-              <i class="bi bi-graph-up-arrow me-1"></i> Lihat Rekap Kas Publik
             </a>
           </div>
 
@@ -283,11 +263,9 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
                 </div>
                 <div class="col-6">
                   <div class="stat-box text-center">
-                    <div class="text-muted small mb-1">Surplus Kas <?= bulan_indo($cur_month) ?></div>
-                    <div class="h5 fw-bold mb-0 <?= $saldo_bulan >= 0 ? 'text-success' : 'text-danger' ?>">
-                      <?= idr($saldo_bulan) ?>
-                    </div>
-                    <small class="text-muted">Bulan berjalan</small>
+                    <div class="text-muted small mb-1">Portal Warga</div>
+                    <div class="h5 fw-bold mb-0 text-success">Aktif</div>
+                    <small class="text-muted">PWA Mobile Ready</small>
                   </div>
                 </div>
               </div>
@@ -340,7 +318,7 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
             </div>
             <h5 class="fw-bold mb-2">Transparansi Kas Lingkungan</h5>
             <p class="text-muted small mb-0">
-              Setiap rupiah pemasukan dan pengeluaran dicatat secara akuntabel. Warga dapat melihat laporan keuangan bulanan tanpa birokrasi.
+              Setiap rupiah pemasukan dan pengeluaran dicatat secara akuntabel. Pengurus dan warga dapat melihat laporan keuangan bulanan langsung dari portal.
             </p>
           </div>
         </div>
@@ -407,9 +385,6 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
         <a href="<?= APP_URL ?>/auth/login.php" class="btn btn-light btn-lg text-success fw-bold px-4">
           <i class="bi bi-box-arrow-in-right me-1"></i> Masuk Sekarang
         </a>
-        <a href="<?= APP_URL ?>/pages/public/kas.php" class="btn btn-outline-light btn-lg px-4">
-          <i class="bi bi-cash-stack me-1"></i> Rekap Kas Terbuka
-        </a>
       </div>
     </div>
   </section>
@@ -428,7 +403,6 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
         <div class="col-md-6 text-center text-md-end">
           <div class="d-flex flex-wrap justify-content-center justify-content-md-end gap-3 mb-2">
             <a href="<?= APP_URL ?>/auth/login.php" class="text-white-50 text-decoration-none small">Portal Login</a>
-            <a href="<?= APP_URL ?>/pages/public/kas.php" class="text-white-50 text-decoration-none small">Kas Terbuka</a>
           </div>
           <small class="text-white-50">&copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. v<?= e(APP_VERSION) ?></small>
         </div>
