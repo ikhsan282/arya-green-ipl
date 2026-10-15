@@ -153,7 +153,7 @@ arya-green-ipl/
 | Super Admin | Semua fitur |
 | Ketua | Semua kecuali hapus user & edit role |
 | Bendahara | Tagihan, pembayaran, laporan, kas |
-| Warga | Read-only tagihan & data sendiri (tanpa akses kas) |
+| Warga | Read-only tagihan & data sendiri + ringkasan kas lingkungan |
 
 ---
 
@@ -212,6 +212,7 @@ arya-green-ipl/
 ### Portal Warga (PWA)
 - Login warga via token/PIN (tanpa username/password)
 - Lihat tagihan sendiri, status pembayaran
+- **Kas Lingkungan (ringkas)** — saldo kas total + pemasukan/pengeluaran bulan berjalan; tanpa detail transaksi (transparansi tanpa membuka data internal)
 - Kirim pengaduan langsung dari portal
 - Dapat diinstall sebagai PWA di HP
 - Service worker untuk akses offline dasar

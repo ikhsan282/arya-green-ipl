@@ -60,6 +60,20 @@ $polls = $polls->get_result()->fetch_all(MYSQLI_ASSOC);
 
 $total_tunggakan = array_sum(array_column($bills, 'total_amount'));
 
+// Ringkasan kas lingkungan (bulan berjalan) — transparansi warga, tanpa detail transaksi.
+$cur_year = (int) date('Y');
+$cur_month = (int) date('n');
+$ks = $db->prepare('SELECT
+    COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
+    COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
+  FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?');
+$ks->bind_param('ii', $cur_year, $cur_month); $ks->execute();
+$kas_bulan = $ks->get_result()->fetch_assoc() ?: ['masuk' => 0, 'keluar' => 0];
+$saldo_total_row = $db->query('SELECT
+    COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0) -
+    COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS saldo FROM cash_book')->fetch_assoc();
+$saldo_total = (float) ($saldo_total_row['saldo'] ?? 0);
+
 $page_title = 'Portal Warga';
 ?>
 <!DOCTYPE html>
@@ -204,6 +218,30 @@ $page_title = 'Portal Warga';
     </div>
   </div>
   <?php endif; ?>
+
+  <!-- Kas Lingkungan (ringkas) -->
+  <div class="card mb-3">
+    <div class="card-header fw-semibold bg-white border-0 pb-0">
+      <i class="bi bi-wallet2 me-1 text-success"></i> Kas Lingkungan
+    </div>
+    <div class="card-body pt-2">
+      <div class="text-center py-2">
+        <div class="small text-muted">Saldo Kas</div>
+        <div class="h3 fw-bold mb-0 <?= $saldo_total >= 0 ? 'text-success' : 'text-danger' ?>"><?= idr($saldo_total) ?></div>
+      </div>
+      <div class="row text-center small border-top pt-2">
+        <div class="col-6">
+          <div class="text-muted">Masuk <?= bulan_indo($cur_month) ?></div>
+          <div class="fw-bold text-success"><?= idr((float) $kas_bulan['masuk']) ?></div>
+        </div>
+        <div class="col-6">
+          <div class="text-muted">Keluar <?= bulan_indo($cur_month) ?></div>
+          <div class="fw-bold text-danger"><?= idr((float) $kas_bulan['keluar']) ?></div>
+        </div>
+      </div>
+      <p class="text-muted small mb-0 mt-2 text-center">Ringkasan transparansi kas lingkungan.</p>
+    </div>
+  </div>
 
   <!-- Polling aktif -->
   <?php if (!empty($polls)): ?>
