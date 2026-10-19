@@ -76,9 +76,11 @@ if (!$bill) {
 // Warga tidak bisa pilih metode tunai (hanya admin/ketua/bendahara)
 $role = auth_role();
 $tunai_filter = $role === 'warga' ? " AND code != 'tunai'" : '';
+$channel_active = gateway_channel() !== null;
+$gateway_filter = $channel_active ? '' : " AND code != 'qris-klikqris'";
 $payment_methods = $db->query(
-    'SELECT id, code, name, account_no, account_name, instructions
-     FROM payment_methods WHERE is_active=1' . $tunai_filter . ' ORDER BY sort_order, name'
+'SELECT id, code, name, account_no, account_name, instructions
+ FROM payment_methods WHERE is_active=1' . $tunai_filter . $gateway_filter . ' ORDER BY sort_order, name'
 )->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -115,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Pilih metode pembayaran.';
     }
     $is_cash = $payment_method !== null && (int)($payment_method['auto_verify'] ?? 0) === 1;
+    $is_gateway = $payment_method !== null && $payment_method['code'] === 'qris-klikqris';
+    if ($is_gateway && !$channel_active) $errors[] = 'QRIS Online sedang tidak tersedia.';
 
     // Validate bill exists & ownership
     if ($sel_bill_id && empty($errors)) {
@@ -156,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
+        if ($is_gateway) redirect(APP_URL . '/pages/payments/gateway_pay.php?bill_id=' . $sel_bill_id);
         $uid = auth_id();
         $pm_name = $payment_method['name'];
         $stmt = $db->prepare(
