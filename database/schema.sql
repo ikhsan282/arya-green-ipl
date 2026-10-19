@@ -427,11 +427,56 @@ CREATE TABLE `payment_methods` (
   `updated_at`   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ------------------------------------------------------------
+-- Payment Channels (konfigurasi gateway pembayaran, mis. KlikQRIS)
+-- ------------------------------------------------------------
+CREATE TABLE `payment_channels` (
+  `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `code`          VARCHAR(30)  NOT NULL UNIQUE,
+  `name`          VARCHAR(100) NOT NULL,
+  `provider`      VARCHAR(30)  NOT NULL DEFAULT 'klikqris',
+  `api_key`       VARCHAR(255) DEFAULT NULL,
+  `merchant_id`   VARCHAR(100) DEFAULT NULL,
+  `mode`          ENUM('sandbox','production') NOT NULL DEFAULT 'sandbox',
+  `webhook_token` VARCHAR(64)  DEFAULT NULL,
+  `instructions`  TEXT         DEFAULT NULL,
+  `is_active`     TINYINT(1)   NOT NULL DEFAULT 0,
+  `sort_order`    INT          NOT NULL DEFAULT 0,
+  `created_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabel order QRIS yang dibuat lewat gateway (satu order = satu tagihan)
+CREATE TABLE `payment_gateway_orders` (
+  `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `channel_id`     INT UNSIGNED NOT NULL,
+  `order_id`       VARCHAR(64)  NOT NULL UNIQUE,
+  `bill_id`        INT UNSIGNED DEFAULT NULL,
+  `user_id`        INT UNSIGNED DEFAULT NULL,
+  `amount`         DECIMAL(12,2) NOT NULL,
+  `total_amount`   DECIMAL(12,2) DEFAULT NULL,
+  `status`         ENUM('PENDING','PAID','EXPIRED','FAILED') NOT NULL DEFAULT 'PENDING',
+  `qris_url`       VARCHAR(500) DEFAULT NULL,
+  `direct_url`     VARCHAR(500) DEFAULT NULL,
+  `signature`      VARCHAR(255) DEFAULT NULL,
+  `gateway_type`   VARCHAR(30)  DEFAULT NULL,
+  `payload`        JSON         DEFAULT NULL,
+  `paid_at`        DATETIME     DEFAULT NULL,
+  `expired_at`     DATETIME     DEFAULT NULL,
+  `payment_id`     INT UNSIGNED DEFAULT NULL,
+  `created_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `ix_pgo_bill` (`bill_id`),
+  KEY `ix_pgo_status` (`status`),
+  CONSTRAINT `fk_pgo_channel` FOREIGN KEY (`channel_id`) REFERENCES `payment_channels` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO `payment_methods` (`code`, `name`, `auto_verify`, `sort_order`) VALUES
   ('tunai',    'Tunai',          1, 1),
   ('transfer', 'Transfer Bank',  0, 2),
   ('qris',     'QRIS',           0, 3),
-  ('lainnya',  'Lainnya',        0, 4);
+  ('qris-klikqris', 'QRIS Online (KlikQRIS)', 1, 4),
+  ('lainnya',  'Lainnya',        0, 5);
 
 -- ------------------------------------------------------------
 -- Payments
