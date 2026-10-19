@@ -69,6 +69,7 @@ INSERT INTO `permissions` (`name`, `label`, `module`) VALUES
   -- Payment Methods
   ('payment_methods.view',    'Lihat Metode Pembayaran',        'payments'),
   ('payment_methods.manage',  'Kelola Metode Pembayaran',       'payments'),
+  ('payment_channels.manage', 'Kelola Channel Pembayaran',      'payments'),
   -- Cashbook
   ('cashbook.view',           'Lihat Buku Kas',                 'cashbook'),
   ('cashbook.manage',         'Kelola Buku Kas',                'cashbook'),
@@ -137,6 +138,7 @@ WHERE `name` IN (
   'ipl_components.view','ipl_components.manage',
   'payments.view','payments.create','payments.verify',
   'payment_methods.view',
+  'payment_channels.manage',
   'cashbook.view','cashbook.manage',
   'expense.request',
   'reports.view',
@@ -470,6 +472,9 @@ CREATE TABLE `payment_gateway_orders` (
   KEY `ix_pgo_status` (`status`),
   CONSTRAINT `fk_pgo_channel` FOREIGN KEY (`channel_id`) REFERENCES `payment_channels` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `payment_channels` (`code`,`name`,`provider`,`mode`,`is_active`,`webhook_token`) VALUES
+  ('klikqris','KlikQRIS','klikqris','sandbox',0,LOWER(SHA2(CONCAT(RAND(),UUID()),256)));
 
 INSERT INTO `payment_methods` (`code`, `name`, `auto_verify`, `sort_order`) VALUES
   ('tunai',    'Tunai',          1, 1),

@@ -96,6 +96,14 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
+    <?php if (can('payment_channels.manage')): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/payment_channels/index.php" class="nav-link text-white<?= nav_active('/payment_channels') ?>">
+        <i class="bi bi-shield-lock me-2"></i> Channel Pembayaran
+      </a>
+    </li>
+    <?php endif; ?>
+
     <?php if (can('cashbook.view')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/cashbook/index.php"
