@@ -25,6 +25,8 @@ function gateway_channel(string $provider = 'klikqris'): ?array
 /** Base URL gateway: sandbox pakai prefix berbeda. */
 function gateway_base_url(array $channel): string
 {
+    // ponytail: env KLIKQRIS_BASE_URL hanya untuk tes lokal (mock server); hapus bila tak perlu.
+    if ($o = getenv('KLIKQRIS_BASE_URL')) return rtrim($o, '/');
     return $channel['mode'] === 'sandbox' ? KQ_BASE . '/sandbox' : KQ_BASE;
 }
 
