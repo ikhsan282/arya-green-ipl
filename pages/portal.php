@@ -32,20 +32,29 @@ if ($resident) {
     $bills = $bs->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-// Riwayat pembayaran (5 terakhir)
+// Riwayat pembayaran — semua, dengan pagination
 $history = [];
+$history_page = max(1, (int)($_GET['hp'] ?? 1));
+$history_per  = 10;
+$history_offset = ($history_page - 1) * $history_per;
+$history_total = 0;
 if ($resident) {
+    $ct = $db->prepare('SELECT COUNT(*) FROM payments p JOIN bills b ON b.id=p.bill_id WHERE b.resident_id=?');
+    $ct->bind_param('i', $resident['id']); $ct->execute();
+    $history_total = (int)$ct->get_result()->fetch_row()[0];
+
     $hs = $db->prepare(
-        'SELECT p.*, bp.label AS period
+        'SELECT p.*, bp.label AS period, bp.period_year, bp.period_month
          FROM payments p
          JOIN bills b ON b.id=p.bill_id
          JOIN billing_periods bp ON bp.id=b.billing_period_id
          WHERE b.resident_id=?
-         ORDER BY p.created_at DESC LIMIT 5'
+         ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
     );
-    $hs->bind_param('i', $resident['id']); $hs->execute();
+    $hs->bind_param('iii', $resident['id'], $history_per, $history_offset); $hs->execute();
     $history = $hs->get_result()->fetch_all(MYSQLI_ASSOC);
 }
+$history_pages = $history_total > 0 ? (int)ceil($history_total / $history_per) : 1;
 
 // Polling aktif
 $now = date('Y-m-d H:i:s');
@@ -265,28 +274,54 @@ $page_title = 'Portal Warga';
   <?php endif; ?>
 
   <!-- Riwayat Pembayaran -->
-  <?php if (!empty($history)): ?>
+  <?php if ($resident): ?>
   <div class="card mb-3">
-    <div class="card-header fw-semibold bg-white border-0 pb-0">
-      <i class="bi bi-clock-history me-1 text-success"></i> Riwayat Pembayaran
+    <div class="card-header fw-semibold bg-white border-0 pb-0 d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-clock-history me-1 text-success"></i> Riwayat Pembayaran</span>
+      <small class="text-muted"><?= $history_total ?> transaksi</small>
     </div>
     <div class="card-body pt-2">
-      <?php foreach ($history as $h): ?>
-      <div class="d-flex justify-content-between py-2 border-bottom">
+      <?php if (empty($history)): ?>
+        <div class="text-muted small text-center py-2">Belum ada riwayat pembayaran.</div>
+      <?php else: foreach ($history as $h):
+        $sm = ['pending'=>['warning','Menunggu'],'verified'=>['success','Lunas'],'rejected'=>['danger','Ditolak']];
+        [$c,$l] = $sm[$h['status']] ?? ['secondary',$h['status']];
+      ?>
+      <div class="d-flex justify-content-between align-items-start py-2 border-bottom">
         <div>
           <div class="small fw-semibold"><?= e($h['period']) ?></div>
-          <small class="text-muted"><?= fmt_date($h['payment_date']) ?></small>
+          <small class="text-muted"><?= fmt_date($h['payment_date'] ?? $h['created_at']) ?></small>
         </div>
         <div class="text-end">
           <div class="small fw-semibold"><?= idr((float)$h['amount_paid']) ?></div>
-          <?php
-          $sm = ['pending'=>['warning','Menunggu'],'verified'=>['success','Terverifikasi'],'rejected'=>['danger','Ditolak']];
-          [$c,$l] = $sm[$h['status']] ?? ['secondary',$h['status']];
-          echo "<span class=\"badge bg-{$c}\" style=\"font-size:.65rem\">{$l}</span>";
-          ?>
+          <span class="badge bg-<?= $c ?>" style="font-size:.65rem"><?= $l ?></span>
+          <?php if ($h['status'] === 'verified'): ?>
+          <div class="mt-1 d-flex gap-1 justify-content-end">
+            <a href="<?= APP_URL ?>/pages/payments/print_receipt.php?id=<?= $h['id'] ?>"
+               target="_blank" class="btn btn-outline-secondary py-0 px-1" style="font-size:.65rem">
+              <i class="bi bi-printer"></i>
+            </a>
+            <a href="<?= APP_URL ?>/pages/payments/download_receipt_pdf.php?id=<?= $h['id'] ?>"
+               class="btn btn-outline-success py-0 px-1" style="font-size:.65rem">
+              <i class="bi bi-file-earmark-pdf"></i>
+            </a>
+          </div>
+          <?php endif; ?>
         </div>
       </div>
-      <?php endforeach; ?>
+      <?php endforeach; endif; ?>
+
+      <?php if ($history_pages > 1): ?>
+      <div class="d-flex justify-content-center gap-2 pt-2">
+        <?php if ($history_page > 1): ?>
+          <a href="?hp=<?= $history_page-1 ?>" class="btn btn-sm btn-outline-secondary py-0">‹ Sebelumnya</a>
+        <?php endif; ?>
+        <span class="small align-self-center text-muted"><?= $history_page ?>/<?= $history_pages ?></span>
+        <?php if ($history_page < $history_pages): ?>
+          <a href="?hp=<?= $history_page+1 ?>" class="btn btn-sm btn-outline-secondary py-0">Berikutnya ›</a>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
     </div>
   </div>
   <?php endif; ?>

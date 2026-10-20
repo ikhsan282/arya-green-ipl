@@ -185,18 +185,8 @@ include __DIR__ . '/../../includes/sidebar.php';
       <div class="col-md-4">
         <div class="card h-100">
           <div class="card-header">Tren Koleksi <?= $f_year ?></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-              <thead><tr><th>Bulan</th><th>Terkumpul</th></tr></thead>
-              <tbody>
-              <?php foreach ($trend_data as $t): ?>
-                <tr <?= $t['m']==$f_month?'class="table-success"':'' ?>>
-                  <td><?= bulan_indo((int)$t['m']) ?></td>
-                  <td><?= idr((float)$t['terkumpul']) ?></td>
-                </tr>
-              <?php endforeach; ?>
-              </tbody>
-            </table>
+          <div class="card-body">
+            <canvas id="trendChart" height="220"></canvas>
           </div>
         </div>
       </div>
@@ -240,6 +230,38 @@ include __DIR__ . '/../../includes/sidebar.php';
     </div>
   </div>
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php
+// Build chart data (12 bulan)
+$tc_labels = $tc_data = [];
+$trend_map = array_column($trend_data, 'terkumpul', 'm');
+for ($m = 1; $m <= 12; $m++) {
+    $tc_labels[] = substr(bulan_indo($m), 0, 3);
+    $tc_data[]   = (float)($trend_map[$m] ?? 0);
+}
+?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels: <?= json_encode($tc_labels) ?>,
+    datasets: [{
+      label: 'Terkumpul',
+      data: <?= json_encode($tc_data) ?>,
+      backgroundColor: <?= json_encode(array_map(fn($m)=>$m==$f_month?'rgba(25,135,84,.85)':'rgba(25,135,84,.35)', range(1,12))) ?>,
+      borderColor: 'rgba(25,135,84,1)',
+      borderWidth: 1,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => 'Rp ' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+</script>
 <style>
 @media print {
   .sidebar, .topbar, form, .btn { display: none !important; }

@@ -150,6 +150,12 @@ function nav_active(string $path): string {
         <i class="bi bi-graph-up-arrow me-2"></i> Arus Kas
       </a>
     </li>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/reports/annual.php"
+         class="nav-link text-white<?= nav_active('/reports/annual') ?>">
+        <i class="bi bi-calendar3 me-2"></i> Ringkasan Tahunan
+      </a>
+    </li>
     <?php endif; ?>
 
     <!-- ── Komunikasi ── -->
