@@ -232,3 +232,35 @@ function gateway_webhook_url(array $channel): string
     }
     return $url;
 }
+
+/** Finalize verified gateway order and payment atomically; safe to retry. */
+function gateway_finalize(string $orderId, ?float $paid = null): array
+{
+    $db = db();
+    try {
+        $db->begin_transaction();
+        $s = $db->prepare('SELECT * FROM payment_gateway_orders WHERE order_id=? FOR UPDATE');
+        $s->bind_param('s', $orderId);
+        $s->execute();
+        $order = $s->get_result()->fetch_assoc();
+        if (!$order) throw new RuntimeException('Order gateway tidak ditemukan.');
+        if ($order['status'] === 'PAID') {
+            $db->commit();
+            return ['ok'=>true,'changed'=>false,'payment_id'=>$order['payment_id'] ? (int)$order['payment_id'] : null,'error'=>null];
+        }
+        $total = (float)$order['total_amount'];
+        if ($paid !== null && abs($paid - $total) > 0.001) throw new RuntimeException('Nominal pembayaran tidak cocok.');
+        $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='qris-klikqris' LIMIT 1")->fetch_assoc();
+        if (!$pm) throw new RuntimeException('Metode QRIS KlikQRIS belum tersedia.');
+        $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?, ?,"verified",NOW(),?)');
+        $billId=(int)$order['bill_id']; $userId=(int)$order['user_id']; $pmId=(int)$pm['id']; $name=$pm['name']; $ref=$orderId; $notes='Otomatis via KlikQRIS';
+        $s->bind_param('iidisss',$billId,$userId,$total,$pmId,$name,$ref,$notes); $s->execute(); $paymentId=(int)$db->insert_id;
+        $s=$db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=CURDATE() WHERE id=?'); $s->bind_param('i',$billId); $s->execute();
+        $s=$db->prepare('UPDATE payment_gateway_orders SET status="PAID",paid_at=NOW(),payment_id=? WHERE id=?'); $orderDbId=(int)$order['id'];$s->bind_param('ii',$paymentId,$orderDbId);$s->execute();
+        $db->commit();
+        return ['ok'=>true,'changed'=>true,'payment_id'=>$paymentId,'error'=>null];
+    } catch (Throwable $e) {
+        $db->rollback();
+        return ['ok'=>false,'changed'=>false,'payment_id'=>null,'error'=>$e->getMessage()];
+    }
+}
