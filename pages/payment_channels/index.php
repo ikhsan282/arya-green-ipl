@@ -29,8 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $st = $db->prepare($sql);
             if ($key === '') $st->bind_param('ssssii', $name,$mode,$merchant,$instructions,$active,$channel['id']);
             else $st->bind_param('ssssisi', $name,$mode,$merchant,$instructions,$active,$key,$channel['id']);
-            $st->execute(); log_activity('update','payment_channels','KlikQRIS channel configuration updated');
-            flash('success','Konfigurasi channel berhasil disimpan.'); redirect(APP_URL.'/pages/payment_channels/index.php');
+            if (!$st->execute()) { error_log('payment_channels save: '.$st->error); $message='Gagal menyimpan konfigurasi.'; }
+            else { log_activity('update','payment_channels','KlikQRIS channel configuration updated');
+            flash('success','Konfigurasi channel berhasil disimpan.'); redirect(APP_URL.'/pages/payment_channels/index.php'); }
         }
     } elseif ($action === 'renew') {
         $token = bin2hex(random_bytes(32)); $st=$db->prepare('UPDATE payment_channels SET webhook_token=? WHERE id=?');
@@ -39,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'test') {
         $result = gateway_status($channel, 'PING-'.bin2hex(random_bytes(6)));
         if ($result['ok']) $message='Koneksi terautentikasi: gateway menerima request status (order uji tidak harus ditemukan).';
-        else $message='Tes koneksi gagal: '.(string)($result['error'] ?: 'Respons gateway tidak berhasil.');
+        else { error_log('KlikQRIS test koneksi gagal: '.(string)$result['error']); $message='Tes koneksi gagal: periksa API key, Merchant ID, dan mode.'; }
     }
     $st=$db->prepare('SELECT * FROM payment_channels WHERE id=?'); $st->bind_param('i',$channel['id']); $st->execute(); $channel=$st->get_result()->fetch_assoc();
 }

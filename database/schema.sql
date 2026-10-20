@@ -138,7 +138,6 @@ WHERE `name` IN (
   'ipl_components.view','ipl_components.manage',
   'payments.view','payments.create','payments.verify',
   'payment_methods.view',
-  'payment_channels.manage',
   'cashbook.view','cashbook.manage',
   'expense.request',
   'reports.view',
@@ -473,7 +472,7 @@ CREATE TABLE `payment_gateway_orders` (
   CONSTRAINT `fk_pgo_channel` FOREIGN KEY (`channel_id`) REFERENCES `payment_channels` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `payment_channels` (`code`,`name`,`provider`,`mode`,`is_active`,`webhook_token`) VALUES
+INSERT IGNORE INTO `payment_channels` (`code`,`name`,`provider`,`mode`,`is_active`,`webhook_token`) VALUES
   ('klikqris','KlikQRIS','klikqris','sandbox',0,LOWER(SHA2(CONCAT(RAND(),UUID()),256)));
 
 INSERT INTO `payment_methods` (`code`, `name`, `auto_verify`, `sort_order`) VALUES

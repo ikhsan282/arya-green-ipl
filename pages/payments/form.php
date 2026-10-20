@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/email_notifications.php';
+require_once __DIR__ . '/../../includes/payment_gateway.php';
 require_permission('payments.create');
 
 $db      = db();

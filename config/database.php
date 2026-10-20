@@ -4,7 +4,7 @@ define('DB_HOST',     'localhost');
 define('DB_USER',     'root');
 define('DB_PASS',     '');
 define('DB_NAME',     'db_arya_green_ipl');
-define('DB_PORT',     3306);
+define('DB_PORT',     (int) (getenv('IPL_DB_PORT') ?: 3306)); // override untuk dev lokal
 define('DB_CHARSET',  'utf8mb4');
 
 function db(): mysqli {

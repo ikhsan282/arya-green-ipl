@@ -26,7 +26,8 @@ function gateway_channel(string $provider = 'klikqris'): ?array
 function gateway_base_url(array $channel): string
 {
     // ponytail: env KLIKQRIS_BASE_URL hanya untuk tes lokal (mock server); hapus bila tak perlu.
-    if ($o = getenv('KLIKQRIS_BASE_URL')) return rtrim($o, '/');
+    $o = getenv('KLIKQRIS_BASE_URL');
+    if ($o && preg_match('#^http://(127\.0\.0\.1|localhost)(:\d+)?(/|$)#', $o)) return rtrim($o, '/'); // hanya mock lokal
     return $channel['mode'] === 'sandbox' ? KQ_BASE . '/sandbox' : KQ_BASE;
 }
 
@@ -156,7 +157,7 @@ function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int
            (channel_id, order_id, bill_id, user_id, amount, total_amount, status, qris_url, direct_url, signature, gateway_type, payload, expired_at)
          VALUES (?,?,?,?,?,?,"PENDING",?,?,?,?,?,?)'
     );
-    $st->bind_param('isiiddsssss', $channelId, $orderId, $billId, $userId, $amount, $total, $qrisUrl, $direct, $sig, $type, $payload, $expired);
+    $st->bind_param('isiiddssssss', $channelId, $orderId, $billId, $userId, $amount, $total, $qrisUrl, $direct, $sig, $type, $payload, $expired);
     $st->execute();
     return (int) db()->insert_id;
 }
@@ -252,9 +253,11 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         if ($paid !== null && abs($paid - $total) > 0.001) throw new RuntimeException('Nominal pembayaran tidak cocok.');
         $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='qris-klikqris' LIMIT 1")->fetch_assoc();
         if (!$pm) throw new RuntimeException('Metode QRIS KlikQRIS belum tersedia.');
-        $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?, ?,"verified",NOW(),?)');
-        $billId=(int)$order['bill_id']; $userId=(int)$order['user_id']; $pmId=(int)$pm['id']; $name=$pm['name']; $ref=$orderId; $notes='Otomatis via KlikQRIS';
-        $s->bind_param('iidisss',$billId,$userId,$total,$pmId,$name,$ref,$notes); $s->execute(); $paymentId=(int)$db->insert_id;
+        $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?,?,"verified",NOW(),?)');
+        $billId = (int) $order['bill_id'];
+        $userId = $order['user_id'] !== null ? (int) $order['user_id'] : null;
+        $pmId = (int) $pm['id']; $name = $pm['name']; $ref = $orderId; $notes = 'Otomatis via KlikQRIS';
+        $s->bind_param('iidissi', $billId, $userId, $total, $pmId, $name, $ref, $notes); $s->execute(); $paymentId = (int) $db->insert_id;
         $s=$db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=CURDATE() WHERE id=?'); $s->bind_param('i',$billId); $s->execute();
         $s=$db->prepare('UPDATE payment_gateway_orders SET status="PAID",paid_at=NOW(),payment_id=? WHERE id=?'); $orderDbId=(int)$order['id'];$s->bind_param('ii',$paymentId,$orderDbId);$s->execute();
         $db->commit();
