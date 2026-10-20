@@ -62,6 +62,8 @@ function gateway_http(string $method, string $url, array $headers, ?array $body 
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_TIMEOUT        => 20,
         CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
     ]);
     if ($body !== null) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
@@ -72,13 +74,14 @@ function gateway_http(string $method, string $url, array $headers, ?array $body 
     curl_close($ch);
 
     if ($raw === false) {
-        return ['ok' => false, 'http' => $code, 'error' => $err ?: 'Koneksi ke gateway gagal.', 'json' => null];
+        return ['ok' => false, 'http' => $code, 'error' => 'Koneksi ke gateway gagal.', 'json' => null];
     }
     $json = json_decode((string) $raw, true);
+    // ok = HTTP 2xx + JSON valid; flag `status` dicek pemanggil (create).
     return [
-        'ok'    => $code >= 200 && $code < 300 && is_array($json) && !empty($json['status']),
+        'ok'    => $code >= 200 && $code < 300 && is_array($json),
         'http'  => $code,
-        'error' => is_array($json) ? ($json['message'] ?? null) : 'Respons gateway tidak dikenali.',
+        'error' => is_array($json) && is_string($json['message'] ?? null) ? mb_substr($json['message'], 0, 200) : 'Respons gateway tidak dikenali.',
         'json'  => $json,
     ];
 }
@@ -87,7 +90,7 @@ function gateway_http(string $method, string $url, array $headers, ?array $body 
  * Buat transaksi QRIS baru.
  * @return array{ok:bool,error:?string,data:?array}
  */
-function gateway_create(array $channel, string $orderId, float $amount, string $note = '', ?string $callbackUrl = null): array
+function gateway_create(array $channel, string $orderId, float $amount, string $note = ''): array
 {
     $paths = gateway_paths($channel);
     $body  = [
@@ -98,19 +101,22 @@ function gateway_create(array $channel, string $orderId, float $amount, string $
     if ($note !== '') {
         $body['keterangan'] = mb_substr($note, 0, 200);
     }
-    if ($callbackUrl) {
-        $body['callback_url'] = $callbackUrl;
-    }
 
     $res = gateway_http('POST', gateway_base_url($channel) . $paths['create'], gateway_headers($channel), $body);
     if (!$res['ok']) {
         return ['ok' => false, 'error' => $res['error'] ?: ('HTTP ' . $res['http']), 'data' => null];
     }
     $data = $res['json']['data'] ?? null;
-    if (!is_array($data)) {
+    if (empty($res['json']['status']) || !is_array($data)) {
         return ['ok' => false, 'error' => 'Respons gateway tanpa data transaksi.', 'data' => null];
     }
     return ['ok' => true, 'error' => null, 'data' => $data];
+}
+
+/** Lunas menurut gateway: status SUCCESS atau PAID (case-insensitive). */
+function gateway_is_paid(array $statusData): bool
+{
+    return in_array(strtoupper((string) ($statusData['status'] ?? '')), ['SUCCESS', 'PAID'], true);
 }
 
 /** Cek status transaksi di gateway. */
@@ -125,7 +131,11 @@ function gateway_status(array $channel, string $orderId): array
     if (!$res['ok']) {
         return ['ok' => false, 'error' => $res['error'] ?: ('HTTP ' . $res['http']), 'data' => null];
     }
-    return ['ok' => true, 'error' => null, 'data' => $res['json']['data'] ?? null];
+    $data = $res['json']['data'] ?? null;
+    if (!is_array($data)) {
+        return ['ok' => false, 'error' => 'Respons status gateway tanpa data.', 'data' => null];
+    }
+    return ['ok' => true, 'error' => null, 'data' => $data];
 }
 
 /**
@@ -213,7 +223,7 @@ function gateway_make_order_id(?int $billId): string
     return sprintf('IPL-%s-%s-%s', $billId ?? 0, date('ymdHis'), bin2hex(random_bytes(2)));
 }
 
-/** URL webhook aplikasi ini (dipakai sebagai callback_url). */
+/** URL webhook aplikasi ini (didaftarkan manual di dashboard KlikQRIS; API create tidak punya callback_url). */
 function gateway_webhook_url(array $channel): string
 {
     $url = APP_URL . '/pages/payments/gateway_webhook.php';
