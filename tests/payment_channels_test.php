@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 // Database-backed regression checks; run with /opt/data/bin/php tests/payment_channels_test.php.
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';

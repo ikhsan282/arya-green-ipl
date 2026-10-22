@@ -38,6 +38,11 @@ RedirectMatch 403 ^/arya-green-ipl/config/.*$
 RedirectMatch 403 ^/arya-green-ipl/includes/.*$
 RedirectMatch 403 ^/arya-green-ipl/database/.*$
 
+# Protect non-public folders (test menulis ke DB, docs & logs internal)
+RedirectMatch 403 ^/arya-green-ipl/tests/.*$
+RedirectMatch 403 ^/arya-green-ipl/docs/.*$
+RedirectMatch 403 ^/arya-green-ipl/logs/.*$
+
 # Block direct access to uploads (serve via PHP only if needed)
 <IfModule mod_rewrite.c>
     RewriteEngine On

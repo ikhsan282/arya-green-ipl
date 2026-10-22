@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 /**
  * Regresi: kode unik KlikQRIS tidak boleh masuk buku kas.
  *

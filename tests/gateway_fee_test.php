@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 /**
  * Biaya penanganan QRIS untuk tagihan > Rp 200.000 (MDR 0,5% ditanggung pembeli).
  * Butuh DB lokal + mock KlikQRIS berjalan (lihat tests/klikqris_mock.php).

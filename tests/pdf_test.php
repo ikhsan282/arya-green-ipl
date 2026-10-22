@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 // Self-check: builds a multi-page PDF and validates structure. Run: php tests/pdf_test.php
 require_once __DIR__ . '/../includes/pdf.php';
 

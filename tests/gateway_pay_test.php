@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 $root=dirname(__DIR__);
 $gateway=file_get_contents($root.'/includes/payment_gateway.php');
 $pay=file_get_contents($root.'/pages/payments/gateway_pay.php');

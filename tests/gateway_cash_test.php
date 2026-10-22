@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 /**
  * Regresi: pembayaran QRIS yang berhasil HARUS masuk buku kas.
  * Bug lama: kas hanya dicatat bila ada biaya tambahan, sehingga tagihan

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 // Self-check: builds a workbook and validates ZIP/OOXML structure. Run: php tests/xlsx_test.php
 require_once __DIR__ . '/../includes/xlsx.php';
 

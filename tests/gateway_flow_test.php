@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_cli_only.php';
 // Tes alur QRIS KlikQRIS end-to-end terhadap mock lokal (BUKAN gateway asli).
 // Syarat: DB dev; mock `php -S 127.0.0.1:8099 tests/klikqris_mock.php`;
 // web server dengan env KLIKQRIS_BASE_URL=http://127.0.0.1:8099 (default BASE di bawah).
