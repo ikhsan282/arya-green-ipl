@@ -283,15 +283,19 @@ function nav_active(string $path): string {
 
   <hr class="text-white m-0">
   <div class="p-3 sidebar-footer">
-    <div class="d-flex align-items-center mb-2">
-      <div class="avatar-sm me-2">
-        <i class="bi bi-person-circle fs-4 text-white-50"></i>
-      </div>
-      <div class="text-white lh-1 flex-grow-1 overflow-hidden">
-        <div class="fw-semibold text-truncate" style="font-size:.85rem"><?= e($current_user['name'] ?? '') ?></div>
-        <small class="text-white-50"><?= e(ucwords(str_replace('_',' ', $current_user['role'] ?? ''))) ?></small>
-      </div>
-      <button type="button" class="dark-toggle sidebar-theme-toggle text-white ms-2" aria-label="Ganti tema" title="Ganti tema">
+    <div class="d-flex align-items-start gap-2 mb-2">
+      <a href="<?= APP_URL ?>/pages/profile.php"
+         class="d-flex align-items-center text-decoration-none rounded p-1 sidebar-profile-link flex-grow-1 overflow-hidden"
+         title="Profil & ganti password">
+        <div class="avatar-sm me-2">
+          <i class="bi bi-person-circle fs-4 text-white-50"></i>
+        </div>
+        <div class="text-white lh-1 flex-grow-1 overflow-hidden">
+          <div class="fw-semibold text-truncate" style="font-size:.85rem"><?= e($current_user['name'] ?? '') ?></div>
+          <small class="text-white-50"><?= e(ucwords(str_replace('_',' ', $current_user['role'] ?? ''))) ?></small>
+        </div>
+      </a>
+      <button type="button" class="dark-toggle sidebar-theme-toggle text-white" aria-label="Ganti tema" title="Ganti tema">
         <i class="bi bi-moon-stars"></i>
       </button>
     </div>
