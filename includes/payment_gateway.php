@@ -290,12 +290,22 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         $notes = 'Otomatis via KlikQRIS' . ($extra > 0 ? sprintf(' (biaya QRIS + kode unik %s)', number_format($extra, 0, ',', '.')) : '');
         $s->bind_param('iidssss', $billId, $userId, $amountPaid, $pmId, $name, $ref, $notes); $s->execute(); $paymentId = (int) $db->insert_id;
 
-        // Biaya penanganan / kode unik → pemasukan kas lain-lain, bukan IPL.
+        // Buku kas: IPL selalu dicatat (sama seperti verify.php), biaya QRIS terpisah.
+        $billRow = $db->query("SELECT bp.label AS period, u.block, u.unit_number
+                               FROM bills b JOIN billing_periods bp ON bp.id=b.billing_period_id
+                               JOIN units u ON u.id=b.unit_id WHERE b.id={$billId}")->fetch_assoc();
+        $ipLDesc = 'IPL ' . ($billRow['period'] ?? '') . ' — '
+            . ($billRow['block'] ?? '') . '-' . ($billRow['unit_number'] ?? '');
+        $k = $db->prepare('INSERT INTO cash_book (type,category,amount,description,trx_date,ref_payment_id,created_by)
+                           VALUES ("pemasukan","IPL",?,?,CURDATE(),?,?)');
+        $cashBy = $userId !== null ? $userId : 1;
+        $k->bind_param('dsii', $amountPaid, $ipLDesc, $paymentId, $cashBy); $k->execute();
+
         if ($extra > 0) {
-            $k = $db->prepare('INSERT INTO cash_book (type,category,amount,description,trx_date,ref_payment_id,created_by)
-                               VALUES ("pemasukan","Biaya QRIS",?,?,CURDATE(),?,1)');
+            $k2 = $db->prepare('INSERT INTO cash_book (type,category,amount,description,trx_date,ref_payment_id,created_by)
+                                VALUES ("pemasukan","Biaya QRIS",?,?,CURDATE(),?,?)');
             $kDesc = 'Biaya penanganan QRIS order ' . $orderId;
-            $k->bind_param('dsi', $extra, $kDesc, $paymentId); $k->execute();
+            $k2->bind_param('dsii', $extra, $kDesc, $paymentId, $cashBy); $k2->execute();
         }
         $s=$db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=CURDATE() WHERE id=?'); $s->bind_param('i',$billId); $s->execute();
         $s=$db->prepare('UPDATE payment_gateway_orders SET status="PAID",paid_at=NOW(),payment_id=? WHERE id=?'); $orderDbId=(int)$order['id'];$s->bind_param('ii',$paymentId,$orderDbId);$s->execute();

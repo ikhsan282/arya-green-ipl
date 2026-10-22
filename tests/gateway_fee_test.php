@@ -43,15 +43,19 @@ $t((float) $pay['amount_paid'] === 300000.0, 'amount_paid = tagihan saja (300.00
 $t(str_contains((string) $pay['notes'], 'Otomatis via KlikQRIS'), 'notes terisi teks, bukan 0');
 $t(str_contains((string) $pay['notes'], '1.000'), 'notes menyebut biaya 1.000');
 
-$cb = $db->query("SELECT category,amount FROM cash_book WHERE ref_payment_id=$payId")->fetch_assoc();
-$t($cb !== null && $cb['category'] === 'Biaya QRIS' && (float) $cb['amount'] === 1000.0,
-   'biaya 1.000 masuk kas sebagai "Biaya QRIS", terpisah dari IPL');
+// Kas: satu baris IPL (300.000) + satu baris biaya (1.000).
+$cbRows = $db->query("SELECT category,amount FROM cash_book WHERE ref_payment_id=$payId ORDER BY id")->fetch_all(MYSQLI_ASSOC);
+$t(count($cbRows) === 2, 'dua baris kas: IPL + Biaya QRIS (got ' . count($cbRows) . ')');
+$byCat = [];
+foreach ($cbRows as $r) { $byCat[$r['category']] = (float) $r['amount']; }
+$t(($byCat['IPL'] ?? 0) === 300000.0, 'kas IPL 300.000 tercatat');
+$t(($byCat['Biaya QRIS'] ?? 0) === 1000.0, 'biaya 1.000 masuk kas "Biaya QRIS", terpisah dari IPL');
 
 // 3. Idempotensi: finalize ulang tidak menggandakan
 $again = gateway_finalize($oid, (float) $o['total_amount']);
 $t($again['ok'] && $again['changed'] === false, 'finalize ulang tidak menggandakan');
 $n = (int) $db->query("SELECT COUNT(*) FROM cash_book WHERE ref_payment_id=$payId")->fetch_row()[0];
-$t($n === 1, 'baris kas biaya tidak dobel');
+$t($n === 2, 'baris kas tidak dobel setelah finalize ulang (got ' . $n . ')');
 
 // bersihkan
 $db->query("DELETE FROM cash_book WHERE ref_payment_id=$payId");
