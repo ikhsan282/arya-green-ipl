@@ -466,8 +466,8 @@ CREATE TABLE `payment_channels` (
   `code`          VARCHAR(30)  NOT NULL UNIQUE,
   `name`          VARCHAR(100) NOT NULL,
   `provider`      VARCHAR(30)  NOT NULL DEFAULT 'klikqris',
-  `api_key`       VARCHAR(255) DEFAULT NULL,
-  `merchant_id`   VARCHAR(100) DEFAULT NULL,
+  `api_key`       TEXT         DEFAULT NULL,
+  `merchant_id`   VARCHAR(500) DEFAULT NULL,
   `mode`          ENUM('sandbox','production') NOT NULL DEFAULT 'sandbox',
   `webhook_token` VARCHAR(64)  DEFAULT NULL,
   `instructions`  TEXT         DEFAULT NULL,
@@ -502,14 +502,26 @@ CREATE TABLE `payment_gateway_orders` (
   CONSTRAINT `fk_pgo_channel` FOREIGN KEY (`channel_id`) REFERENCES `payment_channels` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO `payment_channels` (`code`,`name`,`provider`,`mode`,`is_active`,`webhook_token`) VALUES
-  ('klikqris','KlikQRIS','klikqris','sandbox',0,LOWER(SHA2(CONCAT(RAND(),UUID()),256)));
+-- api_key: KlikQRIS = API key; GoPay = JSON auth headers; ShopeePay = B:xxx token
+-- merchant_id: KlikQRIS = merchant ID; GoPay/ShopeePay = QRIS statis merchant string
+-- config: JSON tambahan per provider (GoPay: {"merchant_ids":"..."} untuk query API)
+-- (QRIS statis bisa 100-300 karakter, jadi kolom dilebarkan ke 500; api_key → TEXT
+--  karena JSON headers GoPay bisa panjang. Idempotent: aman dijalankan ulang.)
+ALTER TABLE `payment_channels` MODIFY `api_key` TEXT DEFAULT NULL;
+ALTER TABLE `payment_channels` MODIFY `merchant_id` VARCHAR(500) DEFAULT NULL;
+ALTER TABLE `payment_channels` ADD COLUMN IF NOT EXISTS `config` JSON DEFAULT NULL AFTER `merchant_id`;
+INSERT IGNORE INTO `payment_channels` (`code`,`name`,`provider`,`mode`,`is_active`,`sort_order`,`webhook_token`) VALUES
+  ('klikqris','KlikQRIS','klikqris','sandbox',0,1,LOWER(SHA2(CONCAT(RAND(),UUID()),256))),
+  ('gopay','GoPay Merchant','gopay','production',0,2,NULL),
+  ('shopeepay','ShopeePay','shopeepay','production',0,3,NULL);
 
 INSERT INTO `payment_methods` (`code`, `name`, `auto_verify`, `sort_order`) VALUES
   ('tunai',    'Tunai',          1, 1),
   ('transfer', 'Transfer Bank',  0, 2),
   ('qris',     'QRIS',           0, 3),
   ('qris-klikqris', 'QRIS Online (KlikQRIS)', 1, 4),
+  ('qris-gopay',    'QRIS Online (GoPay)',    1, 5),
+  ('qris-shopeepay','QRIS Online (ShopeePay)',1, 6),
   ('lainnya',  'Lainnya',        0, 5);
 
 -- ------------------------------------------------------------

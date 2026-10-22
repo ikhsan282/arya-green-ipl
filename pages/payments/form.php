@@ -77,11 +77,16 @@ if (!$bill) {
 // Warga tidak bisa pilih metode tunai (hanya admin/ketua/bendahara)
 $role = auth_role();
 $tunai_filter = $role === 'warga' ? " AND code != 'tunai'" : '';
-$channel_active = gateway_channel() !== null;
+$gw_channels = $db->query('SELECT c.*, m.id AS pm_id, m.code AS pm_code, m.name AS pm_name
+                           FROM payment_channels c JOIN payment_methods m ON m.code=CONCAT("qris-", c.provider)
+                           WHERE c.is_active=1 AND c.api_key IS NOT NULL AND m.is_active=1
+                           ORDER BY c.sort_order, c.id')->fetch_all(MYSQLI_ASSOC);
+$channel_active = $gw_channels !== [];
 // Metode gateway tidak pernah muncul di form manual: jalurnya satu tombol QRIS di atas,
 // dan nominalnya terkunci di checkout — isian manual justru bisa menagih nominal salah.
 // Dropdown hanya menawarkan metode gateway bila QRIS Online tidak tersedia (fallback catat manual).
-$gateway_filter = $channel_active ? " AND code != 'qris-klikqris'" : '';
+$gw_codes = array_column($gw_channels, 'pm_code');
+$gateway_filter = $gw_codes ? " AND code NOT IN ('" . implode("','", array_map([$db, 'real_escape_string'], $gw_codes)) . "')" : '';
 $payment_methods = $db->query(
 'SELECT id, code, name, account_no, account_name, instructions
  FROM payment_methods WHERE is_active=1' . $tunai_filter . $gateway_filter . ' ORDER BY sort_order, name'
@@ -121,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Pilih metode pembayaran.';
     }
     $is_cash = $payment_method !== null && (int)($payment_method['auto_verify'] ?? 0) === 1;
-    $is_gateway = $payment_method !== null && $payment_method['code'] === 'qris-klikqris';
+    $is_gateway = $payment_method !== null && in_array($payment_method['code'], $gw_codes, true);
     if ($is_gateway && !$channel_active) $errors[] = 'QRIS Online sedang tidak tersedia.';
 
     // Validate bill exists & ownership
@@ -164,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        if ($is_gateway) redirect(APP_URL . '/pages/payments/gateway_pay.php?bill_id=' . $sel_bill_id);
+        if ($is_gateway) redirect(APP_URL . '/pages/payments/gateway_pay.php?bill_id=' . $sel_bill_id . '&provider=' . substr($payment_method['code'], 5));
         $uid = auth_id();
         $pm_name = $payment_method['name'];
         $stmt = $db->prepare(
@@ -246,7 +251,7 @@ include __DIR__ . '/../../includes/sidebar.php';
         // Diambil langsung dari master, BUKAN dari $payment_methods — list itu
         // sudah difilter untuk dropdown manual, jadi metode gateway tidak ada di sana.
         $gw_method = null;
-        if ($channel_active) {
+        if ($channel_active) { // hanya penanda; tombol dirender dari semua kanal aktif di bawah
             $qgw = $db->query("SELECT id, code, name FROM payment_methods WHERE code='qris-klikqris' AND is_active=1 LIMIT 1");
             $gw_method = $qgw ? $qgw->fetch_assoc() : null;
         }
@@ -260,10 +265,14 @@ include __DIR__ . '/../../includes/sidebar.php';
             <p class="text-muted small mb-3">
               Scan pakai m-banking atau e-wallet. Tagihan lunas otomatis begitu pembayaran masuk.
             </p>
-            <a href="<?= APP_URL ?>/pages/payments/gateway_pay.php?bill_id=<?= $bill_id_for_gw ?>"
-               class="btn btn-success btn-lg px-4">
-              <i class="bi bi-qr-code-scan me-1"></i> Tampilkan QR &amp; Bayar
-            </a>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <?php foreach ($gw_channels as $gw): ?>
+              <a href="<?= APP_URL ?>/pages/payments/gateway_pay.php?bill_id=<?= $bill_id_for_gw ?>&amp;provider=<?= e($gw['provider']) ?>"
+                 class="btn btn-success btn-lg px-4">
+                <i class="bi bi-qr-code-scan me-1"></i> Bayar via <?= e($gw['pm_name']) ?>
+              </a>
+            <?php endforeach; ?>
+            </div>
             <div class="mt-2">
               <span class="fw-semibold"><?= idr((float)$bill['total_amount']) ?></span>
             </div>
@@ -380,10 +389,12 @@ toggleInstructions();
   const link = document.getElementById('gwShortcutLink');
   if (!sel || !box || !link) return;
   const GW = '<?= APP_URL ?>/pages/payments/gateway_pay.php?bill_id=';
+  const GP = <?= json_encode(array_column($gw_channels, 'provider')) ?>;
   function sync() {
     const v = sel.value;
     box.style.display = v ? '' : 'none';
-    if (v) link.setAttribute('href', GW + v);
+    // Kanal pertama jadi tombol utama; provider lain lewat halaman bayar.
+    if (v) link.setAttribute('href', GW + v + (GP.length ? '&provider=' + GP[0] : ''));
   }
   sel.addEventListener('change', sync);
   sync();

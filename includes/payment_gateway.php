@@ -12,6 +12,8 @@
  */
 
 const KQ_BASE = 'https://klikqris.com/api';
+/** Provider gateway yang punya klien sendiri (bukan KlikQRIS). */
+const GQ_DIRECT = ['gopay', 'shopeepay'];
 
 /** Ambil channel aktif (satu channel per provider untuk saat ini). */
 function gateway_channel(string $provider = 'klikqris'): ?array
@@ -114,6 +116,10 @@ function gateway_charge_total(float $billAmount): float
  */
 function gateway_create(array $channel, string $orderId, float $amount, string $note = ''): array
 {
+    if (in_array($channel['provider'], GQ_DIRECT, true)) {
+        require_once __DIR__ . '/payment_gateway_direct.php';
+        return gq_create($channel, $orderId, $amount, $note);
+    }
     $paths = gateway_paths($channel);
     $body  = [
         'order_id'    => $orderId,
@@ -144,6 +150,16 @@ function gateway_is_paid(array $statusData): bool
 /** Cek status transaksi di gateway. */
 function gateway_status(array $channel, string $orderId): array
 {
+    if (in_array($channel['provider'], GQ_DIRECT, true)) {
+        $order = gateway_find_order($orderId);
+        if (!$order) return ['ok' => false, 'error' => 'Order gateway tidak ditemukan.', 'data' => null];
+        require_once __DIR__ . '/payment_gateway_direct.php';
+        $r = gq_check($channel, ['total_amount' => $order['total_amount'], 'created_at' => $order['created_at'],
+                                 'gateway_type' => $order['gateway_type'], 'direct_url' => $order['direct_url']]);
+        // Nominal yang ditagihkan = total_amount order (direct tidak menambah kode unik).
+        $data = ['status' => $r['status'], 'total_amount' => (float) $order['total_amount']] + ($r['trx'] ?? []);
+        return $r['ok'] ? ['ok' => true, 'error' => null, 'data' => $data] : ['ok' => false, 'error' => $r['error'], 'data' => null];
+    }
     $paths = gateway_paths($channel);
     $v2    = str_contains($paths['status'], '%s/%s');
     $url   = gateway_base_url($channel)
@@ -186,7 +202,7 @@ function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int
 /** Ambil order gateway berdasarkan order_id. */
 function gateway_find_order(string $orderId): ?array
 {
-    $st = db()->prepare('SELECT o.*, c.api_key, c.merchant_id, c.mode, c.provider, c.is_active AS channel_active
+    $st = db()->prepare('SELECT o.*, c.api_key, c.merchant_id, c.config, c.mode, c.provider, c.is_active AS channel_active
                          FROM payment_gateway_orders o
                          JOIN payment_channels c ON c.id = o.channel_id
                          WHERE o.order_id=? LIMIT 1');
@@ -196,10 +212,11 @@ function gateway_find_order(string $orderId): ?array
 }
 
 /** Order gateway terbaru yang masih PENDING untuk satu tagihan. */
-function gateway_pending_for_bill(int $billId): ?array
+function gateway_pending_for_bill(int $billId, string $provider = 'klikqris'): ?array
 {
-    $st = db()->prepare('SELECT * FROM payment_gateway_orders WHERE bill_id=? AND status="PENDING" ORDER BY id DESC LIMIT 1');
-    $st->bind_param('i', $billId);
+    $st = db()->prepare('SELECT o.* FROM payment_gateway_orders o JOIN payment_channels c ON c.id=o.channel_id
+                         WHERE o.bill_id=? AND o.status="PENDING" AND c.provider=? ORDER BY o.id DESC LIMIT 1');
+    $st->bind_param('is', $billId, $provider);
     $st->execute();
     return $st->get_result()->fetch_assoc() ?: null;
 }
@@ -272,8 +289,10 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         }
         $total = (float)$order['total_amount'];
         if ($paid !== null && abs($paid - $total) > 0.001) throw new RuntimeException('Nominal pembayaran tidak cocok.');
-        $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='qris-klikqris' LIMIT 1")->fetch_assoc();
-        if (!$pm) throw new RuntimeException('Metode QRIS KlikQRIS belum tersedia.');
+        $ch = $db->query("SELECT provider FROM payment_channels WHERE id=" . (int) $order['channel_id'])->fetch_assoc();
+        $pmCode = 'qris-' . ($ch['provider'] ?? 'klikqris');
+        $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='" . $db->real_escape_string($pmCode) . "' LIMIT 1")->fetch_assoc();
+        if (!$pm) throw new RuntimeException('Metode QRIS ' . $pmCode . ' belum tersedia.');
 
         // Nominal order = tagihan + biaya penanganan + kode unik dari gateway.
         // Hanya tagihan dan biaya penanganan yang masuk saldo merchant; kode unik
@@ -291,7 +310,7 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?,?,"verified",NOW(),?)');
         $userId = $order['user_id'] !== null ? (int) $order['user_id'] : null;
         $pmId = (int) $pm['id']; $name = $pm['name']; $ref = $orderId;
-        $notes = 'Otomatis via KlikQRIS';
+        $notes = 'Otomatis via ' . $pm['name'];
         if ($extra > 0 && $uniqueCode > 0) {
             $notes .= sprintf(' (biaya QRIS %s + kode unik %s)', number_format($extra, 0, ',', '.'), number_format($uniqueCode, 0, ',', '.'));
         } elseif ($extra > 0) {

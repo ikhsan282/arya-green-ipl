@@ -7,7 +7,7 @@ $status=file_get_contents($root.'/pages/payments/gateway_status.php');
 $form=file_get_contents($root.'/pages/payments/form.php');
 assert(str_contains($gateway,'function gateway_finalize(string $orderId, ?float $paid = null): array'));
 assert(str_contains($gateway,'FOR UPDATE') && str_contains($gateway,'payment_id=?'));
-assert(str_contains($pay,'gateway_pending_for_bill($billId)'));
+assert(str_contains($pay,'gateway_pending_for_bill($billId'));
 assert(str_contains($pay,"'total_amount'"));
 assert(str_contains($status,'gateway_finalize($orderId'));
 assert(str_contains($status,'gateway_mark_expired($orderId)'));
