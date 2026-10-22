@@ -243,9 +243,12 @@ include __DIR__ . '/../../includes/sidebar.php';
 
         <?php
         // QRIS Online = jalur cepat: satu klik, tanpa isian manual.
+        // Diambil langsung dari master, BUKAN dari $payment_methods — list itu
+        // sudah difilter untuk dropdown manual, jadi metode gateway tidak ada di sana.
         $gw_method = null;
-        foreach ($payment_methods as $pm) {
-            if ($pm['code'] === 'qris-klikqris') { $gw_method = $pm; break; }
+        if ($channel_active) {
+            $qgw = $db->query("SELECT id, code, name FROM payment_methods WHERE code='qris-klikqris' AND is_active=1 LIMIT 1");
+            $gw_method = $qgw ? $qgw->fetch_assoc() : null;
         }
         $bill_id_for_gw = $bill ? (int) $bill['id'] : 0;
         ?>
