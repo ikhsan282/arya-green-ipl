@@ -88,7 +88,28 @@ function gateway_http(string $method, string $url, array $headers, ?array $body 
 }
 
 /**
+ * Biaya penanganan QRIS untuk tagihan besar.
+ *
+ * MDR KlikQRIS 0,5% hanya berlaku di atas Rp 200.000 (di bawahnya gratis).
+ * Warga membayar tambahan flat Rp 1.000 supaya MDR tidak menggerus IPL.
+ * Tagihan persis Rp 200.000 tetap gratis → tidak kena tambahan.
+ *
+ * Mengembalikan total yang harus ditagihkan (tagihan + biaya penanganan).
+ */
+function gateway_fee(float $billAmount): float
+{
+    return $billAmount > 200000 ? 1000.0 : 0.0;
+}
+
+/** Total tagihan QRIS = nominal tagihan + biaya penanganan. */
+function gateway_charge_total(float $billAmount): float
+{
+    return $billAmount + gateway_fee($billAmount);
+}
+
+/**
  * Buat transaksi QRIS baru.
+ * @param float $amount total yang ditagihkan (sudah termasuk biaya penanganan).
  * @return array{ok:bool,error:?string,data:?array}
  */
 function gateway_create(array $channel, string $orderId, float $amount, string $note = ''): array
@@ -253,11 +274,29 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         if ($paid !== null && abs($paid - $total) > 0.001) throw new RuntimeException('Nominal pembayaran tidak cocok.');
         $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='qris-klikqris' LIMIT 1")->fetch_assoc();
         if (!$pm) throw new RuntimeException('Metode QRIS KlikQRIS belum tersedia.');
+
+        // Nominal order = tagihan + biaya penanganan. Pembayaran dicatat sebesar
+        // tagihan saja; biaya penanganan (dan kode unik gateway, bila ada)
+        // masuk sebagai pemasukan lain agar laporan IPL tetap cocok.
+        $billId    = (int) $order['bill_id'];
+        $billTotal = (float) $db->query("SELECT total_amount FROM bills WHERE id={$billId}")->fetch_row()[0];
+        $charge    = $total - $billTotal;
+        $amountPaid = $charge >= 0 ? $billTotal : $total;
+        $extra      = $charge > 0 ? $charge : 0.0;
+
         $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?,?,"verified",NOW(),?)');
-        $billId = (int) $order['bill_id'];
         $userId = $order['user_id'] !== null ? (int) $order['user_id'] : null;
-        $pmId = (int) $pm['id']; $name = $pm['name']; $ref = $orderId; $notes = 'Otomatis via KlikQRIS';
-        $s->bind_param('iidissi', $billId, $userId, $total, $pmId, $name, $ref, $notes); $s->execute(); $paymentId = (int) $db->insert_id;
+        $pmId = (int) $pm['id']; $name = $pm['name']; $ref = $orderId;
+        $notes = 'Otomatis via KlikQRIS' . ($extra > 0 ? sprintf(' (biaya QRIS + kode unik %s)', number_format($extra, 0, ',', '.')) : '');
+        $s->bind_param('iidssss', $billId, $userId, $amountPaid, $pmId, $name, $ref, $notes); $s->execute(); $paymentId = (int) $db->insert_id;
+
+        // Biaya penanganan / kode unik → pemasukan kas lain-lain, bukan IPL.
+        if ($extra > 0) {
+            $k = $db->prepare('INSERT INTO cash_book (type,category,amount,description,trx_date,ref_payment_id,created_by)
+                               VALUES ("pemasukan","Biaya QRIS",?,?,CURDATE(),?,1)');
+            $kDesc = 'Biaya penanganan QRIS order ' . $orderId;
+            $k->bind_param('dsi', $extra, $kDesc, $paymentId); $k->execute();
+        }
         $s=$db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=CURDATE() WHERE id=?'); $s->bind_param('i',$billId); $s->execute();
         $s=$db->prepare('UPDATE payment_gateway_orders SET status="PAID",paid_at=NOW(),payment_id=? WHERE id=?'); $orderDbId=(int)$order['id'];$s->bind_param('ii',$paymentId,$orderDbId);$s->execute();
         $db->commit();
