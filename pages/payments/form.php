@@ -238,16 +238,44 @@ include __DIR__ . '/../../includes/sidebar.php';
           </div>
         <?php endif; ?>
 
+        <?php
+        // QRIS Online = jalur cepat: satu klik, tanpa isian manual.
+        $gw_method = null;
+        foreach ($payment_methods as $pm) {
+            if ($pm['code'] === 'qris-klikqris') { $gw_method = $pm; break; }
+        }
+        $bill_id_for_gw = $bill ? (int) $bill['id'] : 0;
+        ?>
+        <?php if ($gw_method && $bill_id_for_gw): ?>
+        <div class="card border-success mb-4" style="background:linear-gradient(135deg,rgba(25,135,84,.08),rgba(13,110,253,.08))">
+          <div class="card-body text-center py-4">
+            <div class="mb-2" style="font-size:2.5rem;line-height:1">📱</div>
+            <h5 class="fw-bold mb-1">Bayar dengan QRIS</h5>
+            <p class="text-muted small mb-3">
+              Scan pakai m-banking atau e-wallet. Tagihan lunas otomatis begitu pembayaran masuk.
+            </p>
+            <a href="<?= APP_URL ?>/pages/payments/gateway_pay.php?bill_id=<?= $bill_id_for_gw ?>"
+               class="btn btn-success btn-lg px-4">
+              <i class="bi bi-qr-code-scan me-1"></i> Tampilkan QR &amp; Bayar
+            </a>
+            <div class="mt-2">
+              <span class="fw-semibold"><?= idr((float)$bill['total_amount']) ?></span>
+            </div>
+          </div>
+        </div>
+        <div class="text-center text-muted small mb-3">— atau catat pembayaran manual di bawah —</div>
+        <?php endif; ?>
+
         <form method="POST" enctype="multipart/form-data">
           <?= csrf_field() ?>
           <div class="row g-3">
             <?php if (!$bill): ?>
             <div class="col-12">
               <label class="form-label">Tagihan <span class="text-danger">*</span></label>
-              <select name="bill_id" class="form-select" required>
+              <select name="bill_id" class="form-select" id="billSelect" required>
                 <option value="">— Pilih Tagihan —</option>
                 <?php foreach ($unpaid_bills as $ub): ?>
-                  <option value="<?= $ub['id'] ?>">
+                  <option value="<?= $ub['id'] ?>" data-amount="<?= (int)$ub['total_amount'] ?>">
                     <?= e($ub['block'].'-'.$ub['unit_number']) ?> | <?= e($ub['period']) ?>
                     | <?= e($ub['resident_name'] ?? 'Kosong') ?> | <?= idr((float)$ub['total_amount']) ?>
                   </option>
@@ -256,6 +284,14 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <?php else: ?>
               <input type="hidden" name="bill_id" value="<?= $bill['id'] ?>">
+            <?php endif; ?>
+
+            <?php if ($gw_method && !$bill_id_for_gw): ?>
+            <div class="col-12" id="gwShortcut" style="display:none">
+              <a href="#" id="gwShortcutLink" class="btn btn-success w-100 py-3">
+                <i class="bi bi-qr-code-scan me-1"></i> Bayar Tagihan Ini dengan QRIS
+              </a>
+            </div>
             <?php endif; ?>
 
             <div class="col-md-6">
@@ -289,7 +325,7 @@ include __DIR__ . '/../../includes/sidebar.php';
               <input type="text" name="reference_no" class="form-control"
                      value="<?= e($_POST['reference_no'] ?? '') ?>" placeholder="Opsional">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6" id="proofField">
               <label class="form-label">Bukti Bayar <small class="text-muted">(JPG/PNG/PDF, maks 2MB)</small></label>
               <input type="file" name="proof_file" id="proof_file" class="form-control"
                      accept="image/jpeg,image/png,image/webp,application/pdf">
@@ -330,4 +366,20 @@ function toggleInstructions() {
 payMethod && payMethod.addEventListener('change', () => { toggleBank(); toggleInstructions(); });
 toggleBank();
 toggleInstructions();
+
+// ── Dropdown tagihan → tombol QRIS langsung muncul ────────────────────────
+(function () {
+  const sel  = document.getElementById('billSelect');
+  const box  = document.getElementById('gwShortcut');
+  const link = document.getElementById('gwShortcutLink');
+  if (!sel || !box || !link) return;
+  const GW = '<?= APP_URL ?>/pages/payments/gateway_pay.php?bill_id=';
+  function sync() {
+    const v = sel.value;
+    box.style.display = v ? '' : 'none';
+    if (v) link.setAttribute('href', GW + v);
+  }
+  sel.addEventListener('change', sync);
+  sync();
+})();
 </script>
