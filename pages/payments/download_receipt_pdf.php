@@ -11,7 +11,7 @@ if (!$id) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pag
 $stmt = $db->prepare(
     'SELECT p.*, b.total_amount AS bill_total, bp.label AS period, bp.period_year, bp.period_month,
             u.unit_number, u.block, r.name AS resident_name, r.phone AS resident_phone,
-            pm.name AS payment_method_name, vu.name AS verifier_name
+            pm.name AS payment_method_name, vu.name AS verifier_name, e.name AS env_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
@@ -19,6 +19,7 @@ $stmt = $db->prepare(
      LEFT JOIN residents r ON r.id=b.resident_id
      LEFT JOIN users vu ON vu.id=p.verified_by
      LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
+     LEFT JOIN environments e ON e.id=1
      WHERE p.id=?'
 );
 $stmt->bind_param('i', $id);
@@ -43,7 +44,7 @@ require_once __DIR__ . '/../../vendor/tcpdf/tcpdf.php';
 // Receipt number
 $receipt_no = sprintf('KWT/%04d/%02d/%05d', $pay['period_year'], $pay['period_month'], $pay['id']);
 
-// Create PDF
+// Create PDF — A5 portrait, layout kwitansi satu halaman
 $pdf = new TCPDF('P', 'mm', 'A5', true, 'UTF-8', false);
 $pdf->SetCreator('Arya Green IPL System');
 $pdf->SetAuthor('Arya Green Pamulang');
@@ -51,116 +52,118 @@ $pdf->SetTitle('Kwitansi Pembayaran IPL');
 $pdf->SetSubject('Kwitansi #' . $receipt_no);
 $pdf->setPrintHeader(false);
 $pdf->setPrintFooter(false);
-$pdf->SetMargins(15, 15, 15);
-$pdf->SetAutoPageBreak(true, 15);
+$pdf->SetMargins(12, 12, 12);
+$pdf->SetAutoPageBreak(true, 12);
 $pdf->AddPage();
-$pdf->SetFont('dejavusans', '', 10);
+$pdf->SetFont('dejavusans', '', 9.5);
 
-// Logo
+// Lebar area cetak A5 (148 - 2*12 = 124mm)
+$W = 124;
+
+// Logo — hanya kalau PNG-nya bisa dibaca tanpa GD/Imagick.
+// TCPDF butuh GD/Imagick untuk PNG ber-alpha (truecolor+alpha / palette+tRNS);
+// tanpa itu lempar TCPDF ERROR dan seluruh kwitansi gagal. Server cPanel bisa
+// punya GD, dev tidak — jadi logo dilewati, bukan menggagalkan dokumen.
 $logo_path = __DIR__ . '/../../assets/images/emblem.png';
+$logo_ok = false;
 if (file_exists($logo_path)) {
-    $pdf->Image($logo_path, 15, 15, 20, 20, 'PNG');
+    $meta = @getimagesize($logo_path);
+    $is_png = $meta && $meta[2] === IMAGETYPE_PNG;
+    $has_alpha = $is_png && in_array((ord(file_get_contents($logo_path, false, null, 25, 1))), [4, 6], true);
+    $has_trns  = $is_png && strpos(file_get_contents($logo_path), 'tRNS') !== false;
+    $logo_ok = $is_png && !$has_alpha && !$has_trns;
 }
+if ($logo_ok) $pdf->Image($logo_path, 12, 11, 16, 16, 'PNG');
 
-// Header
-$pdf->SetXY(40, 15);
-$pdf->SetFont('dejavusans', 'B', 14);
-$pdf->Cell(0, 6, 'ARYA GREEN PAMULANG', 0, 1, 'L');
-$pdf->SetX(40);
-$pdf->SetFont('dejavusans', '', 9);
-$pdf->Cell(0, 5, 'RT 005 / RW 020', 0, 1, 'L');
-$pdf->SetX(40);
-$pdf->Cell(0, 5, 'Kelurahan Pamulang Barat, Kecamatan Pamulang', 0, 1, 'L');
-$pdf->SetX(40);
-$pdf->Cell(0, 5, 'Kota Tangerang Selatan, Banten', 0, 1, 'L');
+// Header (teks bergeser kalau ada logo)
+$x0 = $logo_ok ? 32 : 12;
+$pdf->SetXY($x0, 11);
+$pdf->SetFont('dejavusans', 'B', 13);
+$pdf->Cell($W - ($x0 - 12), 5, ($pay['env_name'] ?? 'ARYA GREEN PAMULANG'), 0, 1, 'L');
+$pdf->SetX($x0);
+$pdf->SetFont('dejavusans', '', 8);
+$pdf->Cell($W - ($x0 - 12), 4, 'Iuran Pengelolaan Lingkungan (IPL)', 0, 1, 'L');
+$pdf->SetX($x0);
+$pdf->Cell($W - ($x0 - 12), 4, 'RT 005 / RW 020 — Pamulang Barat, Tangerang Selatan', 0, 1, 'L');
 
-// Line
-$pdf->Ln(5);
-$pdf->Line(15, $pdf->GetY(), 133, $pdf->GetY());
-$pdf->Ln(3);
+// Garis pemisah
+$pdf->Ln(2);
+$y = $pdf->GetY();
+$pdf->SetDrawColor(30, 30, 30);
+$pdf->SetLineWidth(0.4);
+$pdf->Line(12, $y, 12 + $W, $y);
+$pdf->Ln(4);
 
-// Title
-$pdf->SetFont('dejavusans', 'B', 12);
-$pdf->Cell(0, 8, 'KWITANSI PEMBAYARAN IPL', 0, 1, 'C');
-$pdf->SetFont('dejavusans', '', 9);
-$pdf->Cell(0, 5, 'No: ' . $receipt_no, 0, 1, 'C');
-$pdf->Ln(5);
-
-// Details
-$pdf->SetFont('dejavusans', '', 10);
-$pdf->Cell(45, 6, 'Telah terima dari', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->SetFont('dejavusans', 'B', 10);
-$pdf->Cell(0, 6, $pay['resident_name'] ?? '-', 0, 1, 'L');
-
-$pdf->SetFont('dejavusans', '', 10);
-$pdf->Cell(45, 6, 'Unit', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->SetFont('dejavusans', 'B', 10);
-$pdf->Cell(0, 6, $pay['block'] . '-' . $pay['unit_number'], 0, 1, 'L');
-
-$pdf->SetFont('dejavusans', '', 10);
-$pdf->Cell(45, 6, 'Periode Tagihan', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->Cell(0, 6, $pay['period'], 0, 1, 'L');
-
-$pdf->Cell(45, 6, 'Untuk pembayaran', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->Cell(0, 6, 'Iuran Pemeliharaan Lingkungan (IPL)', 0, 1, 'L');
-
-$pdf->Ln(3);
-
-// Amount
+// Judul
 $pdf->SetFont('dejavusans', 'B', 11);
-$pdf->Cell(45, 8, 'Jumlah', 0, 0, 'L');
-$pdf->Cell(5, 8, ':', 0, 0, 'L');
-$pdf->SetFillColor(240, 240, 240);
-$pdf->Cell(0, 8, 'Rp ' . number_format($pay['amount_paid'], 0, ',', '.'), 1, 1, 'L', true);
+$pdf->Cell($W, 6, 'KWITANSI PEMBAYARAN', 0, 1, 'C');
+$pdf->SetFont('dejavusans', '', 8);
+$pdf->Cell($W, 4, 'No. ' . $receipt_no, 0, 1, 'C');
+$pdf->Ln(3);
 
+// Baris detail: label kiri (40mm) | titik dua | nilai
+$row = function (string $label, string $value, bool $bold = false) use ($pdf, $W) {
+    $x = 12;
+    $pdf->SetX($x);
+    $pdf->SetFont('dejavusans', '', 9);
+    $pdf->Cell(38, 6, $label, 0, 0, 'L');
+    $pdf->Cell(4, 6, ':', 0, 0, 'C');
+    $pdf->SetFont('dejavusans', $bold ? 'B' : '', 9);
+    $pdf->MultiCell($W - 42, 6, $value, 0, 'L', false, 1);
+};
+
+$unit_label = trim(($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? ''), '-');
+
+$row('Telah terima dari', $pay['resident_name'] ?? '-', true);
+$row('Unit', $unit_label, true);
+$row('Periode Tagihan', $pay['period']);
+$row('Untuk pembayaran', 'Iuran Pemeliharaan Lingkungan (IPL)');
+
+// Kotak jumlah
+$pdf->Ln(2);
+$pdf->SetX(12);
+$pdf->SetFont('dejavusans', 'B', 9);
+$pdf->Cell(38, 10, 'Jumlah', 0, 0, 'L');
+$pdf->Cell(4, 10, ':', 0, 0, 'C');
+$pdf->SetFillColor(238, 244, 240);
+$pdf->SetDrawColor(25, 135, 84);
+$pdf->SetFont('dejavusans', 'B', 12);
+$pdf->Cell($W - 42, 10, idr((float)$pay['amount_paid']), 1, 1, 'L', true);
+$pdf->SetDrawColor(30, 30, 30);
+$pdf->SetLineWidth(0.2);
 $pdf->Ln(2);
 
-// Payment details
-$pdf->SetFont('dejavusans', '', 10);
-$pdf->Cell(45, 6, 'Metode Pembayaran', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->Cell(0, 6, $pay['payment_method_name'] ?? ($pay['payment_method'] ?: 'Transfer'), 0, 1, 'L');
-
-if ($pay['bank_name']) {
-    $pdf->Cell(45, 6, 'Bank', 0, 0, 'L');
-    $pdf->Cell(5, 6, ':', 0, 0, 'L');
-    $pdf->Cell(0, 6, $pay['bank_name'], 0, 1, 'L');
-}
-
-if ($pay['reference_no']) {
-    $pdf->Cell(45, 6, 'No. Referensi', 0, 0, 'L');
-    $pdf->Cell(5, 6, ':', 0, 0, 'L');
-    $pdf->Cell(0, 6, $pay['reference_no'], 0, 1, 'L');
-}
-
-$pdf->Cell(45, 6, 'Tanggal Bayar', 0, 0, 'L');
-$pdf->Cell(5, 6, ':', 0, 0, 'L');
-$pdf->Cell(0, 6, date('d F Y', strtotime($pay['payment_date'])), 0, 1, 'L');
+// Detail pembayaran
+$row('Metode Pembayaran', $pay['payment_method_name'] ?? ($pay['payment_method'] ?: 'Transfer'));
+if ($pay['bank_name'])       $row('Bank', $pay['bank_name']);
+if ($pay['reference_no'])    $row('No. Referensi', $pay['reference_no']);
+$row('Tanggal Bayar', date('d F Y', strtotime($pay['payment_date'])));
+if ($pay['verifier_name'])   $row('Diverifikasi oleh', $pay['verifier_name']);
 
 // Terbilang
-$pdf->Ln(3);
-$pdf->SetFont('dejavusans', 'I', 9);
-$pdf->MultiCell(0, 5, 'Terbilang: ' . terbilang((float)$pay['amount_paid']) . ' Rupiah', 0, 'L');
+$pdf->Ln(1);
+$pdf->SetX(12);
+$pdf->SetFont('dejavusans', 'I', 8.5);
+$pdf->MultiCell($W, 5, 'Terbilang: ' . terbilang((float)$pay['amount_paid']) . ' Rupiah', 0, 'L');
 
-$pdf->Ln(10);
+$pdf->Ln(4);
 
-// Signature
+// Tanda tangan — kanan, blok tetap
 $pdf->SetFont('dejavusans', '', 9);
-$today = date('d F Y');
-$pdf->Cell(0, 5, 'Pamulang, ' . $today, 0, 1, 'R');
-$pdf->Cell(0, 5, 'Bendahara RT 005', 0, 1, 'R');
+$pdf->Cell($W, 5, 'Pamulang, ' . date('d F Y'), 0, 1, 'R');
+$pdf->Cell($W, 5, 'Bendahara', 0, 1, 'R');
+$pdf->Ln(13);
+$pdf->Cell($W, 5, '( ________________________ )', 0, 1, 'R');
 
-$pdf->Ln(15);
-$pdf->Cell(0, 5, '( _____________________________ )', 0, 1, 'R');
-
+// Footer
+$pdf->Ln(3);
+$pdf->SetDrawColor(200, 200, 200);
+$pdf->Line(12, $pdf->GetY(), 12 + $W, $pdf->GetY());
 $pdf->Ln(2);
-$pdf->SetFont('dejavusans', 'I', 8);
-$pdf->Cell(0, 5, 'Kwitansi ini sah tanpa tanda tangan basah', 0, 1, 'C');
-$pdf->Cell(0, 5, 'Dicetak otomatis pada ' . date('d/m/Y H:i'), 0, 1, 'C');
+$pdf->SetFont('dejavusans', 'I', 7.5);
+$pdf->SetTextColor(110, 110, 110);
+$pdf->MultiCell($W, 4, 'Kwitansi ini sah tanpa tanda tangan basah. Dicetak otomatis pada '
+    . date('d/m/Y H:i') . ' — ' . ($pay['env_name'] ?? 'Arya Green Pamulang'), 0, 'C');
 
 // Output
 $filename = 'Kwitansi_' . str_replace(['/', ' '], ['_', '_'], $receipt_no) . '.pdf';

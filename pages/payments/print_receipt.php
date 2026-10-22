@@ -52,138 +52,120 @@ $page_title = 'Cetak Kwitansi';
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.css" rel="stylesheet">
   <style>
+    /* A5 portrait = ukuran kertas satu-satunya; layar hanya pratinjau */
+    @page { size: A5 portrait; margin: 8mm 9mm; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; color: #111; background: #f4f4f4; margin: 0; }
+    .receipt-box { max-width: 148mm; margin: 0 auto; background: #fff; border: 1px solid #ccc;
+                   padding: 6mm 7mm; position: relative; overflow: hidden; }
+    .receipt-head { display: flex; align-items: center; gap: 6mm; border-bottom: 1.5px solid #198754; padding-bottom: 3.5mm; margin-bottom: 4mm; }
+    .logo-img { height: 15mm; width: auto; }
+    .org-name { font-size: 13pt; font-weight: 700; line-height: 1.15; margin: 0; }
+    .org-sub { font-size: 8pt; color: #555; margin: 0.5mm 0 0; }
+    .doc-title { text-align: center; font-size: 11.5pt; font-weight: 700; letter-spacing: .04em; margin: 0 0 1mm; }
+    .doc-no { text-align: center; font-size: 8.5pt; color: #666; margin-bottom: 4mm; }
+    .kv { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .kv th { text-align: left; font-weight: 400; color: #555; width: 34mm; padding: 1mm 0; vertical-align: top; }
+    .kv td.sep { width: 3mm; padding: 1mm 0; color: #999; }
+    .kv td { padding: 1mm 0; vertical-align: top; }
+    .kv td.val { font-weight: 600; }
+    .amount-row { display: flex; align-items: center; margin: 3.5mm 0 3mm; border: 1.5px solid #198754;
+                  background: #eef4f0; border-radius: 2px; }
+    .amount-row .lbl { font-size: 9pt; color: #555; padding: 3mm 0 3mm 3mm; width: 34mm; }
+    .amount-row .val { font-size: 13pt; font-weight: 700; letter-spacing: .01em; padding: 3mm; }
+    .amount-words { font-size: 8.5pt; font-style: italic; color: #333; margin-top: 1mm; }
+    .divider { border: 0; border-top: 1px solid #ddd; margin: 3.5mm 0; }
+    .sign-grid { display: flex; justify-content: space-between; margin-top: 4mm; gap: 8mm; }
+    .sign-cell { width: 50%; text-align: center; font-size: 9pt; }
+    .sign-space { height: 14mm; }
+    .sign-name { border-top: 1px solid #333; padding-top: 1.5mm; display: inline-block; min-width: 45mm; font-weight: 600; }
+    .receipt-foot { border-top: 1px solid #eee; margin-top: 4mm; padding-top: 2mm;
+                    font-size: 7.5pt; color: #777; text-align: center; line-height: 1.4; }
     @media print {
       .no-print { display: none !important; }
-      body { padding: 20mm; font-size: 12pt; }
-      .receipt-box { border: 2px solid #333; box-shadow: none; }
-      .receipt-header { border-bottom: 2px solid #333; }
-      .receipt-footer { border-top: 1px solid #333; }
+      body { background: #fff; padding: 0; }
+      .receipt-box { max-width: none; border: 0; padding: 0; margin: 0; box-shadow: none; }
+      .receipt-head { page-break-after: avoid; }
+      .sign-grid { page-break-inside: avoid; }
     }
-    @page { margin: 15mm; size: A5 portrait; }
-    .receipt-box { max-width: 100%; margin: 0 auto; }
-    .logo-img { max-height: 70px; }
-    .amount-words { font-size: 0.85rem; font-style: italic; color: #333; }
-    .signature-line { width: 180px; border-bottom: 1px solid #333; margin-top: 40px; text-align: center; }
-    .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
-                 font-size: 120px; color: rgba(0,0,0,0.05); pointer-events: none; z-index: -1; }
+    @media screen { .receipt-box { box-shadow: 0 2px 12px rgba(0,0,0,.12); margin-top: 1.5rem; margin-bottom: 1.5rem; } }
   </style>
 </head>
 <body>
-  <div class="watermark">ARYA GREEN</div>
-  <div class="container py-4">
-    <!-- Print button -->
-    <div class="text-end no-print mb-3">
-      <button class="btn btn-primary" onclick="window.print()">
-        <i class="bi bi-printer me-1"></i> Cetak / Simpan PDF
-      </button>
-      <a href="<?= APP_URL ?>/pages/payments/detail.php?id=<?= $id ?>" class="btn btn-outline-secondary ms-2">Kembali</a>
+  <?php $unit_label = trim(($pay['block'] ?? '') . '-' . ($pay['unit_number'] ?? ''), '-'); ?>
+  <div class="container no-print py-3 text-end">
+    <button class="btn btn-primary" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Cetak / Simpan PDF
+    </button>
+    <a href="<?= APP_URL ?>/pages/payments/detail.php?id=<?= $id ?>" class="btn btn-outline-secondary ms-2">Kembali</a>
+  </div>
+
+  <div class="receipt-box">
+    <!-- Kop -->
+    <div class="receipt-head">
+      <?php if (file_exists(__DIR__ . '/../../assets/images/logo.png')): ?>
+        <img src="<?= APP_URL ?>/assets/images/logo.png" class="logo-img" alt="">
+      <?php endif; ?>
+      <div>
+        <p class="org-name"><?= e($pay['env_name'] ?? 'ARYA GREEN PAMULANG') ?></p>
+        <p class="org-sub">Iuran Pengelolaan Lingkungan (IPL)</p>
+        <p class="org-sub">RT 005 / RW 020 — Pamulang Barat, Tangerang Selatan</p>
+      </div>
     </div>
 
-    <!-- Receipt -->
-    <div class="receipt-box card p-4">
-      <div class="receipt-header text-center mb-4 pb-3">
-        <img src="<?= APP_URL ?>/assets/images/logo.png" class="logo-img mb-2" alt="Logo Arya Green">
-        <h4 class="mb-1 fw-bold"><?= e($pay['env_name'] ?? 'ARYA GREEN PAMULANG') ?></h4>
-        <p class="mb-0 text-muted small">Iuran Pengelolaan Lingkungan</p>
+    <!-- Judul -->
+    <div class="doc-title">KWITANSI PEMBAYARAN</div>
+    <div class="doc-no">No. <?= e(sprintf('KWT/%04d/%02d/%05d', $pay['period_year'] ?? date('Y', strtotime($pay['payment_date'])), $pay['period_month'] ?? date('n', strtotime($pay['payment_date'])), $pay['id'])) ?></div>
+
+    <!-- Identitas -->
+    <table class="kv">
+      <tr><th>Telah terima dari</th><td class="sep">:</td><td class="val"><?= e($pay['resident_name'] ?? '-') ?></td></tr>
+      <tr><th>Unit</th><td class="sep">:</td><td class="val"><?= e($unit_label) ?></td></tr>
+      <tr><th>Periode Tagihan</th><td class="sep">:</td><td><?= e($pay['period'] ?? '-') ?></td></tr>
+      <tr><th>Untuk pembayaran</th><td class="sep">:</td><td>Iuran Pemeliharaan Lingkungan (IPL)</td></tr>
+    </table>
+
+    <!-- Jumlah -->
+    <div class="amount-row">
+      <div class="lbl">Jumlah</div>
+      <div class="val"><?= idr((float)$pay['amount_paid']) ?></div>
+    </div>
+    <div class="amount-words">Terbilang: <strong><?= terbilang((float)$pay['amount_paid']) ?> Rupiah</strong></div>
+
+    <hr class="divider">
+
+    <!-- Detail pembayaran -->
+    <table class="kv">
+      <tr><th>Metode Pembayaran</th><td class="sep">:</td><td><?= e($pay['payment_method_name'] ?? ($pay['payment_method'] ?: '-')) ?><?= $pay['bank_name'] ? ' — ' . e($pay['bank_name']) : '' ?></td></tr>
+      <?php if ($pay['reference_no']): ?>
+      <tr><th>No. Referensi</th><td class="sep">:</td><td><?= e($pay['reference_no']) ?></td></tr>
+      <?php endif; ?>
+      <tr><th>Tanggal Bayar</th><td class="sep">:</td><td><?= fmt_date($pay['payment_date'], 'd F Y') ?></td></tr>
+      <?php if ($pay['verifier_name']): ?>
+      <tr><th>Diverifikasi oleh</th><td class="sep">:</td><td><?= e($pay['verifier_name']) ?> <span style="color:#777">(<?= fmt_date($pay['verified_at'], 'd M Y H:i') ?>)</span></td></tr>
+      <?php else: ?>
+      <tr><th>Status</th><td class="sep">:</td><td style="color:#b8860b;font-weight:600"><?= e(ucfirst($pay['status'])) ?></td></tr>
+      <?php endif; ?>
+    </table>
+
+    <!-- Tanda tangan -->
+    <div class="sign-grid">
+      <div class="sign-cell">
+        <div>Warga / Penyetor</div>
+        <div class="sign-space"></div>
+        <div class="sign-name"><?= e($pay['resident_name'] ?? '&nbsp;') ?></div>
       </div>
-
-      <div class="text-center mb-4">
-        <span class="badge bg-success fs-6 px-3 py-2">KWITANSI PEMBAYARAN</span>
+      <div class="sign-cell">
+        <div>Pamulang, <?= fmt_date(date('Y-m-d'), 'd F Y') ?></div>
+        <div style="font-size:9pt">Bendahara</div>
+        <div class="sign-space" style="height:12mm"></div>
+        <div class="sign-name"><?= e($pay['verifier_name'] ?? '&nbsp;') ?></div>
       </div>
+    </div>
 
-      <table class="table table-borderless mb-0 small">
-        <tr>
-          <th class="text-start" style="width: 35%">Nomor Kwitansi</th>
-          <td class="fw-bold"><?= e($pay['reference_no'] ?? 'KWT-'.str_pad($pay['id'], 6, '0', STR_PAD_LEFT)) ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">Tanggal Bayar</th>
-          <td><?= fmt_date($pay['payment_date']) ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">Periode</th>
-          <td><?= e($pay['period']) ?></td>
-        </tr>
-      </table>
-
-      <hr class="my-3">
-
-      <table class="table table-borderless mb-0 small">
-        <tr>
-          <th class="text-start" style="width: 35%">Unit</th>
-          <td><?= e($pay['block'].'-'.$pay['unit_number']) ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">Nama Warga</th>
-          <td class="fw-bold"><?= e($pay['resident_name'] ?? '-') ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">No. HP</th>
-          <td><?= e($pay['resident_phone'] ?? '-') ?></td>
-        </tr>
-      </table>
-
-      <hr class="my-3">
-
-      <table class="table table-borderless mb-0 small">
-        <tr>
-          <th class="text-start" style="width: 50%">Total Tagihan</th>
-          <td class="text-end"><?= idr((float)$pay['bill_total']) ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">Jumlah Dibayar</th>
-          <td class="text-end fw-bold fs-5"><?= idr((float)$pay['amount_paid']) ?></td>
-        </tr>
-        <tr>
-          <th class="text-start">Metode</th>
-          <td class="text-end"><?= e($pay['payment_method_name'] ?? ($pay['payment_method'] ?: '-')) ?><?= $pay['bank_name'] ? ' — '.e($pay['bank_name']) : '' ?></td>
-        </tr>
-        <?php if ($pay['reference_no']): ?>
-        <tr>
-          <th class="text-start">Ref. Transfer</th>
-          <td class="text-end"><?= e($pay['reference_no']) ?></td>
-        </tr>
-        <?php endif; ?>
-      </table>
-
-      <div class="amount-words mt-2">
-        Terbilang: <strong><?= terbilang((float)$pay['amount_paid']) ?> Rupiah</strong>
-      </div>
-
-      <hr class="my-3">
-
-      <div class="row small">
-        <div class="col-6">
-          <div class="text-muted">Dicatat Oleh</div>
-          <div class="fw-bold"><?= e($pay['created_by_name'] ?? '-') ?></div>
-          <div class="text-muted"><?= fmt_date($pay['created_at'], 'd M Y H:i') ?></div>
-        </div>
-        <div class="col-6">
-          <?php if ($pay['verifier_name']): ?>
-          <div class="text-muted">Diverifikasi Oleh</div>
-          <div class="fw-bold"><?= e($pay['verifier_name']) ?></div>
-          <div class="text-muted"><?= fmt_date($pay['verified_at'], 'd M Y H:i') ?></div>
-          <?php else: ?>
-          <div class="text-muted">Status</div>
-          <div class="fw-bold text-warning"><?= e(ucfirst($pay['status'])) ?></div>
-          <?php endif; ?>
-        </div>
-      </div>
-
-      <div class="receipt-footer mt-4 pt-3">
-        <div class="row">
-          <div class="col-6 text-center">
-            <div class="signature-line">Penerima / Bendahara</div>
-          </div>
-          <div class="col-6 text-center">
-            <div class="signature-line">Warga / Penyetor</div>
-          </div>
-        </div>
-        <p class="text-center text-muted small mt-3 mb-0">
-          Kwitansi ini sah sebagai bukti pembayaran resmi IPL <?= e($pay['env_name'] ?? 'Arya Green Pamulang') ?>.
-          Dicetak pada <?= date('d F Y H:i') ?>.
-        </p>
-      </div>
+    <div class="receipt-foot">
+      Kwitansi ini sah sebagai bukti pembayaran resmi IPL <?= e($pay['env_name'] ?? 'Arya Green Pamulang') ?>.<br>
+      Dicetak pada <?= date('d/m/Y H:i') ?>.
     </div>
   </div>
 

@@ -78,7 +78,10 @@ if (!$bill) {
 $role = auth_role();
 $tunai_filter = $role === 'warga' ? " AND code != 'tunai'" : '';
 $channel_active = gateway_channel() !== null;
-$gateway_filter = $channel_active ? '' : " AND code != 'qris-klikqris'";
+// Metode gateway tidak pernah muncul di form manual: jalurnya satu tombol QRIS di atas,
+// dan nominalnya terkunci di checkout — isian manual justru bisa menagih nominal salah.
+// Dropdown hanya menawarkan metode gateway bila QRIS Online tidak tersedia (fallback catat manual).
+$gateway_filter = $channel_active ? " AND code != 'qris-klikqris'" : '';
 $payment_methods = $db->query(
 'SELECT id, code, name, account_no, account_name, instructions
  FROM payment_methods WHERE is_active=1' . $tunai_filter . $gateway_filter . ' ORDER BY sort_order, name'
