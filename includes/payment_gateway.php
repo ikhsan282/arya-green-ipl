@@ -275,19 +275,28 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         $pm = $db->query("SELECT id,name FROM payment_methods WHERE code='qris-klikqris' LIMIT 1")->fetch_assoc();
         if (!$pm) throw new RuntimeException('Metode QRIS KlikQRIS belum tersedia.');
 
-        // Nominal order = tagihan + biaya penanganan. Pembayaran dicatat sebesar
-        // tagihan saja; biaya penanganan (dan kode unik gateway, bila ada)
-        // masuk sebagai pemasukan lain agar laporan IPL tetap cocok.
+        // Nominal order = tagihan + biaya penanganan + kode unik dari gateway.
+        // Hanya tagihan dan biaya penanganan yang masuk saldo merchant; kode unik
+        // murni penanda auto-match dan tidak pernah dicairkan, jadi TIDAK boleh
+        // dicatat sebagai pemasukan — kalau dicatat, buku kas lebih besar dari
+        // saldo riil dan selisihnya menumpuk tiap transaksi.
         $billId    = (int) $order['bill_id'];
         $billTotal = (float) $db->query("SELECT total_amount FROM bills WHERE id={$billId}")->fetch_row()[0];
+        $fee       = gateway_fee($billTotal);
         $charge    = $total - $billTotal;
         $amountPaid = $charge >= 0 ? $billTotal : $total;
-        $extra      = $charge > 0 ? $charge : 0.0;
+        $extra      = $charge > 0 ? min($charge, $fee) : 0.0;   // biaya layanan saja
+        $uniqueCode = $charge > 0 ? max(0.0, $charge - $fee) : 0.0; // sisa = kode unik
 
         $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?,?,"verified",NOW(),?)');
         $userId = $order['user_id'] !== null ? (int) $order['user_id'] : null;
         $pmId = (int) $pm['id']; $name = $pm['name']; $ref = $orderId;
-        $notes = 'Otomatis via KlikQRIS' . ($extra > 0 ? sprintf(' (biaya QRIS + kode unik %s)', number_format($extra, 0, ',', '.')) : '');
+        $notes = 'Otomatis via KlikQRIS';
+        if ($extra > 0 && $uniqueCode > 0) {
+            $notes .= sprintf(' (biaya QRIS %s + kode unik %s)', number_format($extra, 0, ',', '.'), number_format($uniqueCode, 0, ',', '.'));
+        } elseif ($extra > 0) {
+            $notes .= sprintf(' (biaya QRIS %s)', number_format($extra, 0, ',', '.'));
+        }
         $s->bind_param('iidssss', $billId, $userId, $amountPaid, $pmId, $name, $ref, $notes); $s->execute(); $paymentId = (int) $db->insert_id;
 
         // Buku kas: IPL selalu dicatat (sama seperti verify.php), biaya QRIS terpisah.
