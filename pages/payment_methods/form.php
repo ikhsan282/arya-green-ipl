@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../includes/functions.php';
 $db = db();
 $id = (int)($_GET['id'] ?? 0);
 $editing = $id > 0;
-require_permission('payment_methods.view');
+require_permission('payment_methods.manage');
 
 if ($editing) {
     require_permission('payment_methods.manage');

@@ -87,7 +87,7 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
-    <?php if (can('payment_methods.view')): ?>
+    <?php if (can('payment_methods.manage')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/payment_methods/index.php"
          class="nav-link text-white<?= nav_active('/payment_methods') ?>">

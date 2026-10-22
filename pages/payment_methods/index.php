@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 auth_check();
 require_once __DIR__ . '/../../includes/functions.php';
-require_permission('payment_methods.view');
+require_permission('payment_methods.manage');
 
 $db = db();
 

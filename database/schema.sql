@@ -123,10 +123,12 @@ CREATE TABLE `role_permissions` (
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, `id` FROM `permissions`;
 
--- Ketua: semua kecuali roles.manage, users.delete, environments.*
+-- Ketua: semua kecuali roles.manage, users.delete, environments.*,
+-- serta pengaturan kanal & master metode pembayaran (khusus super_admin).
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 2, `id` FROM `permissions`
-WHERE `name` NOT IN ('roles.manage','users.delete','environments.create','environments.edit','environments.delete');
+WHERE `name` NOT IN ('roles.manage','users.delete','environments.create','environments.edit','environments.delete',
+                     'payment_methods.view','payment_methods.manage','payment_channels.manage');
 
 -- Bendahara: keuangan, kas, laporan, komunikasi dasar
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
@@ -137,7 +139,6 @@ WHERE `name` IN (
   'billing.view','billing.generate',
   'ipl_components.view','ipl_components.manage',
   'payments.view','payments.create','payments.verify',
-  'payment_methods.view',
   'cashbook.view','cashbook.manage',
   'expense.request',
   'reports.view',

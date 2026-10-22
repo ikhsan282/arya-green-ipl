@@ -34,6 +34,33 @@ $active_poll = $q_poll->get_result()->fetch_assoc();
 // Kanal pembayaran aktif
 $q_methods = $db->query('SELECT name, account_no, account_name FROM payment_methods WHERE is_active=1 ORDER BY sort_order ASC LIMIT 4');
 $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
+
+// Ringkasan kas publik — agregat saja, tanpa detail transaksi atau nama penyetor.
+// Angka yang sama dipakai halaman cashbook, jadi warga bisa mencocokkan sendiri.
+$cash = ['masuk' => 0.0, 'keluar' => 0.0, 'saldo' => 0.0, 'bulan_masuk' => 0.0, 'bulan_keluar' => 0.0];
+$q_cash = $db->query(
+    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
+            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
+     FROM cash_book'
+);
+if ($c = $q_cash->fetch_assoc()) {
+    $cash['masuk'] = (float)$c['masuk'];
+    $cash['keluar'] = (float)$c['keluar'];
+    $cash['saldo'] = $cash['masuk'] - $cash['keluar'];
+}
+$q_month = $db->prepare(
+    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
+            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
+     FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?'
+);
+$ym_y = (int)date('Y'); $ym_m = (int)date('n');
+$q_month->bind_param('ii', $ym_y, $ym_m);
+$q_month->execute();
+if ($cm = $q_month->get_result()->fetch_assoc()) {
+    $cash['bulan_masuk']  = (float)$cm['masuk'];
+    $cash['bulan_keluar'] = (float)$cm['keluar'];
+}
+$has_cash = ($cash['masuk'] + $cash['keluar']) > 0;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -371,6 +398,66 @@ $methods = $q_methods ? $q_methods->fetch_all(MYSQLI_ASSOC) : [];
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Transparansi Kas -->
+  <section class="py-5" id="transparansi">
+    <div class="container py-4">
+      <div class="text-center max-w-700 mx-auto mb-5">
+        <div class="badge-pill mb-2">Transparansi</div>
+        <h2 class="section-title h1">Laporan Kas Lingkungan</h2>
+        <p class="text-muted mb-0">Ringkasan keuangan kas RT yang diperbarui otomatis dari buku kas. Detail transaksi tersedia setelah masuk ke portal.</p>
+      </div>
+
+      <?php if (!$has_cash): ?>
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-wallet2 fs-1 d-block mb-2"></i>
+          Belum ada transaksi kas yang tercatat.
+        </div>
+      <?php else: ?>
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-6 col-lg-3">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body">
+              <div class="text-muted small mb-1">Saldo Kas Saat Ini</div>
+              <div class="fw-bold" style="font-size:1.5rem;color:var(--brand-primary);"><?= idr($cash['saldo']) ?></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body">
+              <div class="text-muted small mb-1">Total Pemasukan</div>
+              <div class="fw-bold text-success" style="font-size:1.5rem;"><?= idr($cash['masuk']) ?></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body">
+              <div class="text-muted small mb-1">Total Pengeluaran</div>
+              <div class="fw-bold text-danger" style="font-size:1.5rem;"><?= idr($cash['keluar']) ?></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body">
+              <div class="text-muted small mb-1">Arus Kas <?= date('F Y') ?></div>
+              <div class="fw-semibold text-success" style="font-size:1.1rem;">+<?= idr($cash['bulan_masuk']) ?></div>
+              <div class="fw-semibold text-danger" style="font-size:1.1rem;">−<?= idr($cash['bulan_keluar']) ?></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <a href="<?= APP_URL ?>/auth/login.php" class="btn btn-brand">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Lihat Detail di Portal
+        </a>
+      </div>
+      <?php endif; ?>
     </div>
   </section>
 
