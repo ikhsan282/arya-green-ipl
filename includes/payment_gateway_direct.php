@@ -185,7 +185,79 @@ function gq_create(array $channel, string $orderId, float $amount, string $note 
 // ---- gq_check ----
 
 /**
+ * Kode unik per order: 1..99, tidak dipakai order PENDING lain dengan base sama.
+ * Deterministik (bukan acak): jenis QR tetap "12" dan nominal mudah dicocokkan.
+ * $excludeOrderId: order yang sedang diperbarui tidak menghitung dirinya sendiri.
+ */
+function gq_unique_touch(int $base, string $excludeOrderId = ''): int
+{
+    $used = [];
+    $st = db()->prepare('SELECT total_amount FROM payment_gateway_orders WHERE status="PENDING" AND order_id<>? AND total_amount BETWEEN ? AND ?');
+    $lo = $base + 1; $hi = $base + 99;
+    $st->bind_param('sdd', $excludeOrderId, $lo, $hi);
+    $st->execute();
+    $r = $st->get_result();
+    while ($row = $r->fetch_row()) $used[(int) round((float) $row[0]) - $base] = true;
+    for ($c = 1; $c <= 99; $c++) {
+        if (!isset($used[$c])) return $c;
+    }
+    return 1; // ponytail: 99 order aktif dengan nominal sama → klaim atomik tetap mencegah dobel bayar
+}
+
+/**
+ * Hitung rincian nominal order direct.
+ *
+ * Konvensi lama (KlikQRIS) menumpuk semua tambahan di atas tagihan:
+ *   total = tagihan + biaya layanan + kode unik
+ * sehingga: charge  = total - tagihan
+ *            extra  = min(charge, biaya layanan)   → masuk buku kas
+ *            unik   = sisanya                      → penanda, tidak masuk kas
+ * Tidak perlu menyimpan marker terpisah.
+ */
+function gq_split(float $total, float $billTotal, float $fee): array
+{
+    $charge = $total - $billTotal;
+    $extra  = $charge > 0 ? min($charge, $fee) : 0.0;
+    $unique = $charge > 0 ? max(0.0, $charge - $extra) : 0.0;
+    return ['charge' => max(0.0, $charge), 'fee' => $extra, 'unique' => $unique];
+}
+
+/**
+ * Klaim satu transaksi gateway untuk satu order (idempotent).
+ *
+ * Satu transaksi hanya boleh melunasi satu order. ID transaksi disimpan di
+ * kolom `signature` (tidak dipakai provider direct); kalau transaksi itu sudah
+ * dipakai order lain yang PAID, klaim ditolak.
+ */
+function gq_claim(array $order, ?array $trx): bool
+{
+    $trxId = trim((string) ($trx['transaction_id'] ?? $trx['order_sn'] ?? $trx['id'] ?? ''));
+    if ($trxId === '') return true; // gateway tanpa ID transaksi: nominal unik sudah jadi pengaman
+    $trxId = mb_substr($trxId, 0, 255);
+    $orderDbId = (int) $order['id'];
+
+    $st = db()->prepare('SELECT 1 FROM payment_gateway_orders WHERE signature=? AND status="PAID" AND id<>? LIMIT 1');
+    $st->bind_param('si', $trxId, $orderDbId);
+    $st->execute();
+    if ($st->get_result()->fetch_row()) return false;
+
+    $st = db()->prepare('UPDATE payment_gateway_orders SET signature=? WHERE id=? AND status="PENDING" AND (signature IS NULL OR signature<>?)');
+    $st->bind_param('sis', $trxId, $orderDbId, $trxId);
+    $st->execute();
+    return $st->affected_rows > 0 || gq_signature_of($orderDbId) === $trxId;
+}
+
+function gq_signature_of(int $orderDbId): string
+{
+    $st = db()->prepare('SELECT signature FROM payment_gateway_orders WHERE id=?');
+    $st->bind_param('i', $orderDbId);
+    $st->execute();
+    return (string) ($st->get_result()->fetch_row()[0] ?? '');
+}
+
+/**
  * Cek apakah pembayaran masuk langsung ke API merchant.
+ * Order lama tanpa kode unik tetap dicocokkan ke total_amount-nya sendiri.
  * @return array{ok:bool,paid:bool,status:string,error:?string,trx:?array}
  */
 function gq_check(array $channel, array $order): array
@@ -245,14 +317,16 @@ function gq_check_gopay(string $authJson, int $amount, int $since, array $channe
         return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'trx' => null];
     }
 
-    // Cari transaksi yang cocok nominal + waktu
+    // Cari transaksi yang cocok nominal + waktu.
+    // Waktu wajib: cegah transaksi lama tercocokkan ke order baru bernominal sama.
     $transactions = $res['json']['data'] ?? $res['json']['transactions'] ?? [];
     if (!is_array($transactions)) $transactions = [];
     foreach ($transactions as $tx) {
         $txAmt = (int) round((float) ($tx['amount'] ?? $tx['gross_amount'] ?? 0));
-        if ($txAmt === $amount) {
-            return ['ok' => true, 'paid' => true, 'status' => 'PAID', 'error' => null, 'trx' => $tx];
-        }
+        if ($txAmt !== $amount) continue;
+        $txTime = strtotime((string) ($tx['transaction_time'] ?? $tx['create_time'] ?? $tx['time'] ?? ''));
+        if ($txTime !== false && $txTime < $since) continue;
+        return ['ok' => true, 'paid' => true, 'status' => 'PAID', 'error' => null, 'trx' => $tx];
     }
     return ['ok' => true, 'paid' => false, 'status' => 'PENDING', 'error' => null, 'trx' => null];
 }

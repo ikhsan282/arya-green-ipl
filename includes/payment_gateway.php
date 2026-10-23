@@ -156,8 +156,13 @@ function gateway_status(array $channel, string $orderId): array
         require_once __DIR__ . '/payment_gateway_direct.php';
         $r = gq_check($channel, ['total_amount' => $order['total_amount'], 'created_at' => $order['created_at'],
                                  'gateway_type' => $order['gateway_type'], 'direct_url' => $order['direct_url']]);
-        // Nominal yang ditagihkan = total_amount order (direct tidak menambah kode unik).
+        // Nominal yang ditagihkan = total_amount order (termasuk kode unik).
         $data = ['status' => $r['status'], 'total_amount' => (float) $order['total_amount']] + ($r['trx'] ?? []);
+        // Satu transaksi gateway hanya boleh melunasi satu order.
+        if ($r['ok'] && $r['paid'] && !gq_claim($order, $r['trx'] ?? null)) {
+            error_log('gateway claim ditolak: transaksi sudah dipakai order lain (' . $orderId . ')');
+            $data['status'] = 'PENDING';
+        }
         return $r['ok'] ? ['ok' => true, 'error' => null, 'data' => $data] : ['ok' => false, 'error' => $r['error'], 'data' => null];
     }
     $paths = gateway_paths($channel);
@@ -178,6 +183,11 @@ function gateway_status(array $channel, string $orderId): array
 
 /**
  * Simpan order gateway. Nominal yang ditagih = total_amount (sudah ada kode unik).
+ *
+ * Untuk provider direct, kode unik ditetapkan DI SINI (bukan di gq_create):
+ * order sebelumnya baru terlihat di DB setelah tersimpan, jadi hanya di titik
+ * ini dua order bernominal sama dijamin dapat kode unik berbeda. QRIS statis
+ * di-generate ulang dengan nominal final.
  */
 function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int $userId, float $amount, array $data): int
 {
@@ -187,6 +197,20 @@ function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int
     $sig     = $data['signature'] ?? null;
     $type    = $data['type'] ?? null;
     $expired = !empty($data['expired_at']) ? date('Y-m-d H:i:s', strtotime((string) $data['expired_at'])) : null;
+
+    if (in_array($type, GQ_DIRECT, true)) {
+        require_once __DIR__ . '/payment_gateway_direct.php';
+        $ch = db()->query('SELECT merchant_id, provider FROM payment_channels WHERE id=' . $channelId)->fetch_assoc();
+        $static = trim((string) ($ch['merchant_id'] ?? ''));
+        $amt = (int) round($total) + gq_unique_touch((int) round($total), $orderId);
+        $dynamic = qris_make_dynamic($static, $amt);
+        if ($dynamic !== null) {
+            $total   = (float) $amt;
+            $direct  = $dynamic;
+            $qrisUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($dynamic);
+            $data    = ['total_amount' => $total, 'qris_url' => $qrisUrl, 'trx_id' => $orderId] + $data;
+        }
+    }
     $payload = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
     $st = db()->prepare(
@@ -302,10 +326,20 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         $billId    = (int) $order['bill_id'];
         $billTotal = (float) $db->query("SELECT total_amount FROM bills WHERE id={$billId}")->fetch_row()[0];
         $fee       = gateway_fee($billTotal);
-        $charge    = $total - $billTotal;
+        // Provider direct: tagihan + biaya layanan + kode unik; kode unik penanda
+        // auto-match dan tidak pernah dicairkan, jadi tidak masuk buku kas.
+        if (in_array($ch['provider'] ?? '', GQ_DIRECT, true)) {
+            require_once __DIR__ . '/payment_gateway_direct.php';
+            $split      = gq_split($total, $billTotal, $fee);
+            $charge     = $split['charge'];
+            $extra      = $split['fee'];
+            $uniqueCode = $split['unique'];
+        } else {
+            $charge     = $total - $billTotal;
+            $extra      = $charge > 0 ? min($charge, $fee) : 0.0;
+            $uniqueCode = $charge > 0 ? max(0.0, $charge - $fee) : 0.0;
+        }
         $amountPaid = $charge >= 0 ? $billTotal : $total;
-        $extra      = $charge > 0 ? min($charge, $fee) : 0.0;   // biaya layanan saja
-        $uniqueCode = $charge > 0 ? max(0.0, $charge - $fee) : 0.0; // sisa = kode unik
 
         $s = $db->prepare('INSERT INTO payments (bill_id,user_id,payment_date,amount_paid,payment_method_id,payment_method,reference_no,status,verified_at,notes) VALUES (?,?,CURDATE(),?,?,?,?,"verified",NOW(),?)');
         $userId = $order['user_id'] !== null ? (int) $order['user_id'] : null;

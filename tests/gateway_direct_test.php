@@ -118,7 +118,7 @@ foreach (['gopay', 'shopeepay'] as $i => $provider) {
     $ok($res['ok'], "$provider: create ok → " . (string)$res['error']);
     $ok(!empty($res['data']['qris_url']), "$provider: qris_url ada");
     $ok(str_contains($res['data']['qris_url'], 'qrserver.com'), "$provider: qris_url dari qrserver.com");
-    $ok((float)$res['data']['total_amount'] === 150000.0, "$provider: total_amount = tagihan (tanpa kode unik)");
+    $ok((float)$res['data']['total_amount'] === 150000.0, "$provider: create = tagihan tanpa kode unik (kode unik ditambah saat simpan)");
 
     // Verify the generated QRIS is valid dynamic
     $genQris = $res['data']['direct_url'];
@@ -130,6 +130,9 @@ foreach (['gopay', 'shopeepay'] as $i => $provider) {
     gateway_store_order((int)$ch['id'], $oid, $billId, null, $charge, $res['data']);
     $order = gateway_find_order($oid);
     $ok($order && $order['status'] === 'PENDING', "$provider: order PENDING tersimpan");
+    // Nominal final = tagihan + kode unik (kode unik ditetapkan saat simpan).
+    $payTotal = (int) round((float) $order['total_amount']);
+    $ok($payTotal > 150000 && $payTotal <= 150099, "$provider: nominal QRIS = tagihan + kode unik ($payTotal)");
 
     // --- Check-payment via mock server ---
     // Monkey-patch gq_check to hit mock instead of real API
@@ -147,7 +150,7 @@ foreach (['gopay', 'shopeepay'] as $i => $provider) {
     $ok($st2['ok'] && !gateway_is_paid($st2['data']), "$provider: status awal PENDING");
 
     // pembeli membayar → status PAID → finalize
-    $ok($http("$MOCK/test/PAY/150000"), "$provider: mock menandai pembayaran masuk");
+    $ok($http("$MOCK/test/TX/TX-" . strtoupper($provider) . "/$payTotal"), "$provider: mock menandai pembayaran masuk");
     $st2 = gateway_status($ch, $oid);
     $ok($st2['ok'] && gateway_is_paid($st2['data']), "$provider: status jadi PAID");
     $fin = gateway_finalize($oid, (float)$st2['data']['total_amount']);

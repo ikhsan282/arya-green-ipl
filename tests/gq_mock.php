@@ -2,9 +2,11 @@
 // Mock server untuk check-payment API GoPay & ShopeePay.
 // gq_create tidak perlu mock (QRIS digenerate lokal); mock ini hanya untuk gq_check.
 // State di file JSON; /test/PAY/<amount> menandai pembayaran masuk.
+// /test/TX/<id>/<amount>[/<time>] menandai transaksi dengan ID eksplisit —
+// dipakai menguji dua order bernominal sama (satu transaksi, dua order).
 $stateFile = getenv('GQ_MOCK_STATE') ?: sys_get_temp_dir() . '/gq-mock.json';
-$state = is_file($stateFile) ? (json_decode(file_get_contents($stateFile), true) ?: []) : ['paid' => []];
-$state += ['paid' => []];
+$state = is_file($stateFile) ? (json_decode(file_get_contents($stateFile), true) ?: []) : ['tx' => []];
+$state += ['tx' => []];
 $path  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $body  = json_decode(file_get_contents('php://input') ?: '', true) ?: [];
 header('Content-Type: application/json');
@@ -12,7 +14,14 @@ $save = function () use (&$state, $stateFile) { file_put_contents($stateFile, js
 
 // /test/PAY/<amount> → mark amount as paid
 if (preg_match('#^/test/PAY/(\d+)$#', $path, $m)) {
-    $state['paid'][(int)$m[1]] = true; $save(); echo '{"ok":true}'; exit;
+    $state['tx'][] = ['id' => 'TX' . $m[1], 'amount' => (int) $m[1], 'time' => time()];
+    $save(); echo '{"ok":true}'; exit;
+}
+
+// /test/TX/<id>/<amount>[/<time>] → transaksi dengan ID eksplisit
+if (preg_match('#^/test/TX/([\w-]+)/(\d+)(?:/(\d+))?$#', $path, $m)) {
+    $state['tx'][] = ['id' => $m[1], 'amount' => (int) $m[2], 'time' => isset($m[3]) ? (int) $m[3] : time()];
+    $save(); echo '{"ok":true}'; exit;
 }
 
 // GoPay: GET /merchant-analytics/v2/merchants/transactions
@@ -22,9 +31,10 @@ if (str_contains($path, '/merchants/transactions')) {
         http_response_code(401); echo '{"message":"unauthorized"}'; exit;
     }
     $transactions = [];
-    foreach (array_keys($state['paid']) as $paidAmt) {
-        $transactions[] = ['amount' => (int)$paidAmt, 'transaction_id' => 'TX' . $paidAmt,
-                           'order_id' => 'GOPAY-' . $paidAmt, 'status' => 'SETTLEMENT',
+    foreach ($state['tx'] as $tx) {
+        $transactions[] = ['amount' => (int) $tx['amount'], 'transaction_id' => $tx['id'],
+                           'order_id' => 'GOPAY-' . $tx['id'], 'status' => 'SETTLEMENT',
+                           'transaction_time' => gmdate('Y-m-d\TH:i:s\Z', (int) $tx['time']),
                            'payer_issuer' => 'Mock Bank', 'payment_type' => 'QRIS'];
     }
     echo json_encode(['data' => $transactions]);
@@ -44,9 +54,9 @@ if (str_contains($path, '/get-transaction-list')) {
         http_response_code(401); echo '{"msg":"token invalid"}'; exit;
     }
     $transactions = [];
-    foreach (array_keys($state['paid']) as $paidAmt) {
-        $transactions[] = ['amount' => (int)$paidAmt, 'order_sn' => 'SP' . $paidAmt,
-                           'status' => 'SUCCESS', 'create_time' => time(), 'issuer' => 'Mock Bank'];
+    foreach ($state['tx'] as $tx) {
+        $transactions[] = ['amount' => (int) $tx['amount'], 'order_sn' => $tx['id'],
+                           'status' => 'SUCCESS', 'create_time' => (int) $tx['time'], 'issuer' => 'Mock Bank'];
     }
     echo json_encode(['data' => ['transactionList' => $transactions]]);
     exit;

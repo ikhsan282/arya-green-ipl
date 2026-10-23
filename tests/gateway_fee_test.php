@@ -21,6 +21,12 @@ $t(gateway_charge_total(300000) == 301000, 'total tagih 300rb = 301rb');
 $ch = gateway_channel();
 if (!$ch) { echo "SKIP: channel KlikQRIS tidak aktif\n"; exit(1); }
 $u = (int) $db->query("SELECT id FROM units LIMIT 1")->fetch_row()[0];
+// Idempoten: sisa run sebelumnya harus dibersihkan dulu (uq_period + uq_bill).
+$db->query("DELETE bk FROM cash_book bk JOIN payments py ON py.id=bk.ref_payment_id JOIN bills b ON b.id=py.bill_id WHERE b.notes='FEETEST'");
+$db->query("DELETE py FROM payments py JOIN bills b ON b.id=py.bill_id WHERE b.notes='FEETEST'");
+$db->query("DELETE o FROM payment_gateway_orders o JOIN bills b ON b.id=o.bill_id WHERE b.notes='FEETEST'");
+$db->query("DELETE FROM bills WHERE notes='FEETEST'");
+$db->query("DELETE FROM billing_periods WHERE label='FEETEST'");
 $db->query("INSERT INTO billing_periods (period_year,period_month,label,due_date) VALUES (2097,11,'FEETEST',CURDATE())");
 $p = (int) $db->insert_id;
 $db->query("INSERT INTO bills (billing_period_id,unit_id,resident_id,amount,total_amount,status,due_date,notes)
@@ -41,7 +47,7 @@ $payId = (int) $fin['payment_id'];
 
 $pay = $db->query("SELECT amount_paid,notes FROM payments WHERE id=$payId")->fetch_assoc();
 $t((float) $pay['amount_paid'] === 300000.0, 'amount_paid = tagihan saja (300.000), bukan 301.000');
-$t(str_contains((string) $pay['notes'], 'Otomatis via KlikQRIS'), 'notes terisi teks, bukan 0');
+$t(str_contains((string) $pay['notes'], 'Otomatis via QRIS Online (KlikQRIS)'), 'notes terisi teks, bukan 0');
 $t(str_contains((string) $pay['notes'], '1.000'), 'notes menyebut biaya 1.000');
 
 // Kas: satu baris IPL (300.000) + satu baris biaya (1.000).
