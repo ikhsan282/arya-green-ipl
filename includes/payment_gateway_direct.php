@@ -390,19 +390,34 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
         return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $err, 'http' => $res['http'], 'trx' => null];
     }
 
-    $transactions = $res['json']['data']['transactionList']
+    // Bentuk asli portal: data.list (bukan transactionList/transactions). list = null bila kosong.
+    $transactions = $res['json']['data']['list']
+        ?? $res['json']['data']['transactionList']
         ?? $res['json']['data']['transactions']
-        ?? $res['json']['transactions']
         ?? null;
+    // `total` = jumlah transaksi; list absen/null + total 0 berarti memang tidak ada pembayaran.
+    // Envelope tanpa `data` sama sekali tetap ditolak (bukan diam-diam dianggap kosong).
+    $total = (int) ($res['json']['data']['total'] ?? 0);
+    if ($transactions === null && is_array($res['json']['data'] ?? null) && $total === 0) $transactions = [];
     if (!is_array($transactions) || !array_is_list($transactions)) {
         return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => 'Respons transaksi ShopeePay tidak dikenali.', 'trx' => null];
     }
+    $stateChanged = false;
     foreach ($transactions as $tx) {
-        // Nominal dalam rupiah utuh (contoh README: request 1008 → response 1008). Jangan dibagi 100.
-        $txAmt = (int) round((float) ($tx['amount'] ?? 0));
-        if ($txAmt === $amount) {
-            return ['ok' => true, 'paid' => true, 'status' => 'PAID', 'error' => null, 'trx' => $tx];
-        }
+        // Nominal rupiah utuh di bentuk "10.002" (titik = pemisah ribuan). Jangan dipotong ke 10.
+        $txAmt = (int) round((float) str_replace(['.', ','], '', (string) ($tx['amount'] ?? '0')));
+        if ($txAmt !== $amount) continue;
+        // status 3 = berhasil (transaksi berhasil di portal ShopeePay); type 1 = pembayaran.
+        $txStatus = $tx['status'] ?? null;
+        if ($txStatus !== null && (int) $txStatus !== 3) { $stateChanged = true; continue; }
+        if (isset($tx['transactionType']) && (int) $tx['transactionType'] !== 1) continue;
+        $txTime = (int) ($tx['createTime'] ?? 0);
+        if ($txTime > 0 && $txTime < $since) continue;
+        return ['ok' => true, 'paid' => true, 'status' => 'PAID', 'error' => null, 'trx' => $tx];
+    }
+    // Nominal cocok tapi statusnya bukan berhasil → beri tahu tanpa mengklaim lunas.
+    if ($stateChanged) {
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => 'Transaksi ditemukan tetapi statusnya belum berhasil.', 'trx' => null];
     }
     return ['ok' => true, 'paid' => false, 'status' => 'PENDING', 'error' => null, 'trx' => null];
 }

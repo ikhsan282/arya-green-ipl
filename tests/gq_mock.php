@@ -66,11 +66,18 @@ if (str_contains($path, '/get-transaction-list')) {
     }
     $transactions = [];
     foreach ($state['tx'] as $tx) {
-        $transactions[] = ['amount' => (int) $tx['amount'], 'order_sn' => $tx['id'],
-                           'status' => 'SUCCESS', 'create_time' => (int) $tx['time'], 'issuer' => 'Mock Bank'];
+        // Bentuk asli: amount string ("10.002" = 10002 rupiah; titik pemisah ribuan, bukan desimal).
+        // Format mock lama 3 desimal hanya meniru tampilan, jangan dipakai.
+        $transactions[] = ['transactionId' => (string) $tx['id'], 'externalTransactionId' => 'EXT' . $tx['id'],
+                           'amount' => number_format((float) $tx['amount'], 0, ',', '.'),
+                           'status' => 3, 'transactionType' => 1, 'createTime' => (int) $tx['time'],
+                           'storeName' => 'Mock Store', 'merchantName' => 'Mock Store'];
     }
-    // Bentuk asli portal: {code:0,msg:"",data:{...}} — bukan {data:{...}} polos.
-    echo json_encode(['code' => 0, 'msg' => '', 'data' => ['transactionList' => $transactions]]);
+    // Bentuk asli portal: {code:0,msg:"",data:{total,list}} — list absen bila kosong.
+    $payload = ['code' => 0, 'msg' => '', 'data' => ['total' => (string) count($transactions),
+                                                     'totalNetSales' => '0', 'totalCompletedCount' => (string) count($transactions)]];
+    if ($transactions) $payload['data']['list'] = $transactions;
+    echo json_encode($payload);
     exit;
 }
 

@@ -86,17 +86,31 @@ url = f"http://127.0.0.1:{server.server_port}"
 env = dict(os.environ, GOPAY_API_URL=url, SHOPEEPAY_API_URL=url)
 try:
     for provider in ("gopay", "shopeepay"):
-        for payload in ({"unexpected": []}, {"code": "123", "msg": "SECRET"}, {"code": "123", "data": {"transactions": []}}):
+        if provider == "gopay":
+            bad = ({"unexpected": []}, {"code": "123", "msg": "SECRET"}, {"code": "123", "data": {"transactions": []}})
+            empty, paid = {"data": []}, None
+        else:
+            # Bentuk asli ShopeePay: data.list + data.total.
+            bad = ({"unexpected": []}, {"code": "123", "msg": "SECRET"}, {"code": "123", "data": {"transactions": []}},
+                   {"code": 0, "data": {"total": "1", "whatever": [1]}})
+            empty = {"code": 0, "data": {"total": "0"}}
+            paid = {"code": 0, "data": {"total": "1", "list": [
+                {"transactionId": "TX1", "amount": "10.002", "status": 3, "transactionType": 1, "createTime": int(__import__("time").time())}]}}
+        for payload in bad:
             Mock.payload = payload
             call = "gq_check_gopay('{\"Authorization\":\"mock\"}',10002,time()-60,[])" if provider == "gopay" else "gq_check_shopeepay('mock',10002,time()-60)"
             source = "require 'includes/payment_gateway_direct.php'; echo json_encode(" + call + ");"
             output = subprocess.check_output([PHP, "-r", source], cwd=ROOT, env=env, text=True)
             result = json.loads(output)
             assert not result["ok"] and not result["paid"], (provider, payload, result)
-        Mock.payload = {"data": []} if provider == "gopay" else {"code": 0, "data": {"transactionList": []}}
+        Mock.payload = empty
         result = json.loads(subprocess.check_output([PHP, "-r", source], cwd=ROOT, env=env, text=True))
         assert result["ok"] and result["status"] == "PENDING" and not result["paid"], result
-    print("PASS: both providers reject unknown/error envelopes; recognized empty lists stay PENDING")
+        if paid:
+            Mock.payload = paid
+            result = json.loads(subprocess.check_output([PHP, "-r", source], cwd=ROOT, env=env, text=True))
+            assert result["paid"] and result["status"] == "PAID", result
+    print("PASS: both providers reject unknown/error envelopes; recognized empty lists stay PENDING; shopeepay data.list settles")
 finally:
     server.shutdown()
     server.server_close()
