@@ -272,7 +272,18 @@ function gq_check(array $channel, array $order): array
     $provider = $order['gateway_type'] ?? $channel['provider'] ?? '';
 
     if ($provider === 'gopay') {
-        return gq_check_gopay($token, $amount, $since, $channel);
+        $r = gq_check_gopay($token, $amount, $since, $channel);
+        // Token GoPay berlaku ~24 jam. Kalau kedaluwarsa, refresh sekali lalu ulangi —
+        // tanpa ini polling warga terus gagal sampai ada yang membuka panel channel.
+        if (!$r['ok'] && (int) ($r['http'] ?? 0) === 401) {
+            require_once __DIR__ . '/gopay_auth.php';
+            $rf = gopay_refresh(db(), $channel);
+            if ($rf['ok']) {
+                $row = db()->query('SELECT api_key FROM payment_channels WHERE id=' . (int) $channel['id'])->fetch_assoc();
+                $r = gq_check_gopay((string) ($row['api_key'] ?? ''), $amount, $since, $channel);
+            }
+        }
+        return $r;
     }
     return gq_check_shopeepay($token, $amount, $since);
 }
@@ -314,7 +325,7 @@ function gq_check_gopay(string $authJson, int $amount, int $since, array $channe
 
     $res = gq_http_curl('GET', $url, $headers);
     if (!$res['ok']) {
-        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'trx' => null];
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'http' => $res['http'], 'trx' => null];
     }
 
     // Cari transaksi yang cocok nominal + waktu.
@@ -365,7 +376,7 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
 
     $res = gq_http_curl('POST', $url, $headers, $body);
     if (!$res['ok']) {
-        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'trx' => null];
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'http' => $res['http'], 'trx' => null];
     }
 
     $transactions = $res['json']['data']['transactionList']

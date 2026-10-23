@@ -30,6 +30,13 @@ if (str_contains($path, '/merchants/transactions')) {
     if (empty($_SERVER['HTTP_AUTHORIZATION'])) {
         http_response_code(401); echo '{"message":"unauthorized"}'; exit;
     }
+    // /test/AUTH/<token> mengatur token yang diterima; default AT-GOOD (dipakai tes OTP).
+    // "Bearer mock" tetap diterima: itu token yang dipakai suite gateway lama.
+    $good = $state['good_token'] ?? null;
+    $got  = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if ($got !== 'Bearer mock' && ($good === null ? 'Bearer AT-GOOD' : $good) !== $got) {
+        http_response_code(401); echo '{"message":"token expired"}'; exit;
+    }
     $transactions = [];
     foreach ($state['tx'] as $tx) {
         $transactions[] = ['amount' => (int) $tx['amount'], 'transaction_id' => $tx['id'],

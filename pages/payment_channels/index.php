@@ -6,6 +6,7 @@ require_permission('payment_channels.manage');
 require_once __DIR__ . '/../../includes/payment_gateway.php';
 require_once __DIR__ . '/../../includes/payment_gateway_direct.php';
 require_once __DIR__ . '/../../includes/gopay_auth.php';
+require_once __DIR__ . '/../../includes/shopeepay_auth.php';
 $db = db();
 $providers = ['klikqris' => 'KlikQRIS', 'gopay' => 'GoPay Merchant', 'shopeepay' => 'ShopeePay'];
 $code = (string) ($_GET['code'] ?? 'klikqris');
@@ -27,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'Token webhook berhasil dibuat ulang.'); redirect(APP_URL . '/pages/payment_channels/index.php?code=' . $code);
     } elseif ($action === 'test') {
         $r = $code === 'klikqris' ? gateway_status($channel, 'PING-' . bin2hex(random_bytes(6)))
-            : ($code === 'gopay' ? gopay_session_check($channel) : ['ok' => true]);
+            : ($code === 'gopay' ? gopay_session_check($channel)
+            : ($code === 'shopeepay' ? spay_token_check($channel) : ['ok' => true]));
         if ($r['ok']) $message = 'Konfigurasi tersimpan. Untuk GoPay/ShopeePay cek sesi lewat /token-status gateway.';
         else { error_log($code . ' test koneksi gagal: ' . (string)$r['error']); $message = 'Tes koneksi gagal: periksa API key, Merchant ID, dan mode.'; }
     } elseif ($action === 'otp_request' && $code === 'gopay') {
@@ -52,6 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($r['state'] === 'empty') flash('warning', 'Belum ada sesi GoPay. Login lewat OTP di bawah.');
         else flash('danger', 'Gagal cek sesi: ' . $r['error']);
         redirect(APP_URL . '/pages/payment_channels/index.php?code=gopay');
+    } elseif ($action === 'spay_check' && $code === 'shopeepay') {
+        $channel = $load();
+        $r = spay_token_check($channel);
+        if ($r['state'] === 'valid') flash('success', 'Token ShopeePay valid.');
+        elseif ($r['state'] === 'expired') flash('danger', 'Token ShopeePay sudah tidak berlaku. Ambil token baru dari Portal Partner.');
+        elseif ($r['state'] === 'empty') flash('warning', 'Belum ada token ShopeePay.');
+        else flash('danger', 'Gagal cek token: ' . $r['error']);
+        redirect(APP_URL . '/pages/payment_channels/index.php?code=shopeepay');
     } else {
         $name = clean((string)($_POST['name'] ?? ''));
         $mode = (string)($_POST['mode'] ?? '');
@@ -136,6 +146,11 @@ $page_title = 'Channel Pembayaran'; include __DIR__ . '/../../includes/header.ph
 <div class="col-sm-4"><button class="btn btn-success">Verifikasi & simpan sesi</button></div></form>
 <?php endif; ?>
 <small class="text-muted d-block mb-2">Login OTP menyimpan access+refresh token ke field Token di atas; token di-refresh otomatis saat cek sesi.</small>
+<?php endif; ?>
+<?php if ($code === 'shopeepay'): ?>
+<hr><label class="form-label fw-semibold">Token ShopeePay</label>
+<div class="d-flex gap-2 mb-2"><form method="post"><?= csrf_field() ?><input type="hidden" name="_action" value="spay_check"><button class="btn btn-outline-primary btn-sm">Cek token</button></form></div>
+<small class="text-muted d-block mb-2">ShopeePay tidak punya login OTP. Ambil token manual: buka <strong>partner.shopee.co.id</strong> → DevTools (F12) → tab Network → Request Payload → <code>data.metadata.token</code> (diawali <code>B:</code>), lalu tempel di field <strong>Token</strong> di atas.</small>
 <?php endif; ?>
 <hr><small class="text-muted"><?= $code === 'gopay'
     ? 'Tempel JSON headers sesi GoPay Merchant di field <strong>Token</strong> (format: <code>{"Authorization":"Bearer ...","X-App-Id":"...",...}</code>). Field <strong>QRIS Statis Merchant</strong> berisi string QRIS dari struk/dashboard merchant. QRIS dinamis akan digenerate otomatis dari string statis ini.'
