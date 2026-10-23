@@ -130,7 +130,8 @@ function gopay_otp_verify(mysqli $db, int $channelId, string $otp): array
         fn($k, $v) => "$k: $v", array_keys($cfgHeaders), array_values($cfgHeaders)
     ));
     if ($prof['ok']) {
-        $p = $prof['json']['data'] ?? [];
+        // GoBiz menaruh profil di node `merchant` (bentuk asli); `data` dipertahankan untuk kompatibilitas.
+        $p = $prof['json']['merchant'] ?? $prof['json']['data'] ?? [];
         $outlet = (string) ($p['outlet_name'] ?? $p['name'] ?? $p['merchant_name'] ?? '');
         $merchantId = (string) ($p['merchant_id'] ?? $p['id'] ?? '');
     }
@@ -174,14 +175,31 @@ function gopay_session_check(array $channel): array
           'end_time'   => gmdate('Y-m-d\TH:i:s\Z', time() + 60)];
     if ($merchantId !== '') $q['merchant_ids'] = $merchantId;
 
-    $base = getenv('GOPAY_API_URL') ?: 'https://api.gojekapi.com';
     $h = [];
     foreach ((array) json_decode($auth, true) as $k => $v) $h[] = "$k: $v";
-    $res = gq_http_curl('GET', $base . '/merchant-analytics/v2/merchants/transactions?' . http_build_query($q), $h);
 
-    // 401/403 = sesi tidak diterima GoPay (token basi, revoke, atau device header berubah).
+    // Profil merchant dulu: endpoint ini membalas 200 walau tidak ada transaksi sama sekali,
+    // jadi status sesi tidak boleh disimpulkan dari daftar transaksi.
+    // ponytail: satu panggilan tambahan per cek; cukup, jangan cache.
+    $prof = gq_http_curl('GET', gopay_base() . '/goresto/v5/public/users/config', $h);
+    if (in_array($prof['http'], [401, 403], true)) return ['ok' => true, 'state' => 'expired', 'error' => null];
+    if (!$prof['ok']) {
+        return ['ok' => false, 'state' => 'unknown', 'error' => $prof['error'] . ' (HTTP ' . $prof['http'] . ')'];
+    }
+
+    // outlet/marketable hilang dari profil = token masih hidup tapi bukan sesi merchant.
+    $p = (array) ($prof['json']['merchant'] ?? []);
+    $outlet = trim((string) ($p['outlet_name'] ?? ''));
+    $mid = trim((string) ($p['id'] ?? ''));
+    if ($outlet === '' && $mid === '') {
+        return ['ok' => false, 'state' => 'unknown', 'error' => 'Profil merchant tidak terbaca dari sesi ini.'];
+    }
+
+    // Cek kedua: pastikan token juga diterima API transaksi (dipakai verifikasi pembayaran).
+    $base = getenv('GOPAY_API_URL') ?: 'https://api.gojekapi.com';
+    $res = gq_http_curl('GET', $base . '/merchant-analytics/v2/merchants/transactions?' . http_build_query($q), $h);
     if (in_array($res['http'], [401, 403], true)) return ['ok' => true, 'state' => 'expired', 'error' => null];
-    if ($res['ok']) return ['ok' => true, 'state' => 'valid', 'error' => null];
+    if ($res['ok']) return ['ok' => true, 'state' => 'valid', 'error' => null, 'outlet' => $outlet, 'merchant_id' => $mid];
     return ['ok' => false, 'state' => 'unknown', 'error' => $res['error'] . ' (HTTP ' . $res['http'] . ')'];
 }
 

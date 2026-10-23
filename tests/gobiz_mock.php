@@ -30,7 +30,11 @@ switch (true) {
         bad('grant_type tidak dikenal');
 
     case $path === '/goresto/v5/public/users/config':
-        ok(['outlet_name' => 'Warung Mock Arya', 'merchant_id' => 'M-MOCK-1']);
+        // Bentuk asli GoBiz: profil ada di dalam node `merchant`, bukan di data.
+        if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') === 'Bearer AT-FORBIDDEN') bad('forbidden', 403);
+        if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Bearer AT-GOOD') bad('unauthorized', 401);
+        // Profil ada di root respons (bukan dibungkus success/data).
+        echo json_encode(['merchant' => ['outlet_name' => 'Warung Mock Arya', 'id' => 'M-MOCK-1']]); exit;
 
     case str_starts_with($path, '/merchant-analytics/'):
         // AT-FORBIDDEN meniru GoPay membalas 403 (token basi/device header dianggap asing).

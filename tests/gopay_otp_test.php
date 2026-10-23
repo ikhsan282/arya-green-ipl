@@ -117,6 +117,13 @@ try {
     $s = gopay_session_check($ch);
     check('HTTP 403 terbaca expired (bukan error)', $s['state'] === 'expired' && $s['error'] === null);
 
+    // 12b. transaksi kosong bukan bukti token mati: profil merchant yang menentukan
+    $ch = $db->query("SELECT * FROM payment_channels WHERE id=$chId")->fetch_assoc();
+    $ch['config'] = json_encode(['merchant_ids' => 'G-GOOD-1']);
+    $s = gopay_session_check($ch);
+    check('outlet terbaca dari profil merchant', ($s['outlet'] ?? '') === 'Warung Mock Arya');
+    check('merchant id terbaca dari profil', ($s['merchant_id'] ?? '') === 'M-MOCK-1');
+
     // 13. merchant id diambil dari config.merchant_ids; kolom merchant_id (QRIS statis) diabaikan
     $ch['api_key'] = $row['api_key'];
     $ch['merchant_id'] = '00020101021126560016COM.NOBUBANK.WWW011893600103';
