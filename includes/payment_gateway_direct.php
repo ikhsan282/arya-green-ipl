@@ -189,23 +189,23 @@ function gq_create(array $channel, string $orderId, float $amount, string $note 
 // ---- gq_check ----
 
 /**
- * Kode unik per order: 1..99, tidak dipakai order PENDING lain dengan base sama.
- * Deterministik (bukan acak): jenis QR tetap "12" dan nominal mudah dicocokkan.
+ * Kode unik per order: rentang $lo..$hi (default 100..500 perak), tidak dipakai
+ * order PENDING lain dengan base sama. Deterministik (bukan acak).
  * $excludeOrderId: order yang sedang diperbarui tidak menghitung dirinya sendiri.
  */
-function gq_unique_touch(int $base, string $excludeOrderId = ''): int
+function gq_unique_touch(int $base, string $excludeOrderId = '', int $lo = 100, int $hi = 500): int
 {
     $used = [];
     $st = db()->prepare('SELECT total_amount FROM payment_gateway_orders WHERE status="PENDING" AND order_id<>? AND total_amount BETWEEN ? AND ?');
-    $lo = $base + 1; $hi = $base + 99;
-    $st->bind_param('sdd', $excludeOrderId, $lo, $hi);
+    $min = $base + $lo; $max = $base + $hi;
+    $st->bind_param('sdd', $excludeOrderId, $min, $max);
     $st->execute();
     $r = $st->get_result();
     while ($row = $r->fetch_row()) $used[(int) round((float) $row[0]) - $base] = true;
-    for ($c = 1; $c <= 99; $c++) {
+    for ($c = $lo; $c <= $hi; $c++) {
         if (!isset($used[$c])) return $c;
     }
-    return 1; // ponytail: 99 order aktif dengan nominal sama → klaim atomik tetap mencegah dobel bayar
+    return $lo; // ponytail: rentang habis → klaim atomik tetap mencegah dobel bayar
 }
 
 /**

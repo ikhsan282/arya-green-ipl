@@ -132,7 +132,7 @@ foreach (['gopay', 'shopeepay'] as $i => $provider) {
     $ok($order && $order['status'] === 'PENDING', "$provider: order PENDING tersimpan");
     // Nominal final = tagihan + kode unik (kode unik ditetapkan saat simpan).
     $payTotal = (int) round((float) $order['total_amount']);
-    $ok($payTotal > 150000 && $payTotal <= 150099, "$provider: nominal QRIS = tagihan + kode unik ($payTotal)");
+    $ok($payTotal > 150000 && $payTotal <= 150500, "$provider: nominal QRIS = tagihan + kode unik ($payTotal)");
 
     // --- Check-payment via mock server ---
     // Monkey-patch gq_check to hit mock instead of real API
