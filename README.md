@@ -4,6 +4,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 
 ## Stack
 - PHP 8.1+ (Native, tanpa framework; diuji pada PHP 8.4)
+- Ekstensi PHP wajib: `mysqli`, `curl`, `zip` (untuk export `.xlsx`), `mbstring`, `json`
 - MySQLi dengan prepared statements
 - MySQL / MariaDB
 - Bootstrap 5.3.8 + Bootstrap Icons 1.13.2 (CDN)
@@ -52,6 +53,15 @@ define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 - Set permission folder `uploads/`: `755`, file: `644`
 - Folder `uploads/payment_proofs/` sudah dilindungi `.htaccess` (larangan eksekusi PHP/CGI dan directory listing)
 
+### 4b. Checklist Setelah Upload
+- **Versi PHP**: set ke 8.1 atau lebih baru (cPanel → MultiPHP Manager)
+- **Ekstensi aktif**: `mysqli`, `curl`, `zip`, `mbstring` (cPanel → Select PHP Version → Extensions). Tanpa `curl`, pembayaran QRIS tidak bisa jalan; tanpa `zip`, export Excel gagal
+- **`config/config.php`**: ubah `APP_URL` menjadi domain sungguhan, mis. `https://aryagreenpamulang.my.id`
+- **HTTPS**: aktifkan AutoSSL. Webhook gateway dan cookie sesi sebaiknya hanya lewat HTTPS
+- **Token GoPay**: ambil pertama kali di server, bukan di lokal — login OTP dari **Channel Pembayaran → GoPay**
+- **Cek cepat**: buka `/pages/dashboard.php`, lalu **Laporan → Rekap Pembayaran** untuk memastikan query berjalan
+- **Folder `tests/`**: tidak perlu diunggah ke produksi; bila ikut terunggah, pastikan tidak dapat diakses dari browser (`_cli_only.php` sudah menolak akses web)
+
 ### 5. Login Default
 | Username | Password | Role |
 |---|---|---|
@@ -81,6 +91,9 @@ arya-green-ipl/
 │   ├── auth.php               # Login, logout, RBAC, email verify
 │   ├── functions.php          # Helpers: CSRF, flash, paginate, e(), idr(), terbilang()
 │   ├── payment_gateway.php    # Klien KlikQRIS: create, status, webhook, finalize
+│   ├── payment_gateway_direct.php # GoPay/ShopeePay: QRIS dinamis EMVCo, klaim transaksi, cek pembayaran
+│   ├── gopay_auth.php         # GoPay Merchant: login OTP, refresh token, cek sesi
+│   ├── shopeepay_auth.php     # ShopeePay Partner: validasi token B:
 │   ├── email_notifications.php# Fungsi kirim email notifikasi & reminder
 │   ├── pdf.php                # Helper TCPDF bersama
 │   ├── xlsx.php               # Generator XLSX native
@@ -130,7 +143,9 @@ arya-green-ipl/
 │   │   ├── arrears.php        # Rekap tunggakan multi-periode
 │   │   ├── arrears_export.php # Export CSV/XLSX tunggakan
 │   │   ├── cashflow.php       # Laporan arus kas gabungan + chart
-│   │   └── cashflow_export.php# Export CSV/XLSX arus kas
+│   │   ├── cashflow_export.php# Export CSV/XLSX arus kas
+│   │   ├── payments.php       # Rekap pembayaran: tagihan vs pembayaran vs order QRIS
+│   │   └── export_summary.php # Export CSV rekap pembayaran
 │   ├── cashbook/              # Buku kas pemasukan & pengeluaran
 │   ├── expense/               # Approval pengeluaran
 │   ├── inventory/
@@ -182,7 +197,7 @@ arya-green-ipl/
 - **Warga / Penghuni** — CRUD; nama, telepon, email, unit; status aktif/nonaktif
 - **Lingkungan / Cluster** — CRUD; manajemen area perumahan
 - **Metode Pembayaran** — CRUD dari UI; nama/kode metode, rekening atau tujuan, atas nama, QR/logo, instruksi, urutan, aktif/nonaktif, dan pengaturan auto-verifikasi *(super_admin)*
-- **Channel Pembayaran** — kredensial gateway (KlikQRIS), mode sandbox/production, token webhook, aktif/nonaktif *(super_admin)*
+- **Channel Pembayaran** — kredensial gateway (KlikQRIS, GoPay Merchant, ShopeePay), mode sandbox/production, token webhook, login OTP GoPay, cek token ShopeePay, aktif/nonaktif *(super_admin)*
 
 ### Tagihan IPL
 - Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis semua unit `dihuni`
@@ -210,6 +225,40 @@ arya-green-ipl/
 - Webhook memicu verifikasi server-to-server (payload tidak dipercaya langsung), disertai pengecekan nominal
 - Tagihan lunas otomatis saat pembayaran terkonfirmasi
 - Metode gateway otomatis hilang dari dropdown manual selama kanal aktif — muncul kembali sebagai fallback bila kanal dimatikan
+
+### QRIS Langsung GoPay / ShopeePay (tanpa server gateway)
+Kedua provider ini membuat QRIS dinamis sendiri dari string QRIS statis merchant — tidak ada daemon Node, tidak ada server perantara, cukup PHP + `curl`.
+
+**QRIS statis → dinamis**
+- Parser EMVCo (TLV) + CRC16 lokal (`qris_make_dynamic`) mengubah QRIS statis merchant menjadi QRIS bernominal
+- Nominal order = tagihan + biaya layanan + **kode unik** 1–99, supaya dua tagihan bernominal sama tidak pernah tertukar
+- Kode unik ditetapkan saat order disimpan, bukan saat QR dibuat — jadi order berikutnya bisa menghindari bentrokan
+- Satu transaksi gateway hanya bisa melunasi satu order (klaim atomik lewat ID transaksi)
+- Filter waktu mencegah transaksi lama melunasi order baru
+
+**GoPay Merchant — login OTP di panel**
+- Buka **Channel Pembayaran → GoPay**, isi nomor HP GoBiz, klik **Kirim kode OTP**
+- Kode masuk via SMS/WA (berlaku ~12 menit), lalu **Verifikasi & simpan sesi**
+- Access + refresh token tersimpan otomatis; kartu sesi menampilkan outlet dan masa berlaku token
+- Tombol **Cek / refresh sesi** untuk validasi manual
+- **Token di-refresh otomatis saat pembayaran dicek**: kalau token mati (HTTP 401), sistem refresh sekali lalu mengulang pengecekan — pembayaran tidak macet tanpa ada yang membuka panel
+
+**ShopeePay Partner — token manual**
+- ShopeePay tidak menyediakan alur login OTP. Token diambil manual:
+  buka `partner.shopee.co.id` → DevTools (F12) → tab Network → Request Payload → `data.metadata.token` (diawali `B:`)
+- Tempel di field **Token**, lalu klik **Cek token** untuk validasi
+- Token tanpa awalan `B:` ditolak sebelum request dikirim; token mati (401/403) dilaporkan jelas
+
+> **Catatan:** endpoint GoPay/ShopeePay di atas adalah endpoint portal merchant, bukan API resmi ber-SLA. Bila provider mengubahnya, login/pengecekan bisa berhenti dan perlu penyesuaian.
+
+### Ringkasan Pembayaran (Laporan)
+- Tombol **Rekap Pembayaran** di menu Laporan, per bulan
+- Menampilkan empat angka sekaligus: total tagihan, terbayar lunas, tunggakan, dan **menunggu verifikasi**
+- Tabel **pembayaran menurut status** — terverifikasi / menunggu / ditolak (semua status dihitung, bukan hanya yang terverifikasi)
+- Tabel **order QRIS** — lunas / menunggu bayar / kedaluwarsa / gagal. Order dicocokkan lewat periode tagihan, bukan tanggal dibuat, supaya order akhir bulan tidak salah bulan
+- Tabel **per metode bayar** dengan penanda QRIS vs non-QRIS
+- **Peringatan selisih** otomatis bila order QRIS lunas tidak sama dengan pembayaran QRIS terverifikasi — penanda pembayaran tercatat ganda atau order lunas yang belum jadi pembayaran
+- Export CSV dengan angka identik
 
 ### Keuangan
 - **Buku Kas** — pemasukan & pengeluaran, auto-entry dari pembayaran IPL; akses hanya untuk user yang login (`cashbook.view`)
@@ -292,8 +341,19 @@ Test integrasi ada di `tests/` (PHP CLI, tanpa framework). Beberapa memerlukan s
 php tests/gateway_fee_test.php            # aturan biaya layanan QRIS
 php tests/gateway_unique_code_test.php    # kode unik tidak masuk buku kas
 php tests/gateway_pay_test.php            # alur buat order & bayar
+php tests/gopay_otp_test.php              # login OTP GoPay (butuh tests/gobiz_mock.php)
+php tests/auth_refresh_test.php           # auto-refresh token GoPay + validasi ShopeePay
+php tests/rekap_pembayaran_test.php       # angka Rekap Pembayaran cocok dengan data
 php tests/pdf_test.php                    # generate kwitansi PDF
 php tests/xlsx_test.php                   # export XLSX
+```
+
+Beberapa suite memerlukan mock server yang berjalan lebih dulu:
+
+```bash
+php -S 127.0.0.1:8098 tests/gq_mock.php        # GoPay/ShopeePay
+php -S 127.0.0.1:8097 tests/gobiz_mock.php     # login OTP GoBiz
+php -S 127.0.0.1:8099 tests/klikqris_mock.php  # KlikQRIS (opsional)
 ```
 
 > `tests/gateway_cash_test.php` memerlukan API key sandbox KlikQRIS yang valid; akan gagal dengan `Invalid Sandbox API Key` bila kredensial belum diisi — ini bukan kegagalan kode.
