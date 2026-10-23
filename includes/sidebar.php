@@ -139,6 +139,12 @@ function nav_active(string $path): string {
       </a>
     </li>
     <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/reports/payments.php"
+         class="nav-link text-white<?= nav_active('/reports/payments') ?>">
+        <i class="bi bi-wallet2 me-2"></i> Rekap Pembayaran
+      </a>
+    </li>
+    <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/reports/arrears.php"
          class="nav-link text-white<?= nav_active('/reports/arrears') ?>">
         <i class="bi bi-exclamation-triangle me-2"></i> Rekap Tunggakan
