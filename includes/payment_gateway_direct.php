@@ -159,8 +159,8 @@ function gq_create(array $channel, string $orderId, float $amount, string $note 
         return ['ok' => false, 'error' => 'QRIS statis merchant belum diisi.', 'data' => null];
     }
     // NMID (mis. ID1026547859169) bukan payload QRIS: tanpa tag 01 nominal tak bisa disisipkan.
-    if (str_starts_with($staticQris, 'ID') && preg_match('/^\d+$/', substr($staticQris, 2))) {
-        return ['ok' => false, 'error' => 'Isian QRIS Statis Merchant berisi NMID (' . $staticQris . '), bukan payload QRIS. Salin seluruh string yang diawali 000201...', 'data' => null];
+    if (preg_match('/^(?:ID)?\d+$/', $staticQris)) {
+        return ['ok' => false, 'error' => 'Isian QRIS Statis Merchant berisi nomor merchant/NMID, bukan payload QRIS. Salin seluruh teks hasil scan QR yang diawali 000201...', 'data' => null];
     }
     $token = gq_base($channel);
     if ($token === '') {
