@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($r['ok']) { flash('success', 'Kode OTP dikirim ke +62' . $r['phone'] . '. Masukkan dalam 12 menit.'); }
         else { $_SESSION['gopay_otp_error'] = $r['error']; }
         redirect(APP_URL . '/pages/payment_channels/index.php?code=gopay');
+    } elseif ($action === 'otp_cancel' && $code === 'gopay') {
+        unset($_SESSION['gopay_otp'], $_SESSION['gopay_otp_error']);
+        redirect(APP_URL . '/pages/payment_channels/index.php?code=gopay');
     } elseif ($action === 'otp_verify' && $code === 'gopay') {
         $r = gopay_otp_verify($db, (int)$channel['id'], (string)($_POST['otp_code'] ?? ''));
         if ($r['ok']) { flash('success', 'Login GoPay berhasil. Sesi tersimpan' . ($r['outlet'] !== '' ? ' — ' . $r['outlet'] : '') . '.'); }
@@ -137,13 +140,21 @@ $page_title = 'Channel Pembayaran'; include __DIR__ . '/../../includes/header.ph
 <?php endif; ?>
 <div class="d-flex gap-2 mb-3"><form method="post"><?= csrf_field() ?><input type="hidden" name="_action" value="session_check"><button class="btn btn-outline-primary btn-sm">Cek / refresh sesi</button></form></div>
 <?php if (empty($_SESSION['gopay_otp'])): ?>
-<form method="post" class="row g-2 align-items-end mb-2"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_request">
-<div class="col-sm-6"><label class="form-label small mb-1">Nomor HP GoBiz</label><input class="form-control" name="otp_phone" placeholder="085119772671" required autocomplete="off"></div>
-<div class="col-sm-4"><button class="btn btn-outline-success">Kirim kode OTP</button></div></form>
+<form method="post" class="card card-body bg-body-tertiary border-0 mb-2"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_request">
+<div class="row g-2 align-items-end">
+<div class="col-sm-7"><label class="form-label small mb-1" for="otpPhone">Nomor HP GoBiz</label><input class="form-control" id="otpPhone" name="otp_phone" inputmode="numeric" placeholder="85119772671" required autocomplete="tel"></div>
+<div class="col-sm-5"><button class="btn btn-success w-100">Kirim kode OTP</button></div>
+</div>
+<small class="text-muted mt-2">Tulis tanpa angka 0 di depan (contoh <code>85119772671</code> = 085119772671).</small></form>
 <?php else: ?>
-<form method="post" class="row g-2 align-items-end mb-2"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_verify">
-<div class="col-sm-6"><label class="form-label small mb-1">Kode OTP (SMS/WA ke +62<?= e((string)($_SESSION['gopay_otp']['phone'] ?? '')) ?>)</label><input class="form-control" name="otp_code" inputmode="numeric" maxlength="8" placeholder="4 digit" required autocomplete="one-time-code"></div>
-<div class="col-sm-4"><button class="btn btn-success">Verifikasi & simpan sesi</button></div></form>
+<?php $otpPhone = (string)($_SESSION['gopay_otp']['phone'] ?? ''); ?>
+<form method="post" class="card card-body bg-body-tertiary border-0 mb-2"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_verify">
+<div class="row g-2 align-items-end">
+<div class="col-sm-7"><label class="form-label small mb-1" for="otpCode">Kode OTP (SMS/WA ke +62<?= e($otpPhone) ?>)</label><input class="form-control form-control-lg text-center fw-semibold" id="otpCode" name="otp_code" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••" required autocomplete="one-time-code" autofocus></div>
+<div class="col-sm-5"><button class="btn btn-success w-100">Verifikasi &amp; simpan</button></div>
+</div>
+</form>
+<div class="d-flex gap-2 mb-2"><form method="post"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_cancel"><button class="btn btn-outline-secondary btn-sm">Ganti nomor</button></form><form method="post"><?= csrf_field() ?><input type="hidden" name="_action" value="otp_request"><input type="hidden" name="otp_phone" value="<?= e($otpPhone) ?>"><button class="btn btn-outline-primary btn-sm">Kirim ulang OTP</button></form></div>
 <?php endif; ?>
 <small class="text-muted d-block mb-2">Login OTP menyimpan access+refresh token ke field Token di atas; token di-refresh otomatis saat cek sesi.</small>
 <?php endif; ?>
