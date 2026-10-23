@@ -79,6 +79,10 @@ try {
 
         $chSp['api_key'] = 'B:sudah-mati';
         check('token 401 terdeteksi expired', spay_token_check($chSp)['state'] === 'expired');
+
+        // code != 0 dengan HTTP 200 juga harus dianggap token mati (bentuk portal asli).
+        $chSp['api_key'] = 'B:code-error';
+        check('code!=0 dengan HTTP 200 -> expired', spay_token_check($chSp)['state'] === 'expired');
     }
 
     echo "\nauth_refresh_test OK ($asserts asersi)\n";

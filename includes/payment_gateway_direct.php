@@ -158,6 +158,10 @@ function gq_create(array $channel, string $orderId, float $amount, string $note 
     if ($staticQris === '') {
         return ['ok' => false, 'error' => 'QRIS statis merchant belum diisi.', 'data' => null];
     }
+    // NMID (mis. ID1026547859169) bukan payload QRIS: tanpa tag 01 nominal tak bisa disisipkan.
+    if (str_starts_with($staticQris, 'ID') && preg_match('/^\d+$/', substr($staticQris, 2))) {
+        return ['ok' => false, 'error' => 'Isian QRIS Statis Merchant berisi NMID (' . $staticQris . '), bukan payload QRIS. Salin seluruh string yang diawali 000201...', 'data' => null];
+    }
     $token = gq_base($channel);
     if ($token === '') {
         return ['ok' => false, 'error' => 'Token autentikasi belum diisi.', 'data' => null];
@@ -344,10 +348,10 @@ function gq_check_gopay(string $authJson, int $amount, int $since, array $channe
 
 function gq_check_shopeepay(string $token, int $amount, int $since): array
 {
-    // ponytail: env override hanya untuk mock lokal (tes); hapus bila tak perlu.
-    $url = getenv('SHOPEEPAY_API_URL') ?: 'https://partner.shopeepay.co.id/api/v1/report/transaction/get-transaction-list';
+    // Host & path diambil dari request asli portal Partner; SHOPEEPAY_API_URL hanya untuk mock tes.
+    $url = getenv('SHOPEEPAY_API_URL') ?: 'https://shopeepay.shopee.co.id/merchant/v1/partner-web/get-transaction-list';
 
-    // Struktur body mengikuti gateway asli: {data:{metadata,pageSize,filter,sorter}}.
+    // Struktur body mengikuti portal asli: {data:{metadata,pageSize,filter,sorter,next_position}}.
     // Tanpa wrapper `data` ShopeePay membalas error validasi.
     $body = json_encode([
         'data' => [
@@ -362,7 +366,8 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
                 'endTime'     => time() + 60,
                 'serviceList' => [1, 3],
             ],
-            'sorter'   => ['field' => 'create_time', 'order' => 'descend'],
+            'sorter'        => ['field' => 'createTime', 'order' => 'descend'],
+            'next_position' => '',
         ],
     ]);
     // Header wajib: Origin/Referer/UA/X-Timestamp-Ms. Tanpa ini API menolak.
@@ -375,8 +380,12 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
     ];
 
     $res = gq_http_curl('POST', $url, $headers, $body);
-    if (!$res['ok']) {
-        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $res['error'], 'http' => $res['http'], 'trx' => null];
+    // portal membalas {code:0,msg:""} untuk sukses; code lain = token mati/ditolak.
+    $code = $res['json']['code'] ?? null;
+    if (!$res['ok'] || (is_int($code) && $code !== 0)) {
+        $err = $res['error'];
+        if (is_string($res['json']['msg'] ?? null) && $res['json']['msg'] !== '') $err = $res['json']['msg'];
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $err, 'http' => $res['http'], 'trx' => null];
     }
 
     $transactions = $res['json']['data']['transactionList']

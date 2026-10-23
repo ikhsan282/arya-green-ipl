@@ -54,7 +54,8 @@ if (!$order) {
     if (!$res['ok']) {
         error_log('gateway create ' . $provider . ': ' . $res['error']);
         http_response_code(502);
-        exit('Gagal membuat pembayaran QRIS. Coba kembali.');
+        // Kesalahan konfigurasi ditampilkan apa adanya; admin perlu tahu isian mana yang salah.
+        exit(str_starts_with((string) $res['error'], 'Isian') ? e($res['error']) : 'Gagal membuat pembayaran QRIS. Coba kembali.');
     }
     $data = $res['data'];
     if (empty($data['qris_url']) || !isset($data['total_amount'])) {

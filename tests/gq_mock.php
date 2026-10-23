@@ -57,6 +57,10 @@ if (str_contains($path, '/get-transaction-list')) {
     }
     $tok = (string) ($body['data']['metadata']['token'] ?? '');
     // Gateway asli memakai token "B:..."; mock menerima bentuk itu maupun polos.
+    // Portal asli membalas HTTP 200 dengan code != 0 saat token mati.
+    if ($tok === 'B:code-error') {
+        echo '{"code":40001,"msg":"token invalid","data":null}'; exit;
+    }
     if (!in_array($tok, ['mock-token', 'B:mock-token'], true)) {
         http_response_code(401); echo '{"msg":"token invalid"}'; exit;
     }
@@ -65,7 +69,8 @@ if (str_contains($path, '/get-transaction-list')) {
         $transactions[] = ['amount' => (int) $tx['amount'], 'order_sn' => $tx['id'],
                            'status' => 'SUCCESS', 'create_time' => (int) $tx['time'], 'issuer' => 'Mock Bank'];
     }
-    echo json_encode(['data' => ['transactionList' => $transactions]]);
+    // Bentuk asli portal: {code:0,msg:"",data:{...}} — bukan {data:{...}} polos.
+    echo json_encode(['code' => 0, 'msg' => '', 'data' => ['transactionList' => $transactions]]);
     exit;
 }
 
