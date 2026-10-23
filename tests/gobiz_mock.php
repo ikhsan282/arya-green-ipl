@@ -33,7 +33,11 @@ switch (true) {
         ok(['outlet_name' => 'Warung Mock Arya', 'merchant_id' => 'M-MOCK-1']);
 
     case str_starts_with($path, '/merchant-analytics/'):
+        // AT-FORBIDDEN meniru GoPay membalas 403 (token basi/device header dianggap asing).
+        if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') === 'Bearer AT-FORBIDDEN') bad('forbidden', 403);
         if (($_SERVER['HTTP_AUTHORIZATION'] ?? '') !== 'Bearer AT-GOOD') bad('unauthorized', 401);
+        // merchant_ids yang tidak dikenal -> 403 juga, seperti API asli.
+        if (($_GET['merchant_ids'] ?? '') === 'G-BAD') bad('forbidden', 403);
         ok(['transactions' => []]);
 }
 

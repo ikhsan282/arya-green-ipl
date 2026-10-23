@@ -109,6 +109,22 @@ try {
     check('simpan ulang config tidak menghapus refresh_token', ($cfg2['refresh_token'] ?? '') === 'RT-GOOD');
     check('simpan ulang config tidak menghapus outlet', ($cfg2['outlet'] ?? '') === 'Warung Mock Arya');
 
+    // 12. HTTP 403 juga = sesi tidak valid (bukan 'tidak dikenali')
+    $ch = $db->query("SELECT * FROM payment_channels WHERE id=$chId")->fetch_assoc();
+    $hdr = json_decode((string) $ch['api_key'], true);
+    $hdr['authorization'] = 'Bearer AT-FORBIDDEN';
+    $ch['api_key'] = json_encode($hdr);
+    $s = gopay_session_check($ch);
+    check('HTTP 403 terbaca expired (bukan error)', $s['state'] === 'expired' && $s['error'] === null);
+
+    // 13. merchant id diambil dari config.merchant_ids; kolom merchant_id (QRIS statis) diabaikan
+    $ch['api_key'] = $row['api_key'];
+    $ch['merchant_id'] = '00020101021126560016COM.NOBUBANK.WWW011893600103';
+    $ch['config'] = json_encode(['refresh_token' => 'RT-GOOD', 'merchant_ids' => 'G-BAD']);
+    check('merchant_ids dari config benar-benar dikirim', gopay_session_check($ch)['state'] === 'expired');
+    $ch['config'] = json_encode(['refresh_token' => 'RT-GOOD', 'merchant_ids' => 'G-GOOD-1']);
+    check('merchant_ids valid -> sesi valid', gopay_session_check($ch)['state'] === 'valid');
+
     echo "\ngopay_otp_test OK ($asserts asersi)\n";
 } finally {
     $st = $db->prepare('UPDATE payment_channels SET api_key=?, config=? WHERE id=?');

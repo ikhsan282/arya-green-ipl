@@ -166,19 +166,21 @@ function gopay_session_check(array $channel): array
         return ['ok' => true, 'state' => 'empty', 'error' => null];
     }
 
-    $merchantId = trim((string) ($channel['merchant_id'] ?? '')); // = Merchant ID GoPay di form
+    // Merchant ID GoPay hidup di config.merchant_ids — kolom merchant_id berisi QRIS statis (string panjang).
+    $cfg = json_decode((string) ($channel['config'] ?? ''), true);
+    $merchantId = trim((string) (is_array($cfg) ? ($cfg['merchant_ids'] ?? '') : ''));
     $q = ['from' => 0, 'size' => 1, 'statuses' => 'SETTLEMENT,CAPTURE',
           'start_time' => gmdate('Y-m-d\TH:i:s\Z', time() - 3600),
           'end_time'   => gmdate('Y-m-d\TH:i:s\Z', time() + 60)];
-    // Kolom yang sama dipakai untuk string QRIS statis; kirim hanya bila bentuknya ID merchant.
-    if (preg_match('/^[A-Za-z0-9_-]{4,60}$/', $merchantId)) $q['merchant_ids'] = $merchantId;
+    if ($merchantId !== '') $q['merchant_ids'] = $merchantId;
 
     $base = getenv('GOPAY_API_URL') ?: 'https://api.gojekapi.com';
     $h = [];
     foreach ((array) json_decode($auth, true) as $k => $v) $h[] = "$k: $v";
     $res = gq_http_curl('GET', $base . '/merchant-analytics/v2/merchants/transactions?' . http_build_query($q), $h);
 
-    if ($res['http'] === 401) return ['ok' => true, 'state' => 'expired', 'error' => null];
+    // 401/403 = sesi tidak diterima GoPay (token basi, revoke, atau device header berubah).
+    if (in_array($res['http'], [401, 403], true)) return ['ok' => true, 'state' => 'expired', 'error' => null];
     if ($res['ok']) return ['ok' => true, 'state' => 'valid', 'error' => null];
     return ['ok' => false, 'state' => 'unknown', 'error' => $res['error'] . ' (HTTP ' . $res['http'] . ')'];
 }
