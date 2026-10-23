@@ -72,7 +72,9 @@ define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 
 > **Catatan Keamanan:**
 > - Sistem dilengkapi proteksi **Rate Limiting** (maksimal 5 kali percobaan login gagal dalam 15 menit).
-> - Ganti password segera setelah login pertama — bisa dari menu **Profil Saya** (klik nama di footer sidebar).
+> - **WAJIB sebelum go-live:** password default `P@ssw0rd` ada di `database/schema.sql`, artinya siapa pun yang pernah melihat repo ini tahu kredensial awal. Ganti password **keempat** akun segera setelah login pertama, dan hapus akun yang tidak dipakai (mis. `warga` contoh).
+> - Aplikasi **tidak boleh** hidup tanpa HTTPS: cookie sesi memakai flag `Secure` hanya saat HTTPS terdeteksi, dan token portal GoPay/ShopeePay dikirim per-request.
+> - `database/schema.sql` tidak boleh ikut terunggah ke server produksi (sudah diblokir `.htaccess`, tapi lebih aman tidak diunggah sama sekali).
 
 ---
 
@@ -231,7 +233,7 @@ Kedua provider ini membuat QRIS dinamis sendiri dari string QRIS statis merchant
 
 **QRIS statis → dinamis**
 - Parser EMVCo (TLV) + CRC16 lokal (`qris_make_dynamic`) mengubah QRIS statis merchant menjadi QRIS bernominal
-- Nominal order = tagihan + biaya layanan + **kode unik** 1–99, supaya dua tagihan bernominal sama tidak pernah tertukar
+- Nominal order = tagihan + biaya layanan + **kode unik** 100–500 (rentang `gq_unique_touch()`), supaya dua tagihan bernominal sama tidak pernah tertukar
 - Kode unik ditetapkan saat order disimpan, bukan saat QR dibuat — jadi order berikutnya bisa menghindari bentrokan
 - Satu transaksi gateway hanya bisa melunasi satu order (klaim atomik lewat ID transaksi)
 - Filter waktu mencegah transaksi lama melunasi order baru
@@ -247,7 +249,17 @@ Kedua provider ini membuat QRIS dinamis sendiri dari string QRIS statis merchant
 - ShopeePay tidak menyediakan alur login OTP. Token diambil manual:
   buka `partner.shopee.co.id` → DevTools (F12) → tab Network → Request Payload → `data.metadata.token` (diawali `B:`)
 - Tempel di field **Token**, lalu klik **Cek token** untuk validasi
-- Token tanpa awalan `B:` ditolak sebelum request dikirim; token mati (401/403) dilaporkan jelas
+- Token tanpa awalan `B:` ditolak sebelum request dikirim; token mati (401/403 atau `code 200020 invalid token`) dilaporkan jelas
+- ShopeePay **tidak punya refresh token** — token mati berarti ambil ulang dari portal, tidak bisa diperpanjang otomatis
+
+**Bentuk respons API yang dipakai (terverifikasi pada respons asli)**
+
+| Provider | Daftar transaksi | Nominal | Status berhasil |
+|---|---|---|---|
+| GoPay | `transactions` di root | `gross_amount` **dalam sen** (`1000100` = Rp10.001) | `transaction_status` = `SETTLEMENT`/`CAPTURE` |
+| ShopeePay | `data.list` (absen bila kosong, `data.total` = `0`) | `amount` string **bertitik ribuan** (`"10.002"`) | `status` = `3`, `transaction_type` = `1` |
+
+> Kedua bentuk ini bukan tebakan: nominal 100× lipat (GoPay) atau terpotong jadi 10 (ShopeePay) adalah gejala klasik bila satuan/formatnya salah. Tes regresi: `tests/gopay_parse_test.py` dan `tests/shopeepay_parse_test.py`.
 
 > **Catatan:** endpoint GoPay/ShopeePay di atas adalah endpoint portal merchant, bukan API resmi ber-SLA. Bila provider mengubahnya, login/pengecekan bisa berhenti dan perlu penyesuaian.
 
@@ -346,6 +358,14 @@ php tests/auth_refresh_test.php           # auto-refresh token GoPay + validasi 
 php tests/rekap_pembayaran_test.php       # angka Rekap Pembayaran cocok dengan data
 php tests/pdf_test.php                    # generate kwitansi PDF
 php tests/xlsx_test.php                   # export XLSX
+```
+
+Tes parser tanpa database dan tanpa jaringan (bentuk respons asli provider):
+
+```bash
+python3 tests/gopay_parse_test.py         # transactions + gross_amount sen
+python3 tests/shopeepay_parse_test.py     # data.list + amount "10.002" + status 3
+python3 tests/gateway_polling_test.py     # error polling tidak berubah jadi PENDING
 ```
 
 Beberapa suite memerlukan mock server yang berjalan lebih dulu:

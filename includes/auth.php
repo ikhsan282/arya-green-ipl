@@ -5,7 +5,14 @@ require_once __DIR__ . '/functions.php';
 // Start session once
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
-    session_set_cookie_params(SESSION_LIFETIME, '/', '', false, true);
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    session_set_cookie_params([
+        'lifetime' => SESSION_LIFETIME,
+        'path'     => '/',
+        'secure'   => $secure,   // HTTPS di produksi; lokal http tetap jalan
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 

@@ -28,20 +28,14 @@ ServerSignature Off
 </IfModule>
 
 # Protect sensitive directories
+# Path relatif terhadap root dokumen (bukan nama folder) agar tetap benar bila
+# aplikasi dipasang di domain root atau di subfolder lain.
 <FilesMatch "\.(sql|log|env|md|sh|gitignore)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Protect config and includes
-RedirectMatch 403 ^/arya-green-ipl/config/.*$
-RedirectMatch 403 ^/arya-green-ipl/includes/.*$
-RedirectMatch 403 ^/arya-green-ipl/database/.*$
-
-# Protect non-public folders (test menulis ke DB, docs & logs internal)
-RedirectMatch 403 ^/arya-green-ipl/tests/.*$
-RedirectMatch 403 ^/arya-green-ipl/docs/.*$
-RedirectMatch 403 ^/arya-green-ipl/logs/.*$
+RedirectMatch 403 (?i)/(config|includes|database|tests|docs|logs)(/|$)
 
 # Block direct access to uploads (serve via PHP only if needed)
 <IfModule mod_rewrite.c>
