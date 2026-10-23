@@ -78,26 +78,27 @@ include __DIR__ . '/../../includes/sidebar.php';
   <div class="topbar d-flex align-items-center px-3"><h6 class="mb-0">Bayar QRIS Online — <?= e($channel['name']) ?></h6></div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
   <div class="main-content">
-    <div class="card" style="max-width:560px">
-      <div class="card-body text-center">
-        <h5><?= e($bill['period']) ?></h5>
-        <img src="<?= e($order['qris_url']) ?>" alt="QRIS pembayaran" class="img-fluid my-3" style="max-width:320px">
+    <div class="card mx-auto" style="max-width:520px">
+      <div class="card-body p-4 text-center">
+        <h5 class="mb-1"><?= e($bill['period']) ?></h5>
+        <p class="text-muted small mb-3">Scan QRIS dengan aplikasi pembayaran</p>
+        <img src="<?= e($order['qris_url']) ?>" alt="QRIS pembayaran" class="img-fluid d-block mx-auto mb-4" width="260" height="260" style="max-width:100%;height:auto">
         <?php if ($fee > 0 || $uniqueCode > 0): ?>
-        <div class="alert alert-light border py-2 px-3 d-inline-block text-start small mb-0">
-          <div class="d-flex justify-content-between gap-4"><span>Tagihan IPL</span><span><?= idr($billAmount) ?></span></div>
+        <div class="border rounded bg-light p-3 text-start mb-3">
+          <div class="d-flex justify-content-between gap-3"><span>Tagihan IPL</span><span class="text-nowrap"><?= idr($billAmount) ?></span></div>
           <?php if ($fee > 0): ?>
-          <div class="d-flex justify-content-between gap-4 text-muted"><span>Biaya layanan QRIS</span><span><?= idr($fee) ?></span></div>
+          <div class="d-flex justify-content-between gap-3 mt-1 text-muted"><span>Biaya layanan QRIS</span><span class="text-nowrap"><?= idr($fee) ?></span></div>
           <?php endif; ?>
           <?php if ($uniqueCode > 0): ?>
-          <div class="d-flex justify-content-between gap-4 text-muted"><span>Kode unik</span><span><?= idr($uniqueCode) ?></span></div>
+          <div class="d-flex justify-content-between gap-3 mt-1 text-muted"><span>Kode unik</span><span class="text-nowrap"><?= idr($uniqueCode) ?></span></div>
           <?php endif; ?>
         </div>
         <?php endif; ?>
-        <p class="mt-2 mb-1">Total bayar tepat:</p>
-        <h2 class="fw-bold"><?= idr($total) ?></h2>
-        <p class="text-danger">Bayar PERSIS nominal ini.</p>
-        <p>Batas waktu: <strong><?= e($order['expired_at'] ?? '—') ?></strong></p>
-        <p id="payStatus">Menunggu pembayaran…</p>
+        <p class="text-muted mb-1">Total bayar tepat</p>
+        <h2 class="fw-bold mb-1"><?= idr($total) ?></h2>
+        <p class="text-danger small mb-3">Bayar persis nominal ini agar pembayaran dapat dikenali.</p>
+        <p class="small mb-2">Batas waktu: <strong><?= e($order['expired_at'] ?? '—') ?></strong></p>
+        <p id="payStatus" class="badge bg-warning text-dark" role="status" aria-live="polite">Menunggu pembayaran…</p>
       </div>
     </div>
   </div>
