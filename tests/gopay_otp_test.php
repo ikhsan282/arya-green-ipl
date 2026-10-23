@@ -22,6 +22,13 @@ function check(string $label, bool $cond): void
     echo "ok - $label\n";
 }
 
+// GoBiz menolak login/request dengan goid:error:missing_field tanpa dua header ini.
+$hdrs = gopay_headers();
+check('header x-phonemake ada', ($hdrs['x-phonemake'] ?? '') !== '');
+check('header x-phonemodel ada', ($hdrs['x-phonemodel'] ?? '') !== '');
+check('header x-appid go-biz-web-dashboard', ($hdrs['x-appid'] ?? '') === 'go-biz-web-dashboard');
+check('header x-user-type merchant', ($hdrs['x-user-type'] ?? '') === 'merchant');
+
 $db = db();
 $orig = $db->query('SELECT id, api_key, config FROM payment_channels WHERE provider=\'gopay\' LIMIT 1')->fetch_assoc();
 if (!$orig) { fwrite(STDERR, "SKIP: channel gopay belum ada\n"); exit(0); }

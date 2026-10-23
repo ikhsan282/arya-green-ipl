@@ -32,6 +32,9 @@ function gopay_headers(): array
         'x-appid'            => 'go-biz-web-dashboard',
         'x-appversion'       => 'platform-v3.111.0-1708bc9a',
         'x-deviceos'         => 'Web',
+        // Wajib: tanpa phonemake/phonemodel GoBiz menolak dengan goid:error:missing_field.
+        'x-phonemake'        => 'Windows 10 64-bit',
+        'x-phonemodel'       => 'Chrome 150.0.0.0 on Windows 10 64-bit',
         'x-platform'         => 'Web',
         'x-uniqueid'         => 'b5f98d3a-c9de-49ca-8067-dba94002b23c',
         'x-user-locale'      => 'en-GB',
@@ -157,7 +160,11 @@ function gopay_otp_verify(mysqli $db, int $channelId, string $otp): array
 function gopay_session_check(array $channel): array
 {
     $auth = (string) ($channel['api_key'] ?? '');
-    if (json_decode($auth, true) === null) return ['ok' => true, 'state' => 'empty', 'error' => null];
+    $hdr = json_decode($auth, true);
+    // Belum ada sesi: api_key kosong, bukan JSON, atau JSON tanpa Bearer.
+    if (!is_array($hdr) || !str_starts_with((string) ($hdr['authorization'] ?? ''), 'Bearer ')) {
+        return ['ok' => true, 'state' => 'empty', 'error' => null];
+    }
 
     $merchantId = trim((string) ($channel['merchant_id'] ?? '')); // = Merchant ID GoPay di form
     $q = ['from' => 0, 'size' => 1, 'statuses' => 'SETTLEMENT,CAPTURE',

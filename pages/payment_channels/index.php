@@ -41,11 +41,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         else { $_SESSION['gopay_otp_error'] = $r['error']; }
         redirect(APP_URL . '/pages/payment_channels/index.php?code=gopay');
     } elseif ($action === 'session_check' && $code === 'gopay') {
+        $channel = $load(); // state terbaru: barusan bisa saja berubah oleh OTP/refresh
         $r = gopay_session_check($channel);
         if ($r['state'] === 'valid') flash('success', 'Sesi GoPay aktif dan token valid.');
         elseif ($r['state'] === 'expired') {
             $rf = gopay_refresh($db, $channel);
-            flash($rf['ok'] ? 'success' : 'danger', $rf['ok'] ? 'Token kedaluwarsa — berhasil di-refresh otomatis.' : 'Token kedaluwarsa dan refresh gagal: ' . $rf['error']);
+            if ($rf['ok']) flash('success', 'Token kedaluwarsa — berhasil di-refresh otomatis.');
+            elseif (str_contains((string) $rf['error'], 'refresh_token tidak tersimpan')) flash('warning', 'Sesi lama tidak menyimpan refresh_token. Login OTP ulang untuk membuat sesi baru.');
+            else flash('danger', 'Token kedaluwarsa dan refresh gagal: ' . $rf['error']);
         } elseif ($r['state'] === 'empty') flash('warning', 'Belum ada sesi GoPay. Login lewat OTP di bawah.');
         else flash('danger', 'Gagal cek sesi: ' . $r['error']);
         redirect(APP_URL . '/pages/payment_channels/index.php?code=gopay');
