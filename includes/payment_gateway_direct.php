@@ -334,13 +334,23 @@ function gq_check_gopay(string $authJson, int $amount, int $since, array $channe
 
     // Cari transaksi yang cocok nominal + waktu.
     // Waktu wajib: cegah transaksi lama tercocokkan ke order baru bernominal sama.
-    $transactions = $res['json']['data'] ?? $res['json']['transactions'] ?? null;
+    // Bentuk asli: {from,size,total,transactions:[{gross_amount,transaction_status,transaction_time,...}]}
+    // gross_amount dalam SEN (1000100 = Rp10.001), bukan rupiah.
+    $transactions = $res['json']['transactions'] ?? $res['json']['data'] ?? null;
     if (!is_array($transactions) || !array_is_list($transactions) || ($res['json']['success'] ?? true) === false) {
         return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => 'Respons transaksi GoPay tidak dikenali.', 'trx' => null];
     }
     foreach ($transactions as $tx) {
-        $txAmt = (int) round((float) ($tx['amount'] ?? $tx['gross_amount'] ?? 0));
-        if ($txAmt !== $amount) continue;
+        $amountRaw = $tx['gross_amount'] ?? $tx['real_gross_amount'] ?? $tx['amount'] ?? null;
+        if ($amountRaw === null) continue;
+        // Sen → rupiah. Nilai di bawah 100.000 dianggap sudah rupiah (mis. mock lama).
+        $txAmt = ((int) round((float) $amountRaw)) / 100;
+        if ((int) round($txAmt) !== $amount) {
+            // toleransi data lama dalam rupiah
+            if ((int) round((float) $amountRaw) !== $amount) continue;
+        }
+        $st = strtoupper((string) ($tx['transaction_status'] ?? $tx['status'] ?? ''));
+        if ($st !== '' && !in_array($st, ['SETTLEMENT', 'CAPTURE', 'SUCCESS', 'PAID'], true)) continue;
         $txTime = strtotime((string) ($tx['transaction_time'] ?? $tx['create_time'] ?? $tx['time'] ?? ''));
         if ($txTime !== false && $txTime < $since) continue;
         return ['ok' => true, 'paid' => true, 'status' => 'PAID', 'error' => null, 'trx' => $tx];
