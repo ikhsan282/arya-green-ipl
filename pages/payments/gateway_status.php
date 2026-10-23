@@ -37,6 +37,7 @@ if (auth_role() === 'warga') {
 
 if ($order['status'] === 'PENDING') {
     $channel = [
+        'id'          => (int) $order['channel_id'],
         'api_key'     => $order['api_key'],
         'merchant_id' => $order['merchant_id'],
         'mode'        => $order['mode'],
@@ -44,6 +45,9 @@ if ($order['status'] === 'PENDING') {
         'config'      => $order['config'] ?? '',
     ];
     $remote = gateway_status($channel, $orderId);
+    if (!$remote['ok']) {
+        gw_reply(502, ['status' => 'UNKNOWN', 'error' => 'Status pembayaran belum dapat diperiksa. Jangan bayar ulang; hubungi pengelola jika berlanjut.']);
+    }
     $data = is_array($remote['data'] ?? null) ? $remote['data'] : [];
     $state = strtoupper((string) ($data['status'] ?? ''));
 
@@ -53,6 +57,8 @@ if ($order['status'] === 'PENDING') {
         if ($done['ok']) {
             $order['status'] = 'PAID';
             $order['payment_id'] = $done['payment_id'];
+        } else {
+            gw_reply(503, ['status' => 'UNKNOWN', 'error' => 'Pembayaran belum dapat dicatat. Jangan bayar ulang; hubungi pengelola.']);
         }
     } elseif ($remote['ok'] && $state === 'EXPIRED') {
         gateway_mark_expired($orderId);

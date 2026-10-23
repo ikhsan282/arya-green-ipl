@@ -334,8 +334,10 @@ function gq_check_gopay(string $authJson, int $amount, int $since, array $channe
 
     // Cari transaksi yang cocok nominal + waktu.
     // Waktu wajib: cegah transaksi lama tercocokkan ke order baru bernominal sama.
-    $transactions = $res['json']['data'] ?? $res['json']['transactions'] ?? [];
-    if (!is_array($transactions)) $transactions = [];
+    $transactions = $res['json']['data'] ?? $res['json']['transactions'] ?? null;
+    if (!is_array($transactions) || !array_is_list($transactions) || ($res['json']['success'] ?? true) === false) {
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => 'Respons transaksi GoPay tidak dikenali.', 'trx' => null];
+    }
     foreach ($transactions as $tx) {
         $txAmt = (int) round((float) ($tx['amount'] ?? $tx['gross_amount'] ?? 0));
         if ($txAmt !== $amount) continue;
@@ -382,7 +384,7 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
     $res = gq_http_curl('POST', $url, $headers, $body);
     // portal membalas {code:0,msg:""} untuk sukses; code lain = token mati/ditolak.
     $code = $res['json']['code'] ?? null;
-    if (!$res['ok'] || (is_int($code) && $code !== 0)) {
+    if (!$res['ok'] || ($code !== null && $code !== 0 && $code !== '0')) {
         $err = $res['error'];
         if (is_string($res['json']['msg'] ?? null) && $res['json']['msg'] !== '') $err = $res['json']['msg'];
         return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => $err, 'http' => $res['http'], 'trx' => null];
@@ -391,8 +393,10 @@ function gq_check_shopeepay(string $token, int $amount, int $since): array
     $transactions = $res['json']['data']['transactionList']
         ?? $res['json']['data']['transactions']
         ?? $res['json']['transactions']
-        ?? [];
-    if (!is_array($transactions)) $transactions = [];
+        ?? null;
+    if (!is_array($transactions) || !array_is_list($transactions)) {
+        return ['ok' => false, 'paid' => false, 'status' => 'UNKNOWN', 'error' => 'Respons transaksi ShopeePay tidak dikenali.', 'trx' => null];
+    }
     foreach ($transactions as $tx) {
         // Nominal dalam rupiah utuh (contoh README: request 1008 → response 1008). Jangan dibagi 100.
         $txAmt = (int) round((float) ($tx['amount'] ?? 0));

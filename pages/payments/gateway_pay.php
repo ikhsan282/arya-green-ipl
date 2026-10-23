@@ -106,20 +106,25 @@ include __DIR__ . '/../../includes/sidebar.php';
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 <script>
 const cfg = {
-  url: <?= json_encode(APP_URL . '/pages/payments/gateway_status.php') ?>,
+  url: 'gateway_status.php',
   orderId: <?= json_encode($order['order_id']) ?>,
   csrf: <?= json_encode(csrf_token()) ?>,
-  detail: <?= json_encode(APP_URL . '/pages/payments/detail.php') ?>
+  detail: 'detail.php'
 };
 const label = document.getElementById('payStatus');
 async function poll() {
   try {
     const body = new URLSearchParams({ order_id: cfg.orderId, csrf_token: cfg.csrf });
     const r = await fetch(cfg.url, { method: 'POST', body, credentials: 'same-origin' });
+    if (!r.ok) throw new Error('Status HTTP');
     const j = await r.json();
+    if (!j || !['PENDING', 'PAID', 'EXPIRED', 'FAILED'].includes(j.status)) throw new Error('Status tidak dikenali');
     if (j.status === 'PAID' && j.payment_id) { location.href = cfg.detail + '?id=' + j.payment_id; return; }
     if (j.status === 'EXPIRED' || j.status === 'FAILED') { label.textContent = 'Pembayaran ' + j.status; return; }
-  } catch (e) { /* jaringan putus: coba lagi */ }
+    label.textContent = 'Menunggu pembayaran…';
+  } catch (e) {
+    label.textContent = 'Status belum dapat diperiksa. Jangan bayar ulang; mencoba lagi. Hubungi pengelola jika berlanjut.';
+  }
   setTimeout(poll, 5000);
 }
 setTimeout(poll, 5000);
