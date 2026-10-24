@@ -14,7 +14,13 @@ $assert(!str_contains($secretaryBlock, "'payments.view'") && !str_contains($secr
 foreach (['cashbook.manage', 'payments.verify', 'payment_channels.manage', 'users.delete', 'roles.manage'] as $forbidden) {
     $assert(!str_contains($secretaryBlock, "'{$forbidden}'"), "secretary denied {$forbidden}");
 }
+$assert(str_contains($schema, "SELECT (SELECT `id` FROM `roles` WHERE `name`='warga'), r.`name`, LOWER(r.`name`),\n       CONCAT(LOWER(r.`name`),'@aryagreenpamulang.my.id')"), 'resident users seeded from resident names with lowercase usernames');
+$assert(str_contains($schema, "INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`)"), 'resident accounts include login credentials');
+$assert(str_contains($schema, "FROM `residents` r WHERE r.`notes`='seed'"), 'resident users are generated from seeded residents');
+$assert(str_contains($schema, "UPDATE `residents` r JOIN `users` u ON u.`username`=LOWER(r.`name`)\nSET r.`user_id`=u.`id` WHERE r.`notes`='seed'"), 'each seeded resident is linked to its login user');
+$assert(!str_contains($schema, "'warga', 'warga@aryagreenpamulang.my.id'"), 'generic warga sample account removed');
 $assert(str_contains($schema, "INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`is_active`)\nSELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id', NULL, 0\nFROM `roles` WHERE `name`='sekretaris'"), 'disabled secretary placeholder user is seeded without a password');
+
 $assert(str_contains($dashboard, "if (\$_role === 'warga')"), 'separate resident layout');
 $assert(str_contains($dashboard, 'Saldo Kas Lingkungan') && str_contains($dashboard, 'Pengeluaran Kas'), 'resident cash transparency cards');
 $assert(str_contains($dashboard, 'Kegiatan Mendatang') && str_contains($dashboard, 'Pembayaran Saya'), 'resident information sections');

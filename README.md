@@ -21,7 +21,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 mysql -u root -p < database/schema.sql
 ```
 
-> Schema sudah lengkap di 1 file: **31 tabel**, 4 role (super_admin/ketua/bendahara/warga), 4 default user dengan password `P@ssw0rd`. Tidak ada file migrasi terpisah — fresh install cukup satu file ini.
+> Schema lengkap di 1 file: **31 tabel**, termasuk role Sekretaris. Fresh install membuat 3 akun staf contoh, 15 akun warga (username huruf kecil dari nama, email `username@aryagreenpamulang.my.id`) dengan password awal `P@ssw0rd`, dan 1 akun Sekretaris nonaktif tanpa password. Akun `warga` generik dihapus. Wajib beri tahu warga dan minta ganti password awal; jangan gunakan seed ini tanpa meninjau data warga/email. Tidak ada file migrasi terpisah.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:
@@ -72,7 +72,7 @@ define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 
 > **Catatan Keamanan:**
 > - Sistem dilengkapi proteksi **Rate Limiting** (maksimal 5 kali percobaan login gagal dalam 15 menit).
-> - **WAJIB sebelum go-live:** password default `P@ssw0rd` ada di `database/schema.sql`, artinya siapa pun yang pernah melihat repo ini tahu kredensial awal. Ganti password **keempat** akun segera setelah login pertama, dan hapus akun yang tidak dipakai (mis. `warga` contoh).
+> - **WAJIB sebelum go-live:** password default `P@ssw0rd` tertanam sebagai hash publik di `database/schema.sql` dan dipakai akun contoh staf serta 15 akun warga hasil seed. Hapus hash/akun contoh atau ubah password sebelum production; beri kredensial warga lewat kanal privat dan minta ganti password. Email warga hasil seed bersifat contoh — pastikan email benar sebelum kirim reset/notifikasi.
 > - Aplikasi **tidak boleh** hidup tanpa HTTPS: cookie sesi memakai flag `Secure` hanya saat HTTPS terdeteksi, dan token portal GoPay/ShopeePay dikirim per-request.
 > - `database/schema.sql` tidak boleh ikut terunggah ke server produksi (sudah diblokir `.htaccess`, tapi lebih aman tidak diunggah sama sekali).
 

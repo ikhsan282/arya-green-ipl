@@ -200,21 +200,22 @@ CREATE TABLE `users` (
 
 -- Default users (password = P@ssw0rd untuk semua)
 -- role_id: 1=super_admin, 2=ketua, 3=bendahara, 4=warga
+-- Akun staf contoh memakai password awal P@ssw0rd; wajib diganti sebelum go-live.
 INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`) VALUES
 (1, 'Super Administrator', 'superadmin', 'admin@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
 (2, 'Ketua RT', 'ketua', 'ketua@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
 (3, 'Bendahara RT', 'bendahara', 'bendahara@aryagreenpamulang.my.id',
- '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
-(4, 'Warga Contoh', 'warga', 'warga@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW());
 
--- Placeholder Sekretaris: nonaktif dan tanpa password hingga identitas akun resmi diatur.
+-- Akun placeholder Sekretaris: nonaktif dan tanpa password hingga identitas resmi diatur.
 INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`is_active`)
 SELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id', NULL, 0
 FROM `roles` WHERE `name`='sekretaris';
 
+-- Hash password awal P@ssw0rd di atas: $2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu
+-- Terapkan hanya setelah meninjau daftar warga: UPDATE users SET password='[hash baru]' ...; paksa ganti password saat login pertama.
 -- ------------------------------------------------------------
 -- Unit Types
 -- ------------------------------------------------------------
@@ -353,8 +354,25 @@ UNION ALL SELECT u.id,'Satria','TEMP-I4',NULL,'pemilik',1,'seed' FROM units u WH
 UNION ALL SELECT u.id,'Gandhi','TEMP-I5',NULL,'pemilik',1,'seed' FROM units u WHERE u.block='I' AND u.unit_number='I5'
 UNION ALL SELECT u.id,'Buyung','TEMP-I6',NULL,'pemilik',1,'seed' FROM units u WHERE u.block='I' AND u.unit_number='I6';
 
+-- Buat akun siap login untuk setiap warga seed (username nama huruf kecil).
+-- Password awal sama dengan password contoh di atas; anjurkan warga menggantinya.
+INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`)
+SELECT (SELECT `id` FROM `roles` WHERE `name`='warga'), r.`name`, LOWER(r.`name`),
+       CONCAT(LOWER(r.`name`),'@aryagreenpamulang.my.id'),
+       '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()
+FROM `residents` r WHERE r.`notes`='seed';
+
+UPDATE `residents` r JOIN `users` u ON u.`username`=LOWER(r.`name`)
+SET r.`user_id`=u.`id` WHERE r.`notes`='seed';
+
 -- Tandai unit yang sudah berpenghuni.
 UPDATE `units` u JOIN `residents` r ON r.unit_id=u.id SET u.status='dihuni';
+
+-- Hapus akun warga contoh generik; warga memakai akun personal hasil seed.
+DELETE FROM `users` WHERE `username`='warga' AND `email`='warga@aryagreenpamulang.my.id';
+
+-- Setiap akun warga memiliki role `warga`; untuk mewajibkan ganti password,
+-- aktifkan mekanisme force_password_change sebelum production.
 
 -- ------------------------------------------------------------
 -- Billing Periods
