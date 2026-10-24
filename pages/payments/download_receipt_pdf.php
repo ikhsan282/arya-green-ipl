@@ -157,7 +157,7 @@ $pdf->Cell($W, 5, 'Pamulang, ' . date('d F Y'), 0, 1, 'R');
 $pdf->Cell($W, 5, 'Bendahara', 0, 1, 'R');
 $pdf->Ln(13);
 $signaturePath = preg_match('/^[a-f0-9]{48}\\.(png|jpg)$/', $pay['treasurer_signature'] ?? '') ? SIGNATURE_DIR . $pay['treasurer_signature'] : '';
-if ($signaturePath && is_file($signaturePath) && ($sigInfo = @getimagesize($signaturePath)) && in_array($sigInfo['mime'], ['image/png', 'image/jpeg'], true)) {
+if ($signaturePath && is_file($signaturePath) && tcpdf_signature_supported($signaturePath)) {
     $pdf->Image($signaturePath, 12 + $W - 50, $pdf->GetY() - 12, 45, 12, strtoupper(pathinfo($signaturePath, PATHINFO_EXTENSION)));
 }
 $pdf->Cell($W, 5, '( ' . ($pay['treasurer_name'] ?? '______________________') . ' )', 0, 1, 'R');

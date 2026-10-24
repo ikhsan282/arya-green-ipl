@@ -195,6 +195,15 @@ function signature_image_data_uri(?string $filename): string {
     return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
 }
 
+function tcpdf_signature_supported(string $path): bool {
+    $info = @getimagesize($path);
+    if (!$info || $info['mime'] !== 'image/png') return (bool)$info;
+    $png = file_get_contents($path);
+    $colorType = ord($png[25] ?? "\\0");
+    $hasAlpha = in_array($colorType, [4, 6], true) || strpos($png, 'tRNS') !== false;
+    return !$hasAlpha || extension_loaded('gd') || extension_loaded('imagick');
+}
+
 // ── EMAIL ─────────────────────────────────────────────────────────────────────
 function mail_plain_text(string $html): string {
     $html = preg_replace('/<(br\s*\/?>|\/p>|\/div>|\/tr>|\/h[1-6]>)/i', "\n", $html);
