@@ -275,6 +275,15 @@ function nav_active(string $path): string {
     </li>
     <?php endif; ?>
 
+    <?php if (auth_role() === 'super_admin'): ?>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/database_backup/index.php"
+         class="nav-link text-white<?= nav_active('/database_backup') ?>">
+        <i class="bi bi-database-lock me-2"></i> Cadangan Database
+      </a>
+    </li>
+    <?php endif; ?>
+
     <?php if (can('users.create')): ?>
     <li class="nav-item">
       <a href="<?= APP_URL ?>/pages/onboarding/index.php"
