@@ -13,7 +13,7 @@ $defaultDueDate = date('Y-m-') . str_pad((string)$envDueDay, 2, '0', STR_PAD_LEF
 // ── Hapus tagihan ──────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
     csrf_verify();
-    require_permission('billing.generate');
+    require_permission('billing.delete');
 
     $bill_id = (int)($_POST['bill_id'] ?? 0);
     if (!$bill_id) { flash('error', 'ID tagihan tidak valid.'); redirect(APP_URL.'/pages/billing/index.php'); }
@@ -387,7 +387,7 @@ include __DIR__ . '/../../includes/sidebar.php';
                       <i class="bi bi-eye"></i>
                     </a>
                   <?php endif; ?>
-                  <?php if (can('billing.generate') && $b['status'] === 'belum_bayar'): ?>
+                  <?php if (can('billing.delete') && $b['status'] === 'belum_bayar'): ?>
                     <form method="POST" class="d-inline" onsubmit="return confirm('Hapus tagihan ini? Aksi tidak dapat dibatalkan.')">
                       <?= csrf_field() ?>
                       <input type="hidden" name="_action" value="delete">
