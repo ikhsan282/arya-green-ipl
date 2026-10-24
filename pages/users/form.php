@@ -40,15 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$editing && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
     if ($editing && $data['password'] && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
     $signatureUpload = null;
-    if ($editing && isset($_FILES['signature_file']) && $_FILES['signature_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $roleStmt = $db->prepare('SELECT name FROM roles WHERE id=?');
-        $roleStmt->bind_param('i', $data['role_id']);
-        $roleStmt->execute();
-        $targetRole = $roleStmt->get_result()->fetch_row()[0] ?? '';
-        if (!in_array($targetRole, ['ketua', 'bendahara'], true)) {
-            $errors[] = 'Tanda tangan hanya dapat dipasang pada akun Ketua atau Bendahara.';
-        }
-    }
 
     // Uniqueness checks
     if (empty($errors)) {
@@ -157,11 +148,10 @@ include __DIR__ . '/../../includes/sidebar.php';
                      minlength="8" placeholder="Minimal 8 karakter" autocomplete="new-password">
             </div>
             <?php
-              $roleNameById = array_column($roles, 'name', 'id');
-              if ($editing && in_array($roleNameById[$user['role_id'] ?? 0] ?? '', ['ketua', 'bendahara'], true)):
+              if ($editing):
             ?>
             <div class="col-12">
-              <label class="form-label">Tanda Tangan Pengurus (PNG/JPG, maks 512 KB)</label>
+              <label class="form-label">Tanda Tangan Akun (PNG/JPG, maks 512 KB)</label>
               <?php if (!empty($user['signature_file'])): ?><div class="mb-2"><img src="<?= e(APP_URL . '/pages/users/signature_image.php?id=' . $id) ?>" alt="Tanda tangan tersimpan" style="max-width:220px;max-height:90px"></div><?php endif; ?>
               <input type="file" name="signature_file" class="form-control" accept="image/png,image/jpeg">
               <small class="text-muted">Unggah untuk mengganti. Kosongkan untuk mempertahankan tanda tangan saat ini.</small>

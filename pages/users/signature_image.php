@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/functions.php';
 require_permission('users.view');
 
 $id = (int)($_GET['id'] ?? 0);
-$stmt = db()->prepare('SELECT u.signature_file FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND r.name IN ("ketua","bendahara")');
+$stmt = db()->prepare('SELECT signature_file FROM users WHERE id=?');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $row = $stmt->get_result()->fetch_row();
