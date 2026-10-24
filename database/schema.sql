@@ -186,7 +186,7 @@ CREATE TABLE `users` (
   `name`               VARCHAR(150) NOT NULL,
   `username`           VARCHAR(80)  NOT NULL UNIQUE,
   `email`              VARCHAR(150) NOT NULL UNIQUE,
-  `password`           VARCHAR(255) NOT NULL,
+  `password`           VARCHAR(255) DEFAULT NULL,
   `email_verified_at`  DATETIME     DEFAULT NULL,
   `verification_token` VARCHAR(100) DEFAULT NULL,
   `reset_token`        VARCHAR(100) DEFAULT NULL,
@@ -209,6 +209,11 @@ INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verif
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()),
 (4, 'Warga Contoh', 'warga', 'warga@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW());
+
+-- Placeholder Sekretaris: nonaktif dan tanpa password hingga identitas akun resmi diatur.
+INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`is_active`)
+SELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id', NULL, 0
+FROM `roles` WHERE `name`='sekretaris';
 
 -- ------------------------------------------------------------
 -- Unit Types
