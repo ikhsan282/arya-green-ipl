@@ -21,7 +21,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 mysql -u root -p < database/schema.sql
 ```
 
-> Schema lengkap di 1 file: **31 tabel**, termasuk role Sekretaris. Fresh install membuat 3 akun staf contoh, 15 akun warga (username huruf kecil dari nama, email `username@aryagreenpamulang.my.id`) dengan password awal `P@ssw0rd`, dan 1 akun Sekretaris nonaktif tanpa password. Akun `warga` generik dihapus. Wajib beri tahu warga dan minta ganti password awal; jangan gunakan seed ini tanpa meninjau data warga/email. Tidak ada file migrasi terpisah.
+> Schema lengkap di 1 file: **31 tabel**, termasuk role Sekretaris. Fresh install membuat 3 akun staf contoh, 15 akun warga (username huruf kecil dari nama, email `username@aryagreenpamulang.my.id`) dengan password awal `P@ssw0rd`, dan 1 akun Sekretaris aktif serta terverifikasi. Akun contoh memakai password awal bersama `P@ssw0rd`; ubah password seluruh akun sebelum go-live. Akun `warga` generik dihapus. Wajib beri tahu warga dan minta ganti password awal; jangan gunakan seed ini tanpa meninjau data warga/email. Tidak ada file migrasi terpisah.
 
 ### 2. Konfigurasi Database
 Edit `config/database.php`:

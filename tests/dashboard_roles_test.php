@@ -19,7 +19,8 @@ $assert(str_contains($schema, "INSERT INTO `users` (`role_id`,`name`,`username`,
 $assert(str_contains($schema, "FROM `residents` r WHERE r.`notes`='seed'"), 'resident users are generated from seeded residents');
 $assert(str_contains($schema, "UPDATE `residents` r JOIN `users` u ON u.`username`=LOWER(r.`name`)\nSET r.`user_id`=u.`id` WHERE r.`notes`='seed'"), 'each seeded resident is linked to its login user');
 $assert(!str_contains($schema, "'warga', 'warga@aryagreenpamulang.my.id'"), 'generic warga sample account removed');
-$assert(str_contains($schema, "INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`is_active`)\nSELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id', NULL, 0\nFROM `roles` WHERE `name`='sekretaris'"), 'disabled secretary placeholder user is seeded without a password');
+$secretarySeed = substr($schema, strpos($schema, "'Sekretaris', 'sekretaris'"), 300);
+$assert(str_contains($secretarySeed, "'sekretaris@aryagreenpamulang.my.id'") && str_contains($secretarySeed, 'NOW()') && str_contains($secretarySeed, 'oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu'), 'secretary account is active, password-enabled, and verified on fresh install');
 
 $assert(str_contains($dashboard, "if (\$_role === 'warga')"), 'separate resident layout');
 $assert(str_contains($dashboard, 'Saldo Kas Lingkungan') && str_contains($dashboard, 'Pengeluaran Kas'), 'resident cash transparency cards');

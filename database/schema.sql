@@ -209,10 +209,12 @@ INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verif
 (3, 'Bendahara RT', 'bendahara', 'bendahara@aryagreenpamulang.my.id',
  '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW());
 
--- Akun placeholder Sekretaris: nonaktif dan tanpa password hingga identitas resmi diatur.
-INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`is_active`)
-SELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id', NULL, 0
+-- Akun Sekretaris aktif dan terverifikasi pada fresh install.
+INSERT INTO `users` (`role_id`,`name`,`username`,`email`,`password`,`email_verified_at`)
+SELECT `id`, 'Sekretaris', 'sekretaris', 'sekretaris@aryagreenpamulang.my.id',
+       '$2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu', NOW()
 FROM `roles` WHERE `name`='sekretaris';
+-- Password awal sama dengan akun contoh lainnya; ganti segera setelah login.
 
 -- Hash password awal P@ssw0rd di atas: $2y$12$oucBlvl6RGkxgjQ0iAF2IehCiJI2tn9epJCvpnW/A0BBFcRKnbTfu
 -- Terapkan hanya setelah meninjau daftar warga: UPDATE users SET password='[hash baru]' ...; paksa ganti password saat login pertama.
