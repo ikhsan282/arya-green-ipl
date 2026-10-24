@@ -829,6 +829,7 @@ CREATE TABLE `environments` (
   `kelurahan`   VARCHAR(100) DEFAULT NULL,
   `kecamatan`   VARCHAR(100) DEFAULT NULL,
   `city`        VARCHAR(100) DEFAULT NULL,
+  `due_day`     TINYINT UNSIGNED NOT NULL DEFAULT 20,
   `custom_domain` VARCHAR(100) DEFAULT NULL,
   `is_active`   TINYINT(1) NOT NULL DEFAULT 1,
   `created_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP

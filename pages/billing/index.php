@@ -6,6 +6,9 @@ require_once __DIR__ . '/../../includes/email_notifications.php';
 require_permission('billing.view');
 
 $db = db();
+$envDueDay = (int)($db->query('SELECT due_day FROM environments WHERE id=1')->fetch_assoc()['due_day'] ?? 20);
+$envDueDay = max(1, min(28, $envDueDay));
+$defaultDueDate = date('Y-m-') . str_pad((string)$envDueDay, 2, '0', STR_PAD_LEFT);
 
 // ── Hapus tagihan ──────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete') {
@@ -265,7 +268,7 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="col-md-3">
             <label class="form-label">Jatuh Tempo</label>
             <input type="date" name="due_date" class="form-control form-control-sm"
-                   value="<?= date('Y-m-') . '20' ?>" required>
+                   value="<?= e($defaultDueDate) ?>" required>
           </div>
           <div class="col-auto">
             <div class="form-check mt-4">

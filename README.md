@@ -203,7 +203,7 @@ arya-green-ipl/
 - **Channel Pembayaran** — kredensial gateway (KlikQRIS, GoPay Merchant, ShopeePay), mode sandbox/production, token webhook, login OTP GoPay, cek token ShopeePay, aktif/nonaktif *(super_admin)*
 
 ### Tagihan IPL
-- Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis semua unit `dihuni`
+- Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis semua unit `dihuni`; tanggal awal diambil dari **Lingkungan → Tanggal Default Jatuh Tempo** (default 20, dapat diubah saat generate; nilai 1–28). Database lama perlu menambah kolom `environments.due_day`.
 - Status otomatis: `belum_bayar → terlambat` jika melewati jatuh tempo
 - Filter per periode, status, pencarian unit/warga
 - Denda manual di halaman detail

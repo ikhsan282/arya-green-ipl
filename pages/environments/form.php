@@ -32,12 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'kelurahan'     => clean($_POST['kelurahan']     ?? ''),
         'kecamatan'     => clean($_POST['kecamatan']     ?? ''),
         'city'          => clean($_POST['city']          ?? ''),
+        'due_day'       => (int)($_POST['due_day'] ?? 20),
         'custom_domain' => clean($_POST['custom_domain'] ?? ''),
         'is_active'     => isset($_POST['is_active']) ? 1 : 0,
     ];
 
     if (!$data['name']) $errors[] = 'Nama lingkungan wajib diisi.';
     if (!$data['code']) $errors[] = 'Kode lingkungan wajib diisi.';
+    if ($data['due_day'] < 1 || $data['due_day'] > 28) $errors[] = 'Tanggal jatuh tempo harus antara 1 dan 28 agar valid setiap bulan.';
     if ($data['code'] && !preg_match('/^[a-z0-9\-]+$/', $data['code']))
         $errors[] = 'Kode hanya boleh huruf kecil, angka, dan tanda hubung.';
 
@@ -50,21 +52,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         if ($editing) {
-            $stmt = $db->prepare('UPDATE environments SET name=?,code=?,address=?,rt=?,rw=?,kelurahan=?,kecamatan=?,city=?,custom_domain=?,is_active=? WHERE id=?');
-            $stmt->bind_param('sssssssssii',
+            $stmt = $db->prepare('UPDATE environments SET name=?,code=?,address=?,rt=?,rw=?,kelurahan=?,kecamatan=?,city=?,due_day=?,custom_domain=?,is_active=? WHERE id=?');
+            $stmt->bind_param('ssssssssisii',
                 $data['name'], $data['code'], $data['address'],
                 $data['rt'], $data['rw'], $data['kelurahan'],
-                $data['kecamatan'], $data['city'], $data['custom_domain'],
+                $data['kecamatan'], $data['city'], $data['due_day'], $data['custom_domain'],
                 $data['is_active'], $id);
             $stmt->execute();
             log_activity('update', 'environments', "Environment #{$id} updated");
             flash('success', 'Lingkungan berhasil diperbarui.');
         } else {
-            $stmt = $db->prepare('INSERT INTO environments (name,code,address,rt,rw,kelurahan,kecamatan,city,custom_domain,is_active) VALUES (?,?,?,?,?,?,?,?,?,?)');
-            $stmt->bind_param('sssssssssi',
+            $stmt = $db->prepare('INSERT INTO environments (name,code,address,rt,rw,kelurahan,kecamatan,city,due_day,custom_domain,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+            $stmt->bind_param('ssssssssisi',
                 $data['name'], $data['code'], $data['address'],
                 $data['rt'], $data['rw'], $data['kelurahan'],
-                $data['kecamatan'], $data['city'], $data['custom_domain'],
+                $data['kecamatan'], $data['city'], $data['due_day'], $data['custom_domain'],
                 $data['is_active']);
             $stmt->execute();
             log_activity('create', 'environments', 'Environment ' . $data['name'] . ' created');
@@ -140,6 +142,11 @@ include __DIR__ . '/../../includes/sidebar.php';
             <div class="col-md-6">
               <label class="form-label">Kota/Kabupaten</label>
               <input type="text" name="city" class="form-control" maxlength="100" value="<?= e($env['city'] ?? '') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Tanggal Default Jatuh Tempo Tagihan IPL</label>
+              <input type="number" name="due_day" class="form-control" min="1" max="28" required value="<?= (int)($env['due_day'] ?? 20) ?>">
+              <div class="form-text">Dipakai sebagai tanggal awal saat generate tagihan, dan masih bisa diubah pada form generate.</div>
             </div>
             <div class="col-12">
               <div class="form-check">
