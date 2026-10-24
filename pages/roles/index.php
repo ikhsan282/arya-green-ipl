@@ -68,7 +68,7 @@ include __DIR__ . '/../../includes/sidebar.php';
           <div class="list-group list-group-flush">
             <?php foreach ($roles as $r): ?>
               <a href="index.php?role_id=<?= $r['id'] ?>"
-                 class="list-group-item list-group-item-action <?= $sel_role_id===$r['id']?'active':'' ?>">
+                 class="list-group-item list-group-item-action <?= $sel_role_id===(int)$r['id']?'active':'' ?>">
                 <?= e($r['label']) ?>
               </a>
             <?php endforeach; ?>
@@ -78,7 +78,7 @@ include __DIR__ . '/../../includes/sidebar.php';
 
       <!-- Permissions matrix -->
       <div class="col-md-9">
-        <?php $sel_role = array_values(array_filter($roles, fn($r)=>$r['id']===$sel_role_id))[0] ?? null; ?>
+        <?php $sel_role = array_values(array_filter($roles, fn($r)=>(int)$r['id']===$sel_role_id))[0] ?? null; ?>
         <?php if ($sel_role): ?>
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
