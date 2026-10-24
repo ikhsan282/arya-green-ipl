@@ -186,6 +186,7 @@ CREATE TABLE `users` (
   `name`               VARCHAR(150) NOT NULL,
   `username`           VARCHAR(80)  NOT NULL UNIQUE,
   `email`              VARCHAR(150) NOT NULL UNIQUE,
+  `signature_file`     VARCHAR(255) DEFAULT NULL,
   `password`           VARCHAR(255) DEFAULT NULL,
   `email_verified_at`  DATETIME     DEFAULT NULL,
   `verification_token` VARCHAR(100) DEFAULT NULL,

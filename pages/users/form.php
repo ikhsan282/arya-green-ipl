@@ -39,6 +39,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
     if (!$editing && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
     if ($editing && $data['password'] && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
+    $signatureUpload = null;
+    if ($editing && isset($_FILES['signature_file']) && $_FILES['signature_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $roleStmt = $db->prepare('SELECT name FROM roles WHERE id=?');
+        $roleStmt->bind_param('i', $data['role_id']);
+        $roleStmt->execute();
+        $targetRole = $roleStmt->get_result()->fetch_row()[0] ?? '';
+        if (!in_array($targetRole, ['ketua', 'bendahara'], true)) {
+            $errors[] = 'Tanda tangan hanya dapat dipasang pada akun Ketua atau Bendahara.';
+        }
+    }
 
     // Uniqueness checks
     if (empty($errors)) {
@@ -52,6 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $chk2->execute();
         if ($chk2->get_result()->fetch_row()) $errors[] = 'Email sudah digunakan.';
     }
+    if (empty($errors) && $editing && isset($_FILES['signature_file']) && $_FILES['signature_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        try { $signatureUpload = save_signature_upload($_FILES['signature_file']); }
+        catch (RuntimeException $e) { $errors[] = $e->getMessage(); }
+    }
 
     if (empty($errors)) {
         if ($editing) {
@@ -64,6 +78,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('sssiii', $data['name'],$data['username'],$data['email'],$data['role_id'],$data['is_active'],$id);
             }
             $stmt->execute();
+            if ($signatureUpload !== null) {
+                $oldSignature = $user['signature_file'] ?? null;
+                $saveSig = $db->prepare('UPDATE users SET signature_file=? WHERE id=?');
+                $saveSig->bind_param('si', $signatureUpload, $id);
+                $saveSig->execute();
+                if ($oldSignature && preg_match('/^[a-f0-9]{48}\\.(png|jpg)$/', $oldSignature)) @unlink(SIGNATURE_DIR . $oldSignature);
+                $user['signature_file'] = $signatureUpload;
+            }
             // Clear cached permissions if editing self
             if ($self) unset($_SESSION['permissions']);
             log_activity('update','users',"User #{$id} updated");
@@ -102,7 +124,7 @@ include __DIR__ . '/../../includes/sidebar.php';
     <div class="card" style="max-width:580px">
       <div class="card-header"><?= $page_title ?></div>
       <div class="card-body">
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
           <?= csrf_field() ?>
           <div class="row g-3">
             <div class="col-md-8">
@@ -134,6 +156,17 @@ include __DIR__ . '/../../includes/sidebar.php';
               <input type="password" name="password" class="form-control" <?= $editing ? '' : 'required' ?>
                      minlength="8" placeholder="Minimal 8 karakter" autocomplete="new-password">
             </div>
+            <?php
+              $roleNameById = array_column($roles, 'name', 'id');
+              if ($editing && in_array($roleNameById[$user['role_id'] ?? 0] ?? '', ['ketua', 'bendahara'], true)):
+            ?>
+            <div class="col-12">
+              <label class="form-label">Tanda Tangan Pengurus (PNG/JPG, maks 512 KB)</label>
+              <?php if (!empty($user['signature_file'])): ?><div class="mb-2"><img src="<?= e(APP_URL . '/pages/users/signature_image.php?id=' . $id) ?>" alt="Tanda tangan tersimpan" style="max-width:220px;max-height:90px"></div><?php endif; ?>
+              <input type="file" name="signature_file" class="form-control" accept="image/png,image/jpeg">
+              <small class="text-muted">Unggah untuk mengganti. Kosongkan untuk mempertahankan tanda tangan saat ini.</small>
+            </div>
+            <?php endif; ?>
             <?php if ($editing && !$self): ?>
             <div class="col-12">
               <div class="form-check">

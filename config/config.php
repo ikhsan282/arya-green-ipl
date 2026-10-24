@@ -13,6 +13,7 @@ define('SESSION_LIFETIME', 7200); // 2 hours
 
 // Upload
 define('UPLOAD_DIR',      __DIR__ . '/../uploads/payment_proofs/');
+define('SIGNATURE_DIR',   __DIR__ . '/../uploads/signatures/');
 define('UPLOAD_URL',      APP_URL . '/uploads/payment_proofs/');
 define('UPLOAD_MAX_SIZE', 2 * 1024 * 1024); // 2 MB
 define('UPLOAD_ALLOWED',  ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);

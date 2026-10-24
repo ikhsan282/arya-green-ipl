@@ -168,6 +168,33 @@ function upload_proof(array $file): string {
     return upload_file($file);
 }
 
+function save_signature_upload(array $file): string {
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || $file['size'] > 512 * 1024) {
+        throw new RuntimeException('Tanda tangan wajib berupa gambar maksimal 512 KB.');
+    }
+    $info = @getimagesize($file['tmp_name']);
+    $mime = $info['mime'] ?? '';
+    $ext = ['image/png' => 'png', 'image/jpeg' => 'jpg'][$mime] ?? null;
+    if (!$ext || $info[0] > 4000 || $info[1] > 2000) throw new RuntimeException('Format tanda tangan harus PNG/JPG dengan ukuran gambar maksimal 4000×2000 piksel.');
+    if (!is_dir(SIGNATURE_DIR) && !mkdir(SIGNATURE_DIR, 0700, true) && !is_dir(SIGNATURE_DIR)) {
+        throw new RuntimeException('Folder tanda tangan tidak dapat dibuat.');
+    }
+    $name = bin2hex(random_bytes(24)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], SIGNATURE_DIR . $name)) {
+        throw new RuntimeException('Gagal menyimpan tanda tangan.');
+    }
+    return $name;
+}
+
+function signature_image_data_uri(?string $filename): string {
+    if (!$filename || !preg_match('/^[a-f0-9]{48}\\.(png|jpg)$/', $filename)) return '';
+    $path = SIGNATURE_DIR . $filename;
+    $info = @getimagesize($path);
+    $mime = $info['mime'] ?? '';
+    if (!$info || !in_array($mime, ['image/png', 'image/jpeg'], true)) return '';
+    return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+}
+
 // ── EMAIL ─────────────────────────────────────────────────────────────────────
 function mail_plain_text(string $html): string {
     $html = preg_replace('/<(br\s*\/?>|\/p>|\/div>|\/tr>|\/h[1-6]>)/i', "\n", $html);

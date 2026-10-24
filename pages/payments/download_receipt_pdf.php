@@ -11,7 +11,10 @@ if (!$id) { flash('error','Pembayaran tidak ditemukan.'); redirect(APP_URL.'/pag
 $stmt = $db->prepare(
     'SELECT p.*, b.total_amount AS bill_total, bp.label AS period, bp.period_year, bp.period_month,
             u.unit_number, u.block, r.name AS resident_name, r.phone AS resident_phone,
-            pm.name AS payment_method_name, vu.name AS verifier_name, e.name AS env_name
+            pm.name AS payment_method_name, vu.name AS verifier_name,
+            (SELECT sig.signature_file FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="bendahara" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS treasurer_signature,
+            (SELECT sig.name FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="bendahara" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS treasurer_name,
+            e.name AS env_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
      JOIN billing_periods bp ON bp.id=b.billing_period_id
@@ -153,7 +156,12 @@ $pdf->SetFont('dejavusans', '', 9);
 $pdf->Cell($W, 5, 'Pamulang, ' . date('d F Y'), 0, 1, 'R');
 $pdf->Cell($W, 5, 'Bendahara', 0, 1, 'R');
 $pdf->Ln(13);
-$pdf->Cell($W, 5, '( ________________________ )', 0, 1, 'R');
+$signaturePath = preg_match('/^[a-f0-9]{48}\\.(png|jpg)$/', $pay['treasurer_signature'] ?? '') ? SIGNATURE_DIR . $pay['treasurer_signature'] : '';
+if ($signaturePath && is_file($signaturePath) && ($sigInfo = @getimagesize($signaturePath)) && in_array($sigInfo['mime'], ['image/png', 'image/jpeg'], true)) {
+    $pdf->Image($signaturePath, 12 + $W - 50, $pdf->GetY() - 12, 45, 12, strtoupper(pathinfo($signaturePath, PATHINFO_EXTENSION)));
+}
+$pdf->Cell($W, 5, '( ' . ($pay['treasurer_name'] ?? '______________________') . ' )', 0, 1, 'R');
+$pdf->Ln(2);
 
 // Footer
 $pdf->Ln(3);

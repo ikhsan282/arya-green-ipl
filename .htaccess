@@ -42,6 +42,9 @@ RedirectMatch 403 (?i)/(config|includes|database|tests|docs|logs)(/|$)
     RewriteEngine On
     RewriteBase /arya-green-ipl/
 
+    # Keep uploaded signature files private; print pages embed them after auth.
+    RewriteRule ^uploads/signatures/ - [F,L]
+
     # Block access to hidden files
     RewriteRule ^\.  - [F,L]
 

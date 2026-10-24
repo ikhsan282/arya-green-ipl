@@ -12,7 +12,8 @@ if (!$id) { flash('error', 'ID surat tidak valid.'); redirect(APP_URL.'/pages/le
 $stmt = $db->prepare(
     'SELECT l.*, r.name AS resident_name, r.id_card_number, r.phone,
             u2.unit_number, u2.block,
-            u.name AS issuer_name
+            (SELECT sig.name FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="ketua" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS issuer_name,
+            (SELECT sig.signature_file FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="ketua" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS issuer_signature
      FROM letters l
      LEFT JOIN residents r ON r.id=l.resident_id
      LEFT JOIN units u2 ON u2.id=r.unit_id
@@ -22,6 +23,7 @@ $stmt = $db->prepare(
 $stmt->bind_param('i', $id); $stmt->execute();
 $letter = $stmt->get_result()->fetch_assoc();
 if (!$letter) { flash('error', 'Surat tidak ditemukan.'); redirect(APP_URL.'/pages/letters/index.php'); }
+$issuerSignature = signature_image_data_uri($letter['issuer_signature'] ?? null);
 
 // Ganti variabel dalam body surat
 $body = $letter['body'];
@@ -110,7 +112,8 @@ $auto_print  = isset($_GET['print']) && $_GET['print'] === '1';
       text-align: center;
       min-width: 200px;
     }
-    .signature-space { height: 70px; }
+    .signature-space { height: 70px; display: flex; align-items: end; justify-content: center; }
+    .signature-image { max-height: 68px; max-width: 220px; object-fit: contain; }
 
     /* Screen-only styles */
     @media screen {
@@ -253,7 +256,7 @@ $auto_print  = isset($_GET['print']) && $_GET['print'] === '1';
           <?= e(APP_NAME) ?>, <?= fmt_date($letter['issued_date'], 'd F Y') ?>
         </p>
         <p style="margin:0">Ketua RT</p>
-        <div class="signature-space"></div>
+        <div class="signature-space"><?php if ($issuerSignature): ?><img class="signature-image" src="<?= e($issuerSignature) ?>" alt="Tanda tangan Ketua RT"><?php endif; ?></div>
         <p style="margin:0">
           <strong><u><?= e($letter['issuer_name'] ?? '________________________________') ?></u></strong>
         </p>

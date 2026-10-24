@@ -201,6 +201,7 @@ arya-green-ipl/
 - **Lingkungan / Cluster** — CRUD; manajemen area perumahan
 - **Metode Pembayaran** — CRUD dari UI; nama/kode metode, rekening atau tujuan, atas nama, QR/logo, instruksi, urutan, aktif/nonaktif, dan pengaturan auto-verifikasi *(super_admin)*
 - **Channel Pembayaran** — kredensial gateway (KlikQRIS, GoPay Merchant, ShopeePay), mode sandbox/production, token webhook, login OTP GoPay, cek token ShopeePay, aktif/nonaktif *(super_admin)*
+- **Tanda tangan pengurus** — upload PNG/JPG pada Edit Pengguna untuk akun Ketua/Bendahara; otomatis tampil pada cetak surat dan kwitansi (cetak/PDF). File disimpan privat di `uploads/signatures/`.
 
 ### Tagihan IPL
 - Generate tagihan per periode (tahun + bulan + jatuh tempo): otomatis semua unit `dihuni`; tanggal awal diambil dari **Lingkungan → Tanggal Default Jatuh Tempo** (default 20, dapat diubah saat generate; nilai 1–28). Database lama perlu menambah kolom `environments.due_day`.

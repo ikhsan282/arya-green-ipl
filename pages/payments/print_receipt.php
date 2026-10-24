@@ -13,6 +13,8 @@ $stmt = $db->prepare(
             u.unit_number, u.block, r.name AS resident_name, r.phone AS resident_phone,
             pm.name AS payment_method_name,
             vu.name AS verifier_name, cu.name AS created_by_name,
+            (SELECT sig.signature_file FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="bendahara" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS treasurer_signature,
+            (SELECT sig.name FROM users sig JOIN roles sr ON sr.id=sig.role_id WHERE sr.name="bendahara" AND sig.is_active=1 ORDER BY sig.id LIMIT 1) AS treasurer_name,
             e.name AS env_name
      FROM payments p
      JOIN bills b ON b.id=p.bill_id
@@ -41,6 +43,7 @@ if (auth_role() === 'warga') {
     }
 }
 
+$treasurerSignature = signature_image_data_uri($pay['treasurer_signature'] ?? null);
 $page_title = 'Cetak Kwitansi';
 ?>
 <!DOCTYPE html>
@@ -78,6 +81,7 @@ $page_title = 'Cetak Kwitansi';
     .sign-grid { display: flex; justify-content: space-between; margin-top: 4mm; gap: 8mm; }
     .sign-cell { width: 50%; text-align: center; font-size: 9pt; }
     .sign-space { height: 14mm; }
+    .sign-img { display: block; max-height: 13mm; max-width: 45mm; margin: 0 auto; object-fit: contain; }
     .sign-name { border-top: 1px solid #333; padding-top: 1.5mm; display: inline-block; min-width: 45mm; font-weight: 600; }
     .receipt-foot { border-top: 1px solid #eee; margin-top: 4mm; padding-top: 2mm;
                     font-size: 7.5pt; color: #777; text-align: center; line-height: 1.4; }
@@ -158,8 +162,8 @@ $page_title = 'Cetak Kwitansi';
       <div class="sign-cell">
         <div>Pamulang, <?= fmt_date(date('Y-m-d'), 'd F Y') ?></div>
         <div style="font-size:9pt">Bendahara</div>
-        <div class="sign-space" style="height:12mm"></div>
-        <div class="sign-name"><?= e($pay['verifier_name'] ?? '&nbsp;') ?></div>
+        <div class="sign-space" style="height:12mm"><?php if ($treasurerSignature): ?><img class="sign-img" src="<?= e($treasurerSignature) ?>" alt="Tanda tangan Bendahara"><?php endif; ?></div>
+        <div class="sign-name"><?= e($pay['treasurer_name'] ?? $pay['verifier_name'] ?? '&nbsp;') ?></div>
       </div>
     </div>
 
