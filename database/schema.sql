@@ -28,7 +28,8 @@ INSERT INTO `roles` (`name`, `label`) VALUES
   ('super_admin', 'Super Admin'),
   ('ketua',       'Ketua'),
   ('bendahara',   'Bendahara'),
-  ('warga',       'Warga');
+  ('warga',       'Warga'),
+  ('sekretaris',  'Sekretaris');
 
 -- ------------------------------------------------------------
 -- Permissions
@@ -123,6 +124,19 @@ CREATE TABLE `role_permissions` (
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT 1, `id` FROM `permissions`;
 
+-- Sekretaris: administrasi dan informasi lingkungan, tanpa hak kas/verifikasi/config.
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+SELECT (SELECT `id` FROM `roles` WHERE `name`='sekretaris'), `id` FROM `permissions`
+WHERE `name` IN (
+  'dashboard.view', 'units.view', 'residents.view','residents.create','residents.edit',
+  'billing.view', 'billing.send_reminder',
+  'complaints.view', 'complaints.manage',
+  'polls.view', 'polls.manage', 'polls.vote',
+  'events.view', 'events.manage', 'events.attendance',
+  'inventory.view', 'inventory.manage', 'letters.view', 'letters.manage',
+  'environments.view'
+);
+
 -- Ketua: semua kecuali roles.manage, users.delete, environments.*,
 -- serta pengaturan kanal & master metode pembayaran (khusus super_admin).
 INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
@@ -161,6 +175,7 @@ WHERE `name` IN (
   'events.view',
   'letters.view'
 );
+
 
 -- ------------------------------------------------------------
 -- Users

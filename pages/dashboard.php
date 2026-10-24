@@ -102,6 +102,20 @@ if ($_role === 'warga') {
 }
 
 // Yearly trend for chart
+// Ringkasan kas untuk dashboard warga menggunakan agregat publik, tanpa detail transaksi.
+if ($_role === 'warga') {
+    $public_cash = $db->query(
+        'SELECT COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END),0) AS masuk,
+                COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END),0) AS keluar
+         FROM cash_book'
+    )->fetch_assoc();
+    $public_saldo = (float)$public_cash['masuk'] - (float)$public_cash['keluar'];
+    $public_events = $db->query(
+        'SELECT title, type, event_date, location FROM events
+         WHERE event_date >= NOW() ORDER BY event_date ASC LIMIT 5'
+    )->fetch_all(MYSQLI_ASSOC);
+}
+
 $trend_stmt = $db->prepare(
     'SELECT bp.period_month AS m,
             COALESCE(SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount END),0) AS terkumpul,
@@ -115,6 +129,7 @@ $trend_stmt->bind_param('i', $year);
 $trend_stmt->execute();
 $trend_rows = $trend_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $trend_map  = array_column($trend_rows, null, 'm');
+
 $chart_labels  = [];
 $chart_lunas   = [];
 $chart_nunggak = [];
@@ -181,7 +196,7 @@ include __DIR__ . '/../includes/sidebar.php';
     <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggler">
       <i class="bi bi-list fs-5"></i>
     </button>
-    <h6 class="mb-0 fw-semibold"><i class="bi bi-speedometer2 me-1 text-primary"></i> Dashboard</h6>
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-speedometer2 me-1 text-primary"></i> <?= $_role === 'warga' ? 'Informasi Warga' : 'Dashboard' ?></h6>
     <span class="ms-auto text-muted small"><?= date('l, d F Y') ?></span>
   </div>
   <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -189,6 +204,23 @@ include __DIR__ . '/../includes/sidebar.php';
   <div class="main-content">
     <?= render_flash() ?>
 
+    <?php if ($_role === 'warga'): ?>
+    <div class="row g-3 mb-4">
+      <div class="col-12"><h5 class="fw-semibold mb-0">Informasi Warga</h5><div class="text-muted small">Ringkasan kas lingkungan dan informasi untuk warga.</div></div>
+      <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Saldo Kas Lingkungan</div><div class="fw-bold fs-5 <?= $public_saldo >= 0 ? 'text-success' : 'text-danger' ?>"><?= idr($public_saldo) ?></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Pemasukan Kas</div><div class="fw-bold fs-5 text-success"><?= idr((float)$public_cash['masuk']) ?></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Pengeluaran Kas</div><div class="fw-bold fs-5 text-danger"><?= idr((float)$public_cash['keluar']) ?></div></div></div></div>
+      <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Tagihan Bulan Ini</div><div class="fw-bold fs-5"><?= (int)($stats['belum'] ?? 0) + (int)($stats['terlambat'] ?? 0) ?> belum lunas</div><div class="small text-muted">Terkumpul pribadi: <?= idr((float)($stats['terkumpul'] ?? 0)) ?></div></div></div></div>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-lg-6"><div class="card h-100"><div class="card-header"><i class="bi bi-calendar-event me-1 text-primary"></i> Kegiatan Mendatang</div><div class="list-group list-group-flush">
+        <?php if (!$public_events): ?><div class="list-group-item text-muted small">Belum ada kegiatan terjadwal.</div><?php endif; ?>
+        <?php foreach ($public_events as $event): ?><div class="list-group-item"><div class="fw-semibold"><?= e($event['title']) ?></div><div class="small text-muted"><?= e(date('d M Y, H:i', strtotime($event['event_date']))) ?><?= $event['location'] ? ' · '.e($event['location']) : '' ?></div></div><?php endforeach; ?>
+      </div></div></div>
+      <div class="col-lg-6"><div class="card h-100"><div class="card-header"><i class="bi bi-receipt me-1 text-success"></i> Tagihan Saya</div><div class="card-body"><div class="mb-2">Status periode <?= e(period_label($year,$month)) ?>: <strong><?= (int)($stats['sudah'] ?? 0) ?> lunas</strong>, <strong><?= (int)($stats['belum'] ?? 0) + (int)($stats['terlambat'] ?? 0) ?> belum lunas</strong>.</div><?php if ($overdue): ?><div class="alert alert-warning py-2 mb-0 small">Ada <?= count($overdue) ?> tagihan terlambat. Silakan buka menu Tagihan IPL untuk detail.</div><?php else: ?><div class="text-muted small">Tidak ada tagihan terlambat.</div><?php endif; ?></div></div></div>
+    </div>
+    <div class="card mb-3"><div class="card-header"><i class="bi bi-clock-history me-1 text-success"></i> Pembayaran Saya</div><div class="card-body p-0"><?php if (!$recent_payments): ?><div class="p-3 text-muted small">Belum ada pembayaran.</div><?php else: ?><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Tanggal</th><th>Periode</th><th>Jumlah</th><th>Status</th></tr></thead><tbody><?php foreach ($recent_payments as $rp): ?><tr><td><?= fmt_date($rp['payment_date']) ?></td><td><?= e($rp['period']) ?></td><td><?= idr((float)$rp['amount_paid']) ?></td><td><?= payment_status_badge($rp['status']) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?></div></div>
+    <?php else: ?>
     <!-- Stat cards -->
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
@@ -444,6 +476,7 @@ include __DIR__ . '/../includes/sidebar.php';
       </div>
     </div>
     <?php endif; ?>
+    <?php endif; // end role-specific dashboard layout ?>
 
   </div><!-- /.main-content -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>

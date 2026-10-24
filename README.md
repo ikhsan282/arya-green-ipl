@@ -178,7 +178,8 @@ arya-green-ipl/
 | Super Admin | Semua fitur, termasuk **Metode Pembayaran** & **Channel Pembayaran** |
 | Ketua | Semua kecuali hapus user, edit role, serta pengaturan kanal & master metode pembayaran |
 | Bendahara | Tagihan, pembayaran, laporan, kas |
-| Warga | Read-only tagihan & data sendiri + ringkasan kas lingkungan |
+| Sekretaris | Administrasi warga, pengaduan, polling, kegiatan, inventaris, surat, dan informasi lingkungan; tanpa kelola kas, verifikasi pembayaran, atau konfigurasi channel |
+| Warga | Dashboard informasi kas lingkungan, agenda, tagihan & pembayaran sendiri |
 
 > Menu **Metode Pembayaran** dan **Channel Pembayaran** khusus Super Admin — baik di sidebar maupun di level halaman (`require_permission('payment_methods.manage')` / `payment_channels.manage`). Mengetik URL langsung tetap ditolak untuk role lain.
 
