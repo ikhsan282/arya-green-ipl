@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'email'    => clean($_POST['email']    ?? ''),
         'role_id'  => (int)($_POST['role_id']  ?? 4),
         'password' => $_POST['password']        ?? '',
-        'is_active'=> isset($_POST['is_active']) ? 1 : 0,
+        'is_active'=> isset($_POST['manage_active']) ? (isset($_POST['is_active']) ? 1 : 0) : ($editing ? (int)$user['is_active'] : 1),
     ];
 
     if (!$data['name'])     $errors[] = 'Nama wajib diisi.';
@@ -160,6 +160,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             <?php if ($editing && !$self): ?>
             <div class="col-12">
               <div class="form-check">
+                <input type="hidden" name="manage_active" value="1">
                 <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
                        <?= ($user['is_active']??1) ? 'checked' : '' ?>>
                 <label class="form-check-label" for="is_active">Pengguna Aktif</label>
