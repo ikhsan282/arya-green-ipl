@@ -301,9 +301,9 @@ $page_title = 'Portal Warga';
                target="_blank" class="btn btn-outline-secondary py-0 px-1" style="font-size:.65rem">
               <i class="bi bi-printer"></i>
             </a>
-            <a href="<?= APP_URL ?>/pages/payments/download_receipt_pdf.php?id=<?= $h['id'] ?>"
+            <a href="<?= APP_URL ?>/pages/payments/print_receipt.php?id=<?= $h['id'] ?>&print=1"
                class="btn btn-outline-success py-0 px-1" style="font-size:.65rem">
-              <i class="bi bi-file-earmark-pdf"></i>
+              <i class="bi bi-printer"></i>
             </a>
           </div>
           <?php endif; ?>

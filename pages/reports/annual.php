@@ -242,7 +242,7 @@ new Chart(document.getElementById('kasChart'), {
 </script>
 <style>
 @media print {
-  .sidebar, .topbar, form, .btn { display: none !important; }
+  .sidebar, .topbar, form, .btn, .no-print { display: none !important; }
   .content-wrapper { margin-left: 0 !important; width: 100% !important; }
 }
 </style>

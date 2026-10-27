@@ -80,10 +80,7 @@ include __DIR__ . '/../../includes/sidebar.php';
             <a href="index.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
             <?php if ($pay['status']==='verified'): ?>
               <a href="print_receipt.php?id=<?= $id ?>" target="_blank" class="btn btn-outline-primary btn-sm ms-2">
-                <i class="bi bi-printer me-1"></i> Cetak Kwitansi
-              </a>
-              <a href="download_receipt_pdf.php?id=<?= $id ?>" target="_blank" class="btn btn-outline-success btn-sm ms-2">
-                <i class="bi bi-file-pdf me-1"></i> Download PDF
+                <i class="bi bi-printer me-1"></i> Cetak Kwitansi / Simpan PDF
               </a>
               <?php if (in_array(auth_user()['role'] ?? '', ['super_admin', 'ketua'])): ?>
               <a href="unverify.php?id=<?= $id ?>" class="btn btn-outline-danger btn-sm ms-2">

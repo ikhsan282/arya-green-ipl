@@ -12,7 +12,7 @@ Sistem pengelolaan Iuran Pemeliharaan Lingkungan (IPL) untuk perumahan — PHP N
 - Tom Select 2.3.1 (CDN)
 - Vanilla JavaScript
 - PWA (Web App Manifest + Service Worker)
-- TCPDF untuk kwitansi PDF dan generator XLSX native tanpa Composer
+- Cetak kwitansi dan laporan melalui browser; generator XLSX native tanpa Composer
 
 ## Instalasi
 
@@ -97,7 +97,6 @@ arya-green-ipl/
 │   ├── gopay_auth.php         # GoPay Merchant: login OTP, refresh token, cek sesi
 │   ├── shopeepay_auth.php     # ShopeePay Partner: validasi token B:
 │   ├── email_notifications.php# Fungsi kirim email notifikasi & reminder
-│   ├── pdf.php                # Helper TCPDF bersama
 │   ├── xlsx.php               # Generator XLSX native
 │   ├── header.php             # HTML head + navbar + PWA meta
 │   ├── sidebar.php            # Sidebar navigasi (permission-aware)
@@ -135,7 +134,6 @@ arya-green-ipl/
 │   │   ├── gateway_pay.php    # Halaman bayar QRIS (satu klik)
 │   │   ├── gateway_status.php # Polling status transaksi QRIS
 │   │   ├── gateway_webhook.php# Callback server-to-server KlikQRIS
-│   │   ├── download_receipt_pdf.php # Kwitansi PDF A5 (TCPDF)
 │   │   └── print_receipt.php  # Kwitansi cetak browser (A5)
 │   ├── payment_channels/      # Kanal gateway (KlikQRIS: api_key, merchant, mode) — super_admin
 │   ├── payment_methods/       # Master metode pembayaran (CRUD + QR + auto-verify) — super_admin
@@ -219,7 +217,6 @@ arya-green-ipl/
 - Auto-entry ke buku kas saat verified
 - **Kwitansi** dalam dua format, keduanya A5 portrait satu halaman:
   - `print_receipt.php` — cetak langsung dari browser
-  - `download_receipt_pdf.php` — PDF via TCPDF
 
 ### Pembayaran QRIS Online (KlikQRIS)
 - Tombol bayar satu klik di atas form pembayaran manual — warga tidak perlu mengisi apa pun
@@ -358,7 +355,6 @@ php tests/gateway_pay_test.php            # alur buat order & bayar
 php tests/gopay_otp_test.php              # login OTP GoPay (butuh tests/gobiz_mock.php)
 php tests/auth_refresh_test.php           # auto-refresh token GoPay + validasi ShopeePay
 php tests/rekap_pembayaran_test.php       # angka Rekap Pembayaran cocok dengan data
-php tests/pdf_test.php                    # generate kwitansi PDF
 php tests/xlsx_test.php                   # export XLSX
 ```
 

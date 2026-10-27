@@ -97,9 +97,6 @@ include __DIR__ . '/../../includes/sidebar.php';
             <a href="arrears_export.php?q=<?= urlencode($search) ?>" class="btn btn-sm btn-outline-danger">
               <i class="bi bi-file-earmark-spreadsheet me-1"></i>CSV
             </a>
-            <a href="arrears_export.php?q=<?= urlencode($search) ?>&format=pdf" class="btn btn-sm btn-outline-danger">
-              <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-            </a>
             <a href="arrears_export.php?q=<?= urlencode($search) ?>&format=xlsx" class="btn btn-sm btn-danger">
               <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
@@ -164,7 +161,7 @@ include __DIR__ . '/../../includes/sidebar.php';
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 <style>
 @media print {
-  .sidebar, .topbar, form, .btn { display: none !important; }
+  .sidebar, .topbar, form, .btn, .no-print { display: none !important; }
   .content-wrapper { margin-left: 0 !important; width: 100% !important; }
 }
 </style>

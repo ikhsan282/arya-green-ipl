@@ -21,7 +21,7 @@ $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $by_month = array_column($rows, null, 'm');
 
-if (in_array($_GET['format'] ?? '', ['xlsx', 'pdf'], true)) {
+if (in_array($_GET['format'] ?? '', ['xlsx'], true)) {
     $data = [['Bulan', 'Pemasukan', 'Pengeluaran', 'Surplus/Defisit', 'Saldo Kumulatif']];
     $cumulative = 0;
     for ($m = 1; $m <= 12; $m++) {
@@ -30,10 +30,6 @@ if (in_array($_GET['format'] ?? '', ['xlsx', 'pdf'], true)) {
         $net    = $masuk - $keluar;
         $cumulative += $net;
         $data[] = [bulan_indo($m).' '.$f_year, $masuk, $keluar, $net, $cumulative];
-    }
-    if (($_GET['format'] ?? '') === 'pdf') {
-        require_once __DIR__ . '/../../includes/pdf.php';
-        pdf_download('arus_kas_' . $f_year . '.pdf', 'Arus Kas ' . $f_year, $data);
     }
     require_once __DIR__ . '/../../includes/xlsx.php';
     xlsx_download('arus_kas_' . $f_year . '.xlsx', ['Arus Kas' => $data]);
