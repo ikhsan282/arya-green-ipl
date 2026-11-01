@@ -7,17 +7,22 @@ require_permission('reports.view');
 $db = db();
 $f_block = clean($_GET['block'] ?? '');
 $f_type = (int)($_GET['type'] ?? 0);
-$f_status = clean($_GET['status'] ?? '');
+$valid_statuses = ['dihuni','kosong','dijual'];
+$f_statuses = array_values(array_intersect((array)($_GET['status'] ?? []), $valid_statuses));
 $f_q = clean($_GET['q'] ?? '');
 $f_view = in_array($_GET['view'] ?? 'grid', ['grid','table'], true) ? $_GET['view'] : 'grid';
-if (!in_array($f_status, ['', 'dihuni','kosong','dijual'], true)) $f_status = '';
 
 $where = '1=1';
 $params = [];
 $types = '';
 if ($f_block !== '') { $where .= ' AND u.block = ?'; $params[] = $f_block; $types .= 's'; }
 if ($f_type > 0) { $where .= ' AND u.unit_type_id = ?'; $params[] = $f_type; $types .= 'i'; }
-if ($f_status !== '') { $where .= ' AND u.status = ?'; $params[] = $f_status; $types .= 's'; }
+if ($f_statuses) {
+    $in = implode(',', array_fill(0, count($f_statuses), '?'));
+    $where .= " AND u.status IN ({$in})";
+    array_push($params, ...$f_statuses);
+    $types .= str_repeat('s', count($f_statuses));
+}
 if ($f_q !== '') { $where .= ' AND (u.unit_number LIKE ? OR u.block LIKE ? OR r.name LIKE ?)'; $like = "%{$f_q}%"; array_push($params, $like, $like, $like); $types .= 'sss'; }
 
 $sql = "SELECT u.block, u.unit_number, u.status AS unit_status, u.area_sqm, ut.name AS type_name, r.name AS resident_name, r.phone, r.status AS resident_status, r.is_active FROM units u JOIN unit_types ut ON ut.id = u.unit_type_id LEFT JOIN residents r ON r.unit_id = u.id AND r.is_active = 1 WHERE {$where} ORDER BY u.block, u.unit_number";
@@ -43,7 +48,7 @@ $page_title = 'Laporan Data Unit';
 include __DIR__ . '/../../includes/header.php';
 include __DIR__ . '/../../includes/sidebar.php';
 $qs = fn($v) => http_build_query(array_merge($_GET, ['view'=>$v]));
-$ex = http_build_query(array_filter(['block'=>$f_block,'type'=>$f_type?:null,'status'=>$f_status,'q'=>$f_q]));
+$ex = http_build_query(array_filter(['block'=>$f_block,'type'=>$f_type?:null,'q'=>$f_q]) + array_map(fn($s)=>$s, $f_statuses ? ['status'=>$f_statuses] : []));
 ?>
 <div class="content-wrapper">
   <div class="topbar d-flex align-items-center px-3 gap-2">
@@ -63,7 +68,7 @@ $ex = http_build_query(array_filter(['block'=>$f_block,'type'=>$f_type?:null,'st
       <form method="GET" class="row g-2 align-items-end">
         <div class="col-md-2"><select name="block" class="form-select form-select-sm"><option value="">Semua Blok</option><?php foreach ($blocks as $b): ?><option value="<?= e($b['block']) ?>" <?= $b['block']===$f_block?'selected':'' ?>><?= e($b['block']) ?></option><?php endforeach; ?></select></div>
         <div class="col-md-2"><select name="type" class="form-select form-select-sm"><option value="0">Semua Tipe</option><?php foreach ($type_list as $t): ?><option value="<?= (int)$t['id'] ?>" <?= (int)$t['id']===$f_type?'selected':'' ?>><?= e($t['name']) ?></option><?php endforeach; ?></select></div>
-        <div class="col-md-2"><select name="status" class="form-select form-select-sm"><option value="">Semua Status</option><?php foreach ($lbl as $k=>$v): ?><option value="<?= $k ?>" <?= $k===$f_status?'selected':'' ?>><?= $v ?></option><?php endforeach; ?></select></div>
+        <div class="col-md-2"><select name="status[]" class="form-select form-select-sm" multiple size="3" title="Tahan Ctrl untuk pilih lebih dari satu"><?php foreach ($lbl as $k=>$v): ?><option value="<?= $k ?>" <?= in_array($k,$f_statuses,true)?'selected':'' ?>><?= $v ?></option><?php endforeach; ?></select></div>
         <div class="col-md-3"><input type="text" name="q" class="form-control form-control-sm" placeholder="Cari unit/nama warga..." value="<?= e($f_q) ?>"></div>
         <div class="col-auto d-flex gap-2">
           <button class="btn btn-sm btn-success"><i class="bi bi-search me-1"></i>Cari</button>

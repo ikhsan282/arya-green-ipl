@@ -7,17 +7,22 @@ require_permission('reports.view');
 $db       = db();
 $f_block  = clean($_GET['block']  ?? '');
 $f_type   = (int)($_GET['type']   ?? 0);
-$f_status = clean($_GET['status'] ?? '');
+$valid_statuses = ['dihuni','kosong','dijual'];
+$f_statuses = array_values(array_intersect((array)($_GET['status'] ?? []), $valid_statuses));
 $f_q      = clean($_GET['q']      ?? '');
-if (!in_array($f_status, ['','dihuni','kosong','dijual'], true)) $f_status = '';
 
 $where  = '1=1';
 $params = [];
 $types  = '';
 if ($f_block  !== '') { $where .= ' AND u.block = ?';         $params[] = $f_block;  $types .= 's'; }
 if ($f_type    > 0)   { $where .= ' AND u.unit_type_id = ?';  $params[] = $f_type;   $types .= 'i'; }
-if ($f_status !== '') { $where .= ' AND u.status = ?';         $params[] = $f_status; $types .= 's'; }
-if ($f_q      !== '') {
+if ($f_statuses) {
+    $in = implode(',', array_fill(0, count($f_statuses), '?'));
+    $where .= " AND u.status IN ({$in})";
+    array_push($params, ...$f_statuses);
+    $types .= str_repeat('s', count($f_statuses));
+}
+if ($f_q !== '') {
     $where .= ' AND (u.unit_number LIKE ? OR u.block LIKE ? OR r.name LIKE ?)';
     $like = "%{$f_q}%";
     array_push($params, $like, $like, $like);
