@@ -162,6 +162,12 @@ function nav_active(string $path): string {
         <i class="bi bi-calendar3 me-2"></i> Ringkasan Tahunan
       </a>
     </li>
+    <li class="nav-item">
+      <a href="<?= APP_URL ?>/pages/reports/occupancy.php"
+         class="nav-link text-white<?= nav_active('/reports/occupancy') ?>">
+        <i class="bi bi-grid-3x3-gap me-2"></i> Data Unit
+      </a>
+    </li>
     <?php endif; ?>
 
     <!-- ── Komunikasi ── -->
