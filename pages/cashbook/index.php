@@ -46,6 +46,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]));
     }
 
+    if ($action === 'edit') {
+        $id    = (int)($_POST['edit_id'] ?? 0);
+        $type  = in_array($_POST['type'] ?? '', ['pemasukan','pengeluaran'])
+                   ? $_POST['type'] : null;
+        $cat   = clean($_POST['category']    ?? '');
+        $amt   = (float)str_replace(['.', ','], ['', '.'], $_POST['amount'] ?? '0');
+        $desc  = clean($_POST['description'] ?? '');
+        $date  = clean($_POST['trx_date']    ?? '');
+
+        $chk = $db->prepare('SELECT ref_payment_id, proof_file FROM cash_book WHERE id=?');
+        $chk->bind_param('i', $id);
+        $chk->execute();
+        $row = $chk->get_result()->fetch_assoc();
+        if (!$row) { flash('error', 'Entri tidak ditemukan.'); }
+        elseif ($row['ref_payment_id']) { flash('error', 'Entri otomatis dari IPL tidak bisa diubah manual.'); }
+        elseif (!$type || !$cat || $amt <= 0 || !$date) {
+            flash('error', 'Semua kolom wajib diisi dengan benar.');
+        } else {
+            $proof = $row['proof_file'];
+            if (!empty($_FILES['proof_file']['name'])) {
+                try {
+                    $new = upload_proof($_FILES['proof_file']);
+                    if ($proof && file_exists(UPLOAD_DIR . $proof)) @unlink(UPLOAD_DIR . $proof);
+                    $proof = $new;
+                } catch (Exception $e) { flash('error', $e->getMessage()); redirect(APP_URL.'/pages/cashbook/index.php'); }
+            }
+            $upd = $db->prepare(
+                'UPDATE cash_book SET type=?, category=?, amount=?, description=?, trx_date=?, proof_file=? WHERE id=?'
+            );
+            $upd->bind_param('ssdsssi', $type, $cat, $amt, $desc, $date, $proof, $id);
+            $upd->execute();
+            log_activity('update', 'cashbook', "Ubah entri id={$id}: {$cat} " . idr($amt));
+            flash('success', 'Entri berhasil diubah.');
+        }
+        redirect(APP_URL . '/pages/cashbook/index.php');
+    }
+
     if ($action === 'delete') {
         $id = (int)($_POST['del_id'] ?? 0);
         // Jangan hapus entri yang berasal dari sistem IPL
@@ -413,6 +450,11 @@ include __DIR__ . '/../../includes/sidebar.php';
                 <?php if (can('cashbook.manage')): ?>
                 <td>
                   <?php if (!$row['ref_payment_id']): ?>
+                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2"
+                          data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>"
+                          title="Ubah entri">
+                    <i class="bi bi-pencil"></i>
+                  </button>
                   <form method="POST" class="d-inline">
                     <?= csrf_field() ?>
                     <input type="hidden" name="_action" value="delete">
@@ -441,6 +483,76 @@ include __DIR__ . '/../../includes/sidebar.php';
       </div>
       <?php endif; ?>
     </div>
+
+    <!-- Modal edit per entri -->
+    <?php if (can('cashbook.manage')): foreach ($entries as $row): ?>
+      <?php if ($row['ref_payment_id']) continue; ?>
+      <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data">
+              <?= csrf_field() ?>
+              <input type="hidden" name="_action" value="edit">
+              <input type="hidden" name="edit_id" value="<?= $row['id'] ?>">
+              <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-pencil me-1 text-warning"></i> Ubah Entri — <?= e($row['category']) ?></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-2">
+                  <label class="form-label">Jenis</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" value="pemasukan"
+                             <?= $row['type']==='pemasukan'?'checked':'' ?>>
+                      <label class="form-check-label text-success fw-semibold">Pemasukan</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" value="pengeluaran"
+                             <?= $row['type']==='pengeluaran'?'checked':'' ?>>
+                      <label class="form-check-label text-danger fw-semibold">Pengeluaran</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Kategori</label>
+                  <input type="text" name="category" class="form-control form-control-sm"
+                         list="catList" value="<?= e($row['category']) ?>" required maxlength="100">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Jumlah (Rp)</label>
+                  <input type="text" name="amount" class="form-control form-control-sm"
+                         value="<?= number_format((float)$row['amount'], 0, ',', '.') ?>"
+                         required inputmode="numeric" data-rupiah>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Tanggal</label>
+                  <input type="date" name="trx_date" class="form-control form-control-sm"
+                         value="<?= e($row['trx_date']) ?>" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Keterangan</label>
+                  <textarea name="description" class="form-control form-control-sm" rows="2"
+                            maxlength="500"><?= e($row['description']) ?></textarea>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Foto Bukti <small class="text-muted">(kosongkan = tetap)</small></label>
+                  <input type="file" name="proof_file" class="form-control form-control-sm"
+                         accept="image/jpeg,image/png,image/webp,application/pdf">
+                  <?php if ($row['proof_file']): ?>
+                    <small class="text-muted">Saat ini: <?= e(basename($row['proof_file'])) ?></small>
+                  <?php endif; ?>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-sm btn-warning"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    <?php endforeach; endif; ?>
 
   </div><!-- /.main-content -->
 </div><!-- /.content-wrapper -->
