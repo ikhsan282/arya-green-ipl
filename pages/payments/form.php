@@ -106,6 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$sel_bill_id)  $errors[] = 'Pilih tagihan terlebih dahulu.';
     if ($amount_paid <= 0) $errors[] = 'Jumlah bayar harus lebih dari 0.';
+    if ($bill && abs($amount_paid - (float)$bill['total_amount']) > 0.01) {
+        $errors[] = 'Jumlah bayar tidak sesuai dengan tagihan (Regional '
+            . number_format((float)$bill['total_amount'],0,',','.') . ').';
+    }
     if (!$payment_date) $errors[] = 'Tanggal pembayaran wajib diisi.';
 
     // Resolve metode dari master (hanya metode aktif yang boleh dipakai)
@@ -316,9 +320,11 @@ include __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="col-md-6">
               <label class="form-label">Jumlah Bayar (Rp) <span class="text-danger">*</span></label>
-              <input type="text" name="amount_paid" class="form-control" required
-                     value="<?= e($_POST['amount_paid'] ?? ($bill ? number_format((float)$bill['total_amount'],0,',','.') : '')) ?>"
+              <input type="text" name="amount_paid" id="amountPaid" class="form-control"
+                     readonly
+                     value="<?= e($bill ? number_format((float)$bill['total_amount'],0,',','.') : ($_POST['amount_paid'] ?? '')) ?>"
                      placeholder="Cth: 300.000">
+              <div class="form-text"><?= $bill ? 'Jumlah otomatis dari tagihan: <strong>'.number_format((float)$bill['total_amount'],0,',','.').'</strong>' : '' ?></div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
@@ -381,6 +387,22 @@ function toggleInstructions() {
 payMethod && payMethod.addEventListener('change', () => { toggleBank(); toggleInstructions(); });
 toggleBank();
 toggleInstructions();
+
+// Jumlah Bayar otomatis = tagihan yang dipilih (readonly, tidak bisa diedit)
+(function () {
+  const sel  = document.getElementById('billSelect');
+  const amt  = document.getElementById('amountPaid');
+  if (!sel || !amt) return;
+  function sync() {
+    const v = sel.value;
+    if (!v) { amt.value = ''; return; }
+    const opt = sel.querySelector('option[value="' + v + '"]');
+    const n = opt ? (parseInt(opt.dataset.amount, 10) || 0) : 0;
+    amt.value = n ? Number(n).toLocaleString('id-ID') : '';
+  }
+  sel.addEventListener('change', sync);
+  sync();
+})();
 
 // ── Dropdown tagihan → tombol QRIS langsung muncul ────────────────────────
 (function () {
