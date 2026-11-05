@@ -25,7 +25,7 @@ if ($f_statuses) {
 }
 if ($f_q !== '') { $where .= ' AND (u.unit_number LIKE ? OR u.block LIKE ? OR r.name LIKE ?)'; $like = "%{$f_q}%"; array_push($params, $like, $like, $like); $types .= 'sss'; }
 
-$sql = "SELECT u.block, u.unit_number, u.status AS unit_status, u.area_sqm, ut.name AS type_name, r.name AS resident_name, r.phone, r.status AS resident_status, r.is_active FROM units u JOIN unit_types ut ON ut.id = u.unit_type_id LEFT JOIN residents r ON r.unit_id = u.id AND r.is_active = 1 WHERE {$where} ORDER BY u.block, u.unit_number";
+$sql = "SELECT u.block, u.unit_number, u.status AS unit_status, u.area_sqm, ut.name AS type_name, r.name AS resident_name, r.phone, r.phone_secondary, r.status AS resident_status, r.is_active FROM units u JOIN unit_types ut ON ut.id = u.unit_type_id LEFT JOIN residents r ON r.unit_id = u.id AND r.is_active = 1 WHERE {$where} ORDER BY u.block, u.unit_number";
 $stmt = $db->prepare($sql);
 if ($params) $stmt->bind_param($types, ...$params);
 $stmt->execute();
@@ -87,9 +87,15 @@ $ex = http_build_query(array_filter(['block'=>$f_block,'type'=>$f_type?:null,'q'
       <div class="card mb-3"><div class="card-header"><strong>Blok <?= e($blk) ?></strong> <span class="badge bg-secondary ms-1"><?= count($units) ?> unit</span></div>
         <div class="card-body"><div class="d-flex flex-wrap gap-2">
           <?php foreach ($units as $u): ?>
-          <div class="border rounded px-2 py-1 bg-<?= $cls[$u['unit_status']] ?> bg-opacity-10 border-<?= $cls[$u['unit_status']] ?>" style="min-width:150px" title="<?= e(($u['resident_name'] ?? '-') . ' • ' . $u['type_name']) ?>">
+          <div class="border rounded px-2 py-1 bg-<?= $cls[$u['unit_status']] ?> bg-opacity-10 border-<?= $cls[$u['unit_status']] ?>" style="min-width:160px" title="<?= e(($u['resident_name'] ?? '-') . ' • ' . $u['type_name']) ?>">
             <div class="fw-bold"><?= e($u['block'].'-'.$u['unit_number']) ?> <span class="badge bg-<?= $cls[$u['unit_status']] ?>"><?= $lbl[$u['unit_status']] ?></span></div>
-            <small class="text-muted"><?= e($u['type_name']) ?> • <?= e($u['resident_name'] ?? '—') ?></small>
+            <small class="text-muted d-block text-truncate"><?= e($u['type_name']) ?> • <?= e($u['resident_name'] ?? '—') ?></small>
+            <?php if (!empty($u['phone'])): ?>
+              <div class="small text-truncate mt-1"><i class="bi bi-whatsapp text-success me-1"></i><?= e($u['phone']) ?></div>
+            <?php endif; ?>
+            <?php if (!empty($u['phone_secondary'])): ?>
+              <div class="small text-muted text-truncate"><i class="bi bi-telephone-plus me-1 text-primary"></i><?= e($u['phone_secondary']) ?></div>
+            <?php endif; ?>
           </div>
           <?php endforeach; ?>
         </div></div>
@@ -98,13 +104,23 @@ $ex = http_build_query(array_filter(['block'=>$f_block,'type'=>$f_type?:null,'q'
     <?php else: ?>
     <div class="card"><div class="card-header"><i class="bi bi-table me-1 text-success"></i> Daftar Unit <span class="badge bg-secondary ms-2"><?= $total ?> unit</span></div>
       <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover table-sm mb-0">
-        <thead><tr><th>#</th><th>Unit</th><th>Tipe</th><th>Status Unit</th><th>Warga</th><th>No. HP</th><th>Status Huni</th></tr></thead>
+        <thead><tr><th>#</th><th>Unit</th><th>Tipe</th><th>Status Unit</th><th>Warga</th><th>No. HP Utama & Kedua</th><th>Status Huni</th></tr></thead>
         <tbody>
         <?php if (empty($rows)): ?><tr><td colspan="7" class="text-center text-muted py-4">Tidak ada unit.</td></tr>
         <?php else: foreach ($rows as $i => $r): ?>
           <tr><td><?= $i+1 ?></td><td><strong><?= e($r['block'].'-'.$r['unit_number']) ?></strong></td><td><?= e($r['type_name']) ?></td>
           <td><span class="badge bg-<?= $cls[$r['unit_status']] ?>"><?= $lbl[$r['unit_status']] ?></span></td>
-          <td><?= e($r['resident_name'] ?? '-') ?></td><td><?= e($r['phone'] ?? '-') ?></td>
+          <td><?= e($r['resident_name'] ?? '-') ?></td>
+          <td>
+            <?php if (!empty($r['phone'])): ?>
+              <div class="text-nowrap"><i class="bi bi-whatsapp text-success me-1"></i><strong><?= e($r['phone']) ?></strong></div>
+            <?php else: ?>
+              <span class="text-muted">-</span>
+            <?php endif; ?>
+            <?php if (!empty($r['phone_secondary'])): ?>
+              <div class="text-nowrap text-muted small"><i class="bi bi-telephone-plus me-1 text-primary"></i><?= e($r['phone_secondary']) ?></div>
+            <?php endif; ?>
+          </td>
           <td><?= $r['resident_name'] ? e(($r['resident_status'] ?? '-') . ((int)($r['is_active'] ?? 1) ? '' : ' (nonaktif)')) : '-' ?></td></tr>
         <?php endforeach; endif; ?>
         </tbody>

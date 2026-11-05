@@ -32,7 +32,7 @@ if ($f_q !== '') {
 $stmt = $db->prepare(
     "SELECT u.block, u.unit_number, u.status AS unit_status, u.area_sqm,
             ut.name AS type_name,
-            r.name AS resident_name, r.phone, r.status AS resident_status
+            r.name AS resident_name, r.phone, r.phone_secondary, r.status AS resident_status
      FROM units u
      JOIN unit_types ut ON ut.id = u.unit_type_id
      LEFT JOIN residents r ON r.unit_id = u.id AND r.is_active = 1
@@ -45,7 +45,7 @@ $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 $lbl = ['dihuni'=>'Dihuni','kosong'=>'Kosong','dijual'=>'Dijual'];
 
-$data = [['No','Unit','Blok','Tipe','Luas (m²)','Status Unit','Warga','No. HP','Status Huni']];
+$data = [['No','Unit','Blok','Tipe','Luas (m²)','Status Unit','Warga','No. HP Utama','No. HP Kedua','Status Huni']];
 foreach ($rows as $i => $r) {
     $data[] = [
         $i + 1,
@@ -56,6 +56,7 @@ foreach ($rows as $i => $r) {
         $lbl[$r['unit_status']] ?? $r['unit_status'],
         $r['resident_name'] ?? '-',
         $r['phone']          ?? '-',
+        $r['phone_secondary'] ?? '-',
         $r['resident_name']  ? ($r['resident_status'] ?? '-') : '-',
     ];
 }
