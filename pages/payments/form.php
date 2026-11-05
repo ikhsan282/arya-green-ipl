@@ -202,8 +202,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $desc = 'IPL ' . ($bill['period'] ?? '') . ' — ' . ($bill['block'] ?? '') . '-' . ($bill['unit_number'] ?? '');
             $s3->bind_param('dssii', $amount_paid, $desc, $payment_date, $pay_id, $uid_v);
             $s3->execute();
+            require_once __DIR__ . '/../../includes/wa_outbox.php';
+            wa_event_payment_verified($pay_id);
         } else {
-            // Notifikasi ketua: ada pembayaran baru menunggu verifikasi
+            // Notifikasi ketua/bendahara: ada pembayaran baru menunggu verifikasi
             $pay_info = [
                 'id'             => $pay_id,
                 'block'          => $bill['block'] ?? '',
@@ -214,6 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'payment_date'   => $payment_date,
             ];
             notify_admin_new_payment($pay_info, $bill['resident_name'] ?? '');
+            require_once __DIR__ . '/../../includes/wa_outbox.php';
+            wa_event_payment_pending_review($pay_id);
         }
 
         log_activity('create','payments',"Payment #{$pay_id} for bill #{$sel_bill_id}");

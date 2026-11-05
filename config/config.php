@@ -52,6 +52,24 @@ define('LOGIN_MAX_ATTEMPTS',    5);     // Maksimal gagal untuk satu akun
 define('LOGIN_MAX_IP_ATTEMPTS', 20);    // Maksimal gagal dari satu IP (cegah password spraying)
 define('LOGIN_LOCKOUT_TIME',     900);   // 15 menit (dalam detik)
 
+// Bot API (Hermes WhatsApp chatbot)
+// Kunci HMAC disimpan di config/bot_secrets.php (tidak ikut git, lihat
+// bot_secrets.example.php) atau env IPL_BOT_KEYS berisi JSON {"key_id":"secret"}.
+// Array kosong = API bot nonaktif (semua request ditolak 503).
+if (is_file(__DIR__ . '/bot_secrets.php')) {
+    require_once __DIR__ . '/bot_secrets.php';
+}
+if (!defined('BOT_API_KEYS')) {
+    $envKeys = json_decode((string) getenv('IPL_BOT_KEYS'), true);
+    define('BOT_API_KEYS', is_array($envKeys) ? $envKeys : []);
+    unset($envKeys);
+}
+define('BOT_MAX_CLOCK_SKEW', 300);   // detik; tolak request lebih lama (anti-replay)
+define('BOT_RATE_PER_MIN',   30);    // maksimal request per nomor per menit
+if (!defined('BOT_WEBHOOK_URL'))    define('BOT_WEBHOOK_URL',    (string) (getenv('IPL_BOT_WEBHOOK_URL') ?: ''));
+if (!defined('BOT_WEBHOOK_SECRET')) define('BOT_WEBHOOK_SECRET', (string) (getenv('IPL_BOT_WEBHOOK_SECRET') ?: ''));
+if (!defined('RECEIPT_SIGN_SECRET')) define('RECEIPT_SIGN_SECRET', (string) (getenv('IPL_RECEIPT_SECRET') ?: ''));
+
 // Fine / denda (IDR per day after due date)
 define('FINE_PER_DAY', 5000);
 

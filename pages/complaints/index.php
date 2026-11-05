@@ -64,6 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = $db->prepare('INSERT INTO complaint_replies (complaint_id,user_id,message) VALUES (?,?,?)');
             $s->bind_param('iis', $id, $uid, $msg);
             $s->execute();
+            $repId = (int) $db->insert_id;
+            if (can('complaints.manage') && $owner_uid != $uid) {
+                require_once __DIR__ . '/../../includes/wa_outbox.php';
+                $stC = $db->prepare('SELECT status FROM complaints WHERE id=? LIMIT 1');
+                $stC->bind_param('i', $id);
+                $stC->execute();
+                $cStat = (string) ($stC->get_result()->fetch_row()[0] ?? 'diproses');
+                wa_event_complaint_replied($id, $repId, $msg, auth_user()['name'] ?? 'Pengurus', $cStat);
+            }
             flash('success', 'Balasan dikirim.');
         }
         redirect(APP_URL.'/pages/complaints/detail.php?id='.$id);

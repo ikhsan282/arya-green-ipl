@@ -56,26 +56,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Format email tidak valid.';
 
     if (empty($errors)) {
+        // Nomor ternormalisasi untuk lookup bot WhatsApp; '' = bukan nomor seluler valid.
+        $data['phone_norm'] = phone_normalize($data['phone']) ?? '';
         if ($editing) {
             $stmt = $db->prepare(
-                'UPDATE residents SET unit_id=?,user_id=?,name=?,id_card_number=?,phone=?,email=?,
+                'UPDATE residents SET unit_id=?,user_id=?,name=?,id_card_number=?,phone=?,phone_norm=?,email=?,
                  status=?,move_in_date=?,notes=?,is_active=? WHERE id=?'
             );
-            $stmt->bind_param('iisssssssii',
+            $stmt->bind_param('iissssssssii',
                 $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
-                $data['phone'],$data['email'],$data['status'],
+                $data['phone'],$data['phone_norm'],$data['email'],$data['status'],
                 $data['move_in_date'],$data['notes'],$data['is_active'],$id);
             $stmt->execute();
             log_activity('update','residents',"Resident #{$id} updated");
             flash('success','Data warga berhasil diperbarui.');
         } else {
             $stmt = $db->prepare(
-                'INSERT INTO residents (unit_id,user_id,name,id_card_number,phone,email,status,move_in_date,notes)
-                 VALUES (?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO residents (unit_id,user_id,name,id_card_number,phone,phone_norm,email,status,move_in_date,notes)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->bind_param('iisssssss',
+            $stmt->bind_param('iissssssss',
                 $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
-                $data['phone'],$data['email'],$data['status'],
+                $data['phone'],$data['phone_norm'],$data['email'],$data['status'],
                 $data['move_in_date'],$data['notes']);
             $stmt->execute();
             // Update unit status

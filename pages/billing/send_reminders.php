@@ -31,8 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $counts = run_email_reminders();
+    require_once __DIR__ . '/../../includes/wa_outbox.php';
+    $waCounts = wa_run_reminders();
     log_activity('send_reminder', 'billing',
-        "Reminder sent — due:{$counts['due']} overdue:{$counts['overdue']} skipped:{$counts['skipped']}");
+        "Reminder sent — due:{$counts['due']} overdue:{$counts['overdue']} skipped:{$counts['skipped']} | WA due:{$waCounts['due']} overdue:{$waCounts['overdue']}");
     flash('success',
         "Reminder terkirim: {$counts['due']} jatuh tempo, {$counts['overdue']} terlambat." .
         ($counts['skipped'] ? " {$counts['skipped']} dilewati (email kosong/sudah terkirim hari ini)." : ''));

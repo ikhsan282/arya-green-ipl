@@ -102,6 +102,21 @@ function idr(float $v): string {
     return 'Rp ' . number_format($v, 0, ',', '.');
 }
 
+// ── PHONE ─────────────────────────────────────────────────────────────────────
+/**
+ * Normalisasi nomor HP Indonesia ke format WhatsApp internasional (628xxxxxxxx).
+ * Menerima 0812-..., +62 812 ..., 62812..., 812....
+ * Mengembalikan null bila bukan nomor seluler valid (mis. placeholder "TEMP-G10").
+ */
+function phone_normalize(?string $raw): ?string {
+    $d = preg_replace('/\D+/', '', (string)$raw);
+    if ($d === '') return null;
+    if (str_starts_with($d, '0'))      $d = '62' . substr($d, 1);
+    elseif (str_starts_with($d, '8'))  $d = '62' . $d;
+    if (!preg_match('/^628\d{7,12}$/', $d)) return null;
+    return $d;
+}
+
 function terbilang(float $n): string {
     $n = (int)round($n);
     if ($n === 0) return 'nol';

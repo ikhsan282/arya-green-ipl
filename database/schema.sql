@@ -858,4 +858,55 @@ CREATE TABLE `login_attempts` (
   INDEX `idx_login_attempts_cleanup` (`attempted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ------------------------------------------------------------
+-- 11. Integrasi Hermes WhatsApp Bot
+-- Idempotent: aman dijalankan ulang pada database existing (MariaDB 10.0.2+).
+-- ------------------------------------------------------------
+-- Nomor WA pengurus (format 628xxx) + opt-in notifikasi pembayaran
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `phone`     VARCHAR(20) DEFAULT NULL AFTER `email`,
+  ADD COLUMN IF NOT EXISTS `wa_notify` TINYINT(1)  NOT NULL DEFAULT 0 AFTER `phone`;
+CREATE INDEX IF NOT EXISTS `idx_users_phone` ON `users` (`phone`);
+
+-- Nomor warga ternormalisasi untuk lookup bot.
+-- NULL = belum diproses (diisi otomatis saat request bot pertama), '' = bukan nomor seluler valid.
+ALTER TABLE `residents`
+  ADD COLUMN IF NOT EXISTS `phone_norm` VARCHAR(20) DEFAULT NULL AFTER `phone`;
+CREATE INDEX IF NOT EXISTS `idx_residents_phone_norm` ON `residents` (`phone_norm`);
+
+-- Asal order QRIS (web vs whatsapp)
+ALTER TABLE `payment_gateway_orders`
+  ADD COLUMN IF NOT EXISTS `source` ENUM('web','whatsapp') NOT NULL DEFAULT 'web' AFTER `gateway_type`;
+
+-- Outbox notifikasi WhatsApp (transactional outbox + deduplikasi)
+CREATE TABLE IF NOT EXISTS `wa_outbox` (
+  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `event_id`    CHAR(36)     NOT NULL UNIQUE,
+  `event_type`  VARCHAR(50)  NOT NULL,
+  `to_phone`    VARCHAR(20)  NOT NULL,
+  `audience`    ENUM('resident','staff') NOT NULL,
+  `ref_type`    VARCHAR(30)  DEFAULT NULL,
+  `ref_id`      INT UNSIGNED DEFAULT NULL,
+  `payload`     JSON         NOT NULL,
+  `status`      ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+  `attempts`    TINYINT      NOT NULL DEFAULT 0,
+  `next_try_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_error`  VARCHAR(255) DEFAULT NULL,
+  `sent_at`     DATETIME     DEFAULT NULL,
+  `created_at`  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_wa_dedup` (`event_type`, `to_phone`, `ref_type`, `ref_id`),
+  INDEX `idx_wa_pending` (`status`, `next_try_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Audit + rate-limit request bot (hanya request yang lolos autentikasi)
+CREATE TABLE IF NOT EXISTS `bot_request_logs` (
+  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `phone`       VARCHAR(20)  NOT NULL,
+  `endpoint`    VARCHAR(60)  NOT NULL,
+  `http_status` SMALLINT     NOT NULL,
+  `ip_address`  VARCHAR(45)  DEFAULT NULL,
+  `created_at`  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_bot_phone_time` (`phone`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;

@@ -56,11 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             log_activity('verify','payments',"Payment #{$id} verified");
             flash('success','Pembayaran berhasil diverifikasi.');
-            // Email notifikasi ke warga
+            // Email + WA notifikasi ke warga & pengurus
             if (!empty($pay['resident_email'])) {
                 $pay['verified_at'] = date('Y-m-d H:i:s');
                 notify_payment_verified($pay, $pay['resident_email'], $pay['resident_name'] ?? '');
             }
+            require_once __DIR__ . '/../../includes/wa_outbox.php';
+            wa_event_payment_verified($id);
         } elseif ($action === 'reject') {
             $s = $db->prepare('UPDATE payments SET status="rejected",verified_by=?,verified_at=NOW(),notes=? WHERE id=?');
             $s->bind_param('isi', $uid, $notes, $id);
@@ -70,10 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             log_activity('reject','payments',"Payment #{$id} rejected");
             flash('warning','Pembayaran ditolak.');
-            // Email notifikasi ke warga
+            // Email + WA notifikasi ke warga
             if (!empty($pay['resident_email'])) {
                 notify_payment_rejected($pay, $pay['resident_email'], $pay['resident_name'] ?? '', $notes);
             }
+            require_once __DIR__ . '/../../includes/wa_outbox.php';
+            wa_event_payment_rejected($id, $notes);
         }
     } catch (Exception $e) {
         $db->rollback();

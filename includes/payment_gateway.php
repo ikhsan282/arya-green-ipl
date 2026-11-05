@@ -189,7 +189,7 @@ function gateway_status(array $channel, string $orderId): array
  * ini dua order bernominal sama dijamin dapat kode unik berbeda. QRIS statis
  * di-generate ulang dengan nominal final.
  */
-function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int $userId, float $amount, array $data): int
+function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int $userId, float $amount, array $data, string $source = 'web'): int
 {
     $total   = isset($data['total_amount']) ? (float) $data['total_amount'] : $amount;
     $qrisUrl = $data['qris_url'] ?? null;
@@ -197,6 +197,7 @@ function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int
     $sig     = $data['signature'] ?? null;
     $type    = $data['type'] ?? null;
     $expired = !empty($data['expired_at']) ? date('Y-m-d H:i:s', strtotime((string) $data['expired_at'])) : null;
+    $source  = $source === 'whatsapp' ? 'whatsapp' : 'web';
 
     if (in_array($type, GQ_DIRECT, true)) {
         require_once __DIR__ . '/payment_gateway_direct.php';
@@ -215,10 +216,10 @@ function gateway_store_order(int $channelId, string $orderId, ?int $billId, ?int
 
     $st = db()->prepare(
         'INSERT INTO payment_gateway_orders
-           (channel_id, order_id, bill_id, user_id, amount, total_amount, status, qris_url, direct_url, signature, gateway_type, payload, expired_at)
-         VALUES (?,?,?,?,?,?,"PENDING",?,?,?,?,?,?)'
+           (channel_id, order_id, bill_id, user_id, amount, total_amount, status, qris_url, direct_url, signature, gateway_type, source, payload, expired_at)
+         VALUES (?,?,?,?,?,?,"PENDING",?,?,?,?,?,?,?)'
     );
-    $st->bind_param('isiiddssssss', $channelId, $orderId, $billId, $userId, $amount, $total, $qrisUrl, $direct, $sig, $type, $payload, $expired);
+    $st->bind_param('isiiddsssssss', $channelId, $orderId, $billId, $userId, $amount, $total, $qrisUrl, $direct, $sig, $type, $source, $payload, $expired);
     $st->execute();
     return (int) db()->insert_id;
 }
@@ -372,6 +373,8 @@ function gateway_finalize(string $orderId, ?float $paid = null): array
         $s=$db->prepare('UPDATE bills SET status="sudah_bayar",paid_date=CURDATE() WHERE id=?'); $s->bind_param('i',$billId); $s->execute();
         $s=$db->prepare('UPDATE payment_gateway_orders SET status="PAID",paid_at=NOW(),payment_id=? WHERE id=?'); $orderDbId=(int)$order['id'];$s->bind_param('ii',$paymentId,$orderDbId);$s->execute();
         $db->commit();
+        require_once __DIR__ . '/wa_outbox.php';
+        wa_event_payment_verified($paymentId);
         return ['ok'=>true,'changed'=>true,'payment_id'=>$paymentId,'error'=>null];
     } catch (Throwable $e) {
         $db->rollback();

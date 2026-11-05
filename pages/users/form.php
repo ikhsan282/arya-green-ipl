@@ -25,18 +25,24 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+    $rawPhone = clean($_POST['phone'] ?? '');
+    $normPhone = $rawPhone !== '' ? phone_normalize($rawPhone) : null;
     $data = [
-        'name'     => clean($_POST['name']     ?? ''),
-        'username' => clean($_POST['username'] ?? ''),
-        'email'    => clean($_POST['email']    ?? ''),
-        'role_id'  => (int)($_POST['role_id']  ?? 4),
-        'password' => $_POST['password']        ?? '',
-        'is_active'=> isset($_POST['manage_active']) ? (isset($_POST['is_active']) ? 1 : 0) : ($editing ? (int)$user['is_active'] : 1),
+        'name'      => clean($_POST['name']     ?? ''),
+        'username'  => clean($_POST['username'] ?? ''),
+        'email'     => clean($_POST['email']    ?? ''),
+        'phone'     => $normPhone,
+        'wa_notify' => isset($_POST['wa_notify']) ? 1 : 0,
+        'role_id'   => (int)($_POST['role_id']  ?? 4),
+        'password'  => $_POST['password']        ?? '',
+        'is_active' => isset($_POST['manage_active']) ? (isset($_POST['is_active']) ? 1 : 0) : ($editing ? (int)$user['is_active'] : 1),
     ];
 
     if (!$data['name'])     $errors[] = 'Nama wajib diisi.';
     if (!$data['username']) $errors[] = 'Username wajib diisi.';
     if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
+    if ($rawPhone !== '' && $normPhone === null) $errors[] = 'Nomor WhatsApp tidak valid (gunakan format 08xx atau 628xx).';
+    if ($data['wa_notify'] && $normPhone === null) $errors[] = 'Nomor WhatsApp wajib diisi untuk mengaktifkan notifikasi WA.';
     if (!$editing && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
     if ($editing && $data['password'] && strlen($data['password']) < 8) $errors[] = 'Password minimal 8 karakter.';
     $signatureUpload = null;
@@ -62,11 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($editing) {
             if ($data['password']) {
                 $hash = password_hash($data['password'], PASSWORD_BCRYPT, ['cost'=>12]);
-                $stmt = $db->prepare('UPDATE users SET name=?,username=?,email=?,role_id=?,password=?,is_active=? WHERE id=?');
-                $stmt->bind_param('sssisii', $data['name'],$data['username'],$data['email'],$data['role_id'],$hash,$data['is_active'],$id);
+                $stmt = $db->prepare('UPDATE users SET name=?,username=?,email=?,phone=?,wa_notify=?,role_id=?,password=?,is_active=? WHERE id=?');
+                $stmt->bind_param('ssssiisii', $data['name'],$data['username'],$data['email'],$data['phone'],$data['wa_notify'],$data['role_id'],$hash,$data['is_active'],$id);
             } else {
-                $stmt = $db->prepare('UPDATE users SET name=?,username=?,email=?,role_id=?,is_active=? WHERE id=?');
-                $stmt->bind_param('sssiii', $data['name'],$data['username'],$data['email'],$data['role_id'],$data['is_active'],$id);
+                $stmt = $db->prepare('UPDATE users SET name=?,username=?,email=?,phone=?,wa_notify=?,role_id=?,is_active=? WHERE id=?');
+                $stmt->bind_param('ssssiiii', $data['name'],$data['username'],$data['email'],$data['phone'],$data['wa_notify'],$data['role_id'],$data['is_active'],$id);
             }
             $stmt->execute();
             if ($signatureUpload !== null) {
@@ -84,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $hash = password_hash($data['password'], PASSWORD_BCRYPT, ['cost'=>12]);
             $token = bin2hex(random_bytes(32));
-            $stmt = $db->prepare('INSERT INTO users (name,username,email,role_id,password,verification_token) VALUES (?,?,?,?,?,?)');
-            $stmt->bind_param('sssiss', $data['name'],$data['username'],$data['email'],$data['role_id'],$hash,$token);
+            $stmt = $db->prepare('INSERT INTO users (name,username,email,phone,wa_notify,role_id,password,verification_token) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt->bind_param('ssssiiss', $data['name'],$data['username'],$data['email'],$data['phone'],$data['wa_notify'],$data['role_id'],$hash,$token);
             $stmt->execute();
             $new_id = $db->insert_id;
             send_verification_email($new_id, $data['email'], $data['name']);
@@ -141,6 +147,18 @@ include __DIR__ . '/../../includes/sidebar.php';
               <label class="form-label">Email <span class="text-danger">*</span></label>
               <input type="email" name="email" class="form-control" required
                      value="<?= e($user['email'] ?? '') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">No. WhatsApp <small class="text-muted">(opsional)</small></label>
+              <input type="text" name="phone" class="form-control" placeholder="08xx / 628xx"
+                     value="<?= e($_POST['phone'] ?? ($user['phone'] ?? '')) ?>">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="wa_notify" id="wa_notify"
+                       <?= !empty($user['wa_notify']) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="wa_notify">Terima notifikasi pembayaran via WA (Pengurus)</label>
+              </div>
             </div>
             <div class="col-12">
               <label class="form-label">Password <?= $editing ? '<small class="text-muted">(kosongkan jika tidak diubah)</small>' : '<span class="text-danger">*</span>' ?></label>

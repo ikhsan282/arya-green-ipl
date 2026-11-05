@@ -105,8 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $unit_id = $unit[0];
             }
-            $r = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,email,status) VALUES (?,?,?,?,?)');
-            $r->bind_param('issss', $unit_id, $name, $phone, $email, $status);
+            $phone_norm = phone_normalize($phone) ?? '';
+            $r = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,phone_norm,email,status) VALUES (?,?,?,?,?,?)');
+            $r->bind_param('isssss', $unit_id, $name, $phone, $phone_norm, $email, $status);
             if ($r->execute()) $rows++;
         }
         log_activity('import', 'onboarding', "Import {$rows} warga dari CSV");

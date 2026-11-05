@@ -35,7 +35,7 @@ ServerSignature Off
     Deny from all
 </FilesMatch>
 
-RedirectMatch 403 (?i)/(config|includes|database|tests|docs|logs)(/|$)
+RedirectMatch 403 (?i)/(config|includes|database|tests|docs|logs|cron)(/|$)
 
 # Block direct access to uploads (serve via PHP only if needed)
 <IfModule mod_rewrite.c>
