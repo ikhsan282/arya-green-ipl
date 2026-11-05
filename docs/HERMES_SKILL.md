@@ -375,9 +375,58 @@ Khusus untuk pengurus (`Ketua`, `Bendahara`, `Sekretaris`, `Super Admin`). Akan 
 
 ## 5. Outbound Notifications (IPL $\rightarrow$ Hermes $\rightarrow$ WhatsApp)
 
-Hermes dapat menerima antrean notifikasi melalui salah satu dari dua cara berikut:
-1. **Mode Push Webhook:** Sistem IPL mengirimkan `POST` ke `BOT_WEBHOOK_URL` dengan header `X-IPL-Timestamp` dan `X-IPL-Signature = HMAC-SHA256(BOT_WEBHOOK_SECRET, ts + "\n" + raw_body)`.
-2. **Mode Pull Berkala:** Hermes memanggil `GET /api/bot/outbox.php?limit=30` tiap menit (menggunakan nomor pengurus di `X-Bot-Phone`), mengirim pesan WA, lalu melakukan konfirmasi melalui `POST /api/bot/outbox.php` dengan body `{"sent": ["event_id_1", ...]}`.
+Setiap ada pembayaran sukses (via QRIS maupun manual) atau ada pengingat tagihan, sistem IPL memasukkan notifikasi ke antrean `outbox`.
+
+Hermes bertugas mengambil antrean pesan ini dan meneruskannya ke WhatsApp penerima menggunakan **Mode Pull Berkala** (direkomendasikan tiap 1 menit):
+
+### 5.1 Alur Kerja Hermes (Loop / Cron Tiap 1 Menit):
+
+1. **Ambil Antrean Pesan (GET):**
+   ```text
+   GET https://aryagreenpamulang.my.id/api/bot/outbox.php?limit=20&secret=mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w&phone=6281398461650
+   ```
+   Respons akan mengembalikan daftar `events`:
+   ```json
+   {
+     "ok": true,
+     "data": {
+       "events": [
+         {
+           "event_id": "wa_evt_672b1234abcd",
+           "event_type": "payment.verified",
+           "to": "6281234567890",
+           "recipient_type": "resident",
+           "payload": {
+             "payment_id": 50,
+             "resident_name": "Pak Joko",
+             "unit": "B3",
+             "period": "November 2026",
+             "amount_text": "Rp 200.000",
+             "method": "QRIS Online (GoPay)",
+             "paid_at": "2026-11-05 23:25",
+             "receipt_url": "https://aryagreenpamulang.my.id/pages/payments/receipt_public.php?p=50&exp=...&sig=..."
+           }
+         }
+       ]
+     }
+   }
+   ```
+
+2. **Kirim Pesan WhatsApp:**
+   - Loop setiap event di atas.
+   - Render teks pesan sesuai template di bawah (berdasarkan `event_type`).
+   - Kirim ke nomor tujuan (`event.to`) menggunakan tool kirim WhatsApp Hermes.
+
+3. **Konfirmasi Terkirim / Ack (POST):**
+   Setelah pesan berhasil terkirim ke WhatsApp, beri tahu sistem IPL agar pesan ditandai selesai dan tidak dikirim ulang:
+   ```text
+   POST https://aryagreenpamulang.my.id/api/bot/outbox.php?secret=mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w&phone=6281398461650
+   Header: Content-Type: application/json
+   Body:
+   {
+     "sent": ["wa_evt_672b1234abcd"]
+   }
+   ```
 
 > **Penting:** Untuk notifikasi outbound di bawah ini, Hermes **tidak perlu menggunakan LLM** — cukup render template deterministik berdasarkan `event_type` dan kirim ke nomor tujuan (`to`). Simpan `event_id` yang sudah diproses agar tidak pernah mengirim pesan ganda (idempoten).
 
