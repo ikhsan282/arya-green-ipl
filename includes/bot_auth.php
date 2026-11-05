@@ -24,36 +24,87 @@ function bot_signature(string $secret, string $ts, string $method, string $uri, 
 
 /**
  * Verifikasi header request bot.
- * @return array{ok:bool,status:int,code:string,key_id:?string,phone:?string}
+ * Mendukung 2 metode autentikasi:
+ * 1. Simple Secret / Bearer Token (Authorization: Bearer <secret>, header X-Bot-Secret, query ?secret=, body secret)
+ *    -> Sangat ramah AI Agent (Hermes / LLM) yang tidak memiliki engine HMAC-SHA256.
+ * 2. HMAC-SHA256 Signature (X-Bot-Key, X-Bot-Timestamp, X-Bot-Signature, X-Bot-Phone)
+ *    -> Untuk Postman, script Python, dan integrasi webhook ber-replay protection.
+ *
+ * @return array{ok:bool,status:int,code:string,key_id:?string,phone:?string,reason?:string}
  */
 function bot_verify_request(array $server, string $body, ?int $now = null): array
 {
-    $fail = static fn(int $status, string $code): array =>
-        ['ok' => false, 'status' => $status, 'code' => $code, 'key_id' => null, 'phone' => null];
+    $fail = static fn(int $status, string $code, string $reason = ''): array =>
+        ['ok' => false, 'status' => $status, 'code' => $code, 'key_id' => null, 'phone' => null, 'reason' => $reason];
 
-    if (!defined('BOT_API_KEYS') || !BOT_API_KEYS) return $fail(503, 'BOT_API_DISABLED');
+    if (!defined('BOT_API_KEYS') || !BOT_API_KEYS) {
+        return $fail(503, 'BOT_API_DISABLED', 'Bot API belum diaktifkan di konfigurasi server.');
+    }
 
+    // Resolusi nomor pengirim (X-Bot-Phone, X-Phone, ?phone=, atau body JSON phone)
+    $phone = (string) ($server['HTTP_X_BOT_PHONE'] ?? ($server['HTTP_PHONE'] ?? ($_GET['phone'] ?? '')));
+    if ($phone === '' && $body !== '') {
+        $json = json_decode($body, true);
+        if (is_array($json) && !empty($json['phone'])) {
+            $phone = (string) $json['phone'];
+        }
+    }
+
+    $norm = phone_normalize($phone);
+    if ($norm === null) {
+        return $fail(400, 'INVALID_PHONE', 'Header X-Bot-Phone (atau parameter phone) wajib diisi nomor WhatsApp yang valid.');
+    }
+
+    // --- METODE 1: Bearer Token / Simple Secret (Paling mudah untuk AI Agent Hermes) ---
+    $authHeader = (string) ($server['HTTP_AUTHORIZATION'] ?? ($server['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
+    $bearerToken = '';
+    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $m)) {
+        $bearerToken = $m[1];
+    } elseif (!empty($server['HTTP_X_BOT_SECRET'])) {
+        $bearerToken = (string) $server['HTTP_X_BOT_SECRET'];
+    } elseif (!empty($_GET['secret'])) {
+        $bearerToken = (string) $_GET['secret'];
+    } elseif ($body !== '') {
+        $json = json_decode($body, true);
+        if (is_array($json) && !empty($json['secret'])) {
+            $bearerToken = (string) $json['secret'];
+        }
+    }
+
+    if ($bearerToken !== '') {
+        foreach (BOT_API_KEYS as $kId => $kSec) {
+            if (hash_equals($kSec, $bearerToken)) {
+                return ['ok' => true, 'status' => 200, 'code' => 'OK', 'key_id' => (string) $kId, 'phone' => $norm];
+            }
+        }
+        return $fail(401, 'UNAUTHORIZED', 'Secret key / Bearer token tidak cocok dengan bot_secrets.php.');
+    }
+
+    // --- METODE 2: HMAC-SHA256 Signature (Untuk Postman / script otomatis) ---
     $keyId = (string) ($server['HTTP_X_BOT_KEY'] ?? '');
     $ts    = (string) ($server['HTTP_X_BOT_TIMESTAMP'] ?? '');
-    $phone = (string) ($server['HTTP_X_BOT_PHONE'] ?? '');
     $sig   = strtolower((string) ($server['HTTP_X_BOT_SIGNATURE'] ?? ''));
     $secret = BOT_API_KEYS[$keyId] ?? null;
 
-    if (!is_string($secret) || strlen($secret) < 32 || $sig === '' || !ctype_digit($ts)) {
-        return $fail(401, 'UNAUTHORIZED');
+    if ($sig !== '' || $keyId !== '') {
+        if (!is_string($secret) || strlen($secret) < 32) {
+            return $fail(401, 'UNAUTHORIZED', "ID kunci '$keyId' (X-Bot-Key) tidak ditemukan di bot_secrets.php.");
+        }
+        if ($sig === '' || !ctype_digit($ts)) {
+            return $fail(401, 'UNAUTHORIZED', 'Header X-Bot-Signature atau X-Bot-Timestamp tidak valid.');
+        }
+        if (abs(($now ?? time()) - (int) $ts) > BOT_MAX_CLOCK_SKEW) {
+            return $fail(401, 'TIMESTAMP_EXPIRED', 'Timestamp kadaluwarsa (perbedaan waktu server & bot > 300 detik).');
+        }
+        $expected = bot_signature($secret, $ts, (string) ($server['REQUEST_METHOD'] ?? 'GET'),
+                                  (string) ($server['REQUEST_URI'] ?? ''), $phone, $body);
+        if (!hash_equals($expected, $sig)) {
+            return $fail(401, 'UNAUTHORIZED', 'HMAC signature tidak cocok.');
+        }
+        return ['ok' => true, 'status' => 200, 'code' => 'OK', 'key_id' => $keyId, 'phone' => $norm];
     }
-    if (abs(($now ?? time()) - (int) $ts) > BOT_MAX_CLOCK_SKEW) {
-        return $fail(401, 'TIMESTAMP_EXPIRED');
-    }
-    $expected = bot_signature($secret, $ts, (string) ($server['REQUEST_METHOD'] ?? 'GET'),
-                              (string) ($server['REQUEST_URI'] ?? ''), $phone, $body);
-    if (!hash_equals($expected, $sig)) {
-        return $fail(401, 'UNAUTHORIZED');
-    }
-    $norm = phone_normalize($phone);
-    if ($norm === null) return $fail(400, 'INVALID_PHONE');
 
-    return ['ok' => true, 'status' => 200, 'code' => 'OK', 'key_id' => $keyId, 'phone' => $norm];
+    return $fail(401, 'UNAUTHORIZED', 'Autentikasi diperlukan. Kirim header Authorization: Bearer <secret> atau X-Bot-Secret: <secret>.');
 }
 
 /**

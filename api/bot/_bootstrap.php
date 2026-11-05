@@ -14,6 +14,9 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
 }
 
 require_once __DIR__ . '/../../config/config.php';
+if (!defined('BOT_API_KEYS') && is_file(__DIR__ . '/../../config/bot_secrets.php')) {
+    require_once __DIR__ . '/../../config/bot_secrets.php';
+}
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/bot_auth.php';
 
@@ -77,8 +80,9 @@ function bot_boot(array $methods, bool $requireRegistered = true): array
 
     $auth = bot_verify_request($_SERVER, $raw);
     if (!$auth['ok']) {
-        error_log('bot auth failed: ' . $auth['code'] . ' from ' . ($_SERVER['REMOTE_ADDR'] ?? '?'));
-        bot_error($auth['status'], $auth['code'], 'Permintaan tidak dapat diautentikasi.');
+        error_log('bot auth failed: ' . $auth['code'] . ' from ' . ($_SERVER['REMOTE_ADDR'] ?? '?') . ' reason: ' . ($auth['reason'] ?? ''));
+        $msg = 'Permintaan tidak dapat diautentikasi.' . (!empty($auth['reason']) ? ' (' . $auth['reason'] . ')' : '');
+        bot_error($auth['status'], $auth['code'], $msg);
     }
     $GLOBALS['BOT_CTX']['phone'] = $auth['phone'];
     $db = db();
