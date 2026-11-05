@@ -47,6 +47,23 @@ define('SMTP_PASS', 'your_smtp_password');
 define('SMTP_SECURE', 'tls'); // 'tls', 'ssl', atau ''
 ```
 
+### 3b. Konfigurasi Bot WhatsApp (Hermes AI)
+Salin contoh file konfigurasi rahasia bot:
+```bash
+cp config/bot_secrets.example.php config/bot_secrets.php
+```
+Isi kunci rahasia API di `config/bot_secrets.php`:
+```php
+<?php
+define('BOT_API_KEYS', [
+    'hermes-prod' => 'SECRET_KEY_MINIMAL_32_KARAKTER_ACAK',
+]);
+define('BOT_WEBHOOK_URL',     '');
+define('BOT_WEBHOOK_SECRET',  'SECRET_KEY_MINIMAL_32_KARAKTER_ACAK');
+define('RECEIPT_SIGN_SECRET', 'SECRET_KEY_MINIMAL_32_KARAKTER_ACAK');
+```
+*(File `bot_secrets.php` dilindungi `.gitignore` dan `.htaccess` agar aman dari publik).*
+
 ### 4. Upload ke cPanel
 - Upload semua file ke `public_html/arya-green-ipl/`
 - Pastikan `.htaccess` ikut terupload
@@ -86,11 +103,32 @@ arya-green-ipl/
 ├── manifest.json              # PWA manifest
 ├── sw.js                      # Service worker + IndexedDB outbox sync
 ├── offline.html               # Halaman fallback saat tanpa koneksi
+├── api/                       # API eksternal & integrasi bot
+│   └── bot/                   # REST API Hermes WhatsApp Assistant
+│       ├── _bootstrap.php     # Autentikasi token/HMAC, rate-limit, CORS, error handler
+│       ├── me.php             # Profil warga / pengurus berbasis no. HP
+│       ├── bills.php          # Cek tagihan aktif & histori pembayaran unit
+│       ├── qris_create.php    # Pembuatan QRIS dinamis + kode unik instan
+│       ├── qris_status.php    # Pengecekan status bayar QRIS & link kwitansi
+│       ├── cash_summary.php   # Transparansi kas + rincian pengeluaran per kategori
+│       ├── complaints.php     # Kirim & cek status pengaduan fasilitas warga
+│       ├── events.php         # Informasi agenda kegiatan & rapat RT terdekat
+│       ├── staff_summary.php  # Rekapitulasi kas harian/bulanan khusus Pengurus RT
+│       └── outbox.php         # Antrean PULL notifikasi WhatsApp otomatis
 ├── config/
 │   ├── database.php           # DB constants
-│   └── config.php             # App settings, session, upload config
+│   ├── config.php             # App settings, session, upload config
+│   ├── bot_secrets.example.php# Template kunci rahasia API Bot WhatsApp
+│   └── bot_secrets.php        # Kunci rahasia API Bot (diabaikan git)
+├── docs/                      # Dokumentasi & panduan teknis
+│   ├── HERMES_SKILL.md        # Panduan operasional & prompt instruksi Hermes
+│   ├── Arya_Green_IPL_Bot_API.postman_collection.json # Koleksi Postman Live
+│   └── Arya_Green_IPL_Bot_API_Local.postman_collection.json # Koleksi Postman Lokal
 ├── includes/
 │   ├── auth.php               # Login, logout, RBAC, email verify
+│   ├── bot_auth.php           # Autentikasi Bot: Bearer/Secret & HMAC, resolusi aktor
+│   ├── wa_outbox.php          # Transactional outbox & event triggers (payment, reminder)
+│   ├── receipt_link.php       # Generator URL kwitansi bertanda tangan digital (HMAC 30 hari)
 │   ├── functions.php          # Helpers: CSRF, flash, paginate, e(), idr(), terbilang()
 │   ├── payment_gateway.php    # Klien KlikQRIS: create, status, webhook, finalize
 │   ├── payment_gateway_direct.php # GoPay/ShopeePay: QRIS dinamis EMVCo, klaim transaksi, cek pembayaran
@@ -300,6 +338,27 @@ Kedua provider ini membuat QRIS dinamis sendiri dari string QRIS statis merchant
 - Dapat diinstall sebagai PWA di HP
 - Service worker untuk akses offline dasar
 
+### Bot WhatsApp & Integrasi AI (Hermes AI Assistant)
+Sistem dilengkapi API RESTful mandiri di bawah `/api/bot/*` untuk integrasi dengan chatbot WhatsApp AI (seperti Nous Research Hermes Agent) atau webhook automation:
+- **Identifikasi Warga Otomatis via No. WhatsApp (`me.php`)** — tanpa perlu login, sistem langsung mengenali unit rumah warga dari nomor HP pengirim chat WhatsApp.
+- **Dukungan Pasangan (Suami & Istri)** — mendukung nomor HP utama dan nomor HP kedua di Data Warga dan Laporan Data Unit (`occupancy.php`); suami dan istri dapat sama-sama mengakses informasi rumah yang sama dari WhatsApp masing-masing.
+- **Cek Tagihan & Riwayat Pembayaran (`bills.php`)** — rincian tagihan belum lunas, denda keterlambatan, rincian komponen IPL, dan riwayat pembayaran sebelumnya.
+- **Generate QRIS Dinamis Instan (`qris_create.php`)** — pembuatan order QRIS dinamis lengkap dengan gambar QR code dan kode unik acak, langsung di chat WhatsApp.
+- **Cek Status Bayar & Kwitansi Digital (`qris_status.php`)** — pengecekan status bayar real-time; bila lunas, bot otomatis memberikan tautan kwitansi digital resmi (`receipt_public.php`) bertanda tangan HMAC yang aman dibuka warga selama 30 hari tanpa perlu login.
+- **Transparansi Kas & Rincian Pengeluaran (`cash_summary.php`)** — saldo kas saat ini, total pemasukan/pengeluaran bulan berjalan, breakdown pengeluaran per kategori, dan daftar 5 transaksi pengeluaran riil terbaru (mendukung filter `year` dan `month`).
+- **Pengaduan Fasilitas Lingkungan (`complaints.php`)** — warga dapat membuat tiket pengaduan baru dan memantau status aduan langsung dari chat WhatsApp.
+- **Agenda Kegiatan Warga (`events.php`)** — menampilkan jadwal rapat warga, kerja bakti, atau kegiatan sosial lingkungan terdekat.
+- **Rekapitulasi Pengurus RT (`staff_summary.php`)** — fitur khusus nomor pengurus (Ketua, Bendahara, Sekretaris, Admin) untuk melihat rekapitulasi setoran kas hari ini dan jumlah warga yang belum bayar.
+- **Notifikasi Outbound Otomatis (Transactional Outbox Queue — `outbox.php`)**:
+  - Konfirmasi pembayaran lunas + link kwitansi otomatis dikirimkan ke WhatsApp warga (suami dan istri).
+  - Laporan dana kas masuk dikirimkan ke WhatsApp Ketua, Bendahara, dan Sekretaris.
+  - Laporan transfer manual baru dikirimkan ke Bendahara untuk diverifikasi.
+  - Pengingat jatuh tempo tagihan IPL (H-3 dan hari H).
+- **Dukungan 2 Mode Autentikasi API**:
+  1. *Simple Secret / Bearer Token* (`?secret=...&phone=...` atau `Authorization: Bearer <secret>`): Sangat ramah untuk AI Agent (LLM) yang tidak memiliki engine kriptografi lokal.
+  2. *HMAC-SHA256 Signature*: Tanda tangan 5 baris kanonikal dengan toleransi waktu 300 detik (anti-replay) untuk integrasi webhook & Postman.
+- Panduan operasional dan prompt AI lengkap tersedia di [`docs/HERMES_SKILL.md`](docs/HERMES_SKILL.md), serta koleksi Postman di [`docs/Arya_Green_IPL_Bot_API.postman_collection.json`](docs/Arya_Green_IPL_Bot_API.postman_collection.json).
+
 ### Landing Page Publik
 - Hero, daftar fitur, dan **section Transparansi Kas** (`#transparansi`) — saldo, total pemasukan, total pengeluaran, arus kas bulan berjalan
 - Angka diambil dari `cash_book` sebagai agregat saja: tanpa detail transaksi, nama penyetor, atau catatan
@@ -356,6 +415,8 @@ php tests/gopay_otp_test.php              # login OTP GoPay (butuh tests/gobiz_m
 php tests/auth_refresh_test.php           # auto-refresh token GoPay + validasi ShopeePay
 php tests/rekap_pembayaran_test.php       # angka Rekap Pembayaran cocok dengan data
 php tests/xlsx_test.php                   # export XLSX
+php tests/bot_api_test.php                # pengujian endpoint Bot API Hermes & outbox
+php tests/receipt_public_test.php         # validasi kwitansi publik bertanda tangan digital (HMAC)
 ```
 
 Tes parser tanpa database dan tanpa jaringan (bentuk respons asli provider):
