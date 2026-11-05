@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'name'           => clean($_POST['name'] ?? ''),
         'id_card_number' => clean($_POST['id_card_number'] ?? ''),
         'phone'          => clean($_POST['phone'] ?? ''),
+        'phone_secondary'=> clean($_POST['phone_secondary'] ?? ''),
         'email'          => clean($_POST['email'] ?? ''),
         'status'         => clean($_POST['status'] ?? 'pemilik'),
         'move_in_date'   => clean($_POST['move_in_date'] ?? ''),
@@ -50,35 +51,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     if (!$data['name'])    $errors[] = 'Nama wajib diisi.';
-    if (!$data['phone'])   $errors[] = 'No. HP wajib diisi.';
+    if (!$data['phone'])   $errors[] = 'No. HP utama wajib diisi.';
     if (!$data['unit_id']) $errors[] = 'Unit wajib dipilih.';
     if ($data['email'] && !filter_var($data['email'], FILTER_VALIDATE_EMAIL))
         $errors[] = 'Format email tidak valid.';
 
     if (empty($errors)) {
-        // Nomor ternormalisasi untuk lookup bot WhatsApp; '' = bukan nomor seluler valid.
+        // Nomor ternormalisasi untuk lookup bot WhatsApp (suami & istri/pasangan)
         $data['phone_norm'] = phone_normalize($data['phone']) ?? '';
+        $data['phone_secondary_norm'] = !empty($data['phone_secondary']) ? (phone_normalize($data['phone_secondary']) ?? '') : '';
         if ($editing) {
             $stmt = $db->prepare(
-                'UPDATE residents SET unit_id=?,user_id=?,name=?,id_card_number=?,phone=?,phone_norm=?,email=?,
-                 status=?,move_in_date=?,notes=?,is_active=? WHERE id=?'
+                'UPDATE residents SET unit_id=?,user_id=?,name=?,id_card_number=?,phone=?,phone_norm=?,
+                 phone_secondary=?,phone_secondary_norm=?,email=?,status=?,move_in_date=?,notes=?,is_active=? WHERE id=?'
             );
-            $stmt->bind_param('iissssssssii',
+            $stmt->bind_param('iissssssssssii',
                 $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
-                $data['phone'],$data['phone_norm'],$data['email'],$data['status'],
-                $data['move_in_date'],$data['notes'],$data['is_active'],$id);
+                $data['phone'],$data['phone_norm'],$data['phone_secondary'],$data['phone_secondary_norm'],
+                $data['email'],$data['status'],$data['move_in_date'],$data['notes'],$data['is_active'],$id);
             $stmt->execute();
             log_activity('update','residents',"Resident #{$id} updated");
             flash('success','Data warga berhasil diperbarui.');
         } else {
             $stmt = $db->prepare(
-                'INSERT INTO residents (unit_id,user_id,name,id_card_number,phone,phone_norm,email,status,move_in_date,notes)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO residents (unit_id,user_id,name,id_card_number,phone,phone_norm,phone_secondary,phone_secondary_norm,email,status,move_in_date,notes)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->bind_param('iissssssss',
+            $stmt->bind_param('iissssssssss',
                 $data['unit_id'],$data['user_id'],$data['name'],$data['id_card_number'],
-                $data['phone'],$data['phone_norm'],$data['email'],$data['status'],
-                $data['move_in_date'],$data['notes']);
+                $data['phone'],$data['phone_norm'],$data['phone_secondary'],$data['phone_secondary_norm'],
+                $data['email'],$data['status'],$data['move_in_date'],$data['notes']);
             $stmt->execute();
             // Update unit status
             $upd = $db->prepare("UPDATE units SET status='dihuni' WHERE id=?");
@@ -154,9 +156,16 @@ include __DIR__ . '/../../includes/sidebar.php';
                      value="<?= e($resident['id_card_number'] ?? '') ?>" placeholder="16 digit NIK">
             </div>
             <div class="col-md-6">
-              <label class="form-label">No. HP <span class="text-danger">*</span></label>
+              <label class="form-label">No. HP Utama (Suami / Pemilik) <span class="text-danger">*</span></label>
               <input type="text" name="phone" class="form-control" required
-                     value="<?= e($resident['phone'] ?? '') ?>" placeholder="08xx-xxxx-xxxx">
+                     value="<?= e($resident['phone'] ?? '') ?>" placeholder="08xx-xxxx-xxxx (WhatsApp)">
+              <small class="text-muted">Nomor WhatsApp utama untuk notifikasi & akses bot</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">No. HP Kedua (Istri / Pasangan)</label>
+              <input type="text" name="phone_secondary" class="form-control"
+                     value="<?= e($resident['phone_secondary'] ?? '') ?>" placeholder="08xx-xxxx-xxxx (WhatsApp opsional)">
+              <small class="text-muted">Bisa digunakan pasangan untuk akses bot WhatsApp yang sama</small>
             </div>
             <div class="col-md-6">
               <label class="form-label">Email</label>

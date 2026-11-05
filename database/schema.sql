@@ -327,6 +327,7 @@ CREATE TABLE `residents` (
   `name`          VARCHAR(150) NOT NULL,
   `id_card_number`VARCHAR(20)  DEFAULT NULL,
   `phone`         VARCHAR(20)  NOT NULL,
+  `phone_secondary` VARCHAR(20) DEFAULT NULL,
   `email`         VARCHAR(150) DEFAULT NULL,
   `status`        ENUM('pemilik','penyewa') NOT NULL DEFAULT 'pemilik',
   `move_in_date`  DATE         DEFAULT NULL,
@@ -868,11 +869,14 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `wa_notify` TINYINT(1)  NOT NULL DEFAULT 0 AFTER `phone`;
 CREATE INDEX IF NOT EXISTS `idx_users_phone` ON `users` (`phone`);
 
--- Nomor warga ternormalisasi untuk lookup bot.
+-- Nomor warga ternormalisasi untuk lookup bot (utama & kedua/pasangan).
 -- NULL = belum diproses (diisi otomatis saat request bot pertama), '' = bukan nomor seluler valid.
 ALTER TABLE `residents`
-  ADD COLUMN IF NOT EXISTS `phone_norm` VARCHAR(20) DEFAULT NULL AFTER `phone`;
+  ADD COLUMN IF NOT EXISTS `phone_norm` VARCHAR(20) DEFAULT NULL AFTER `phone`,
+  ADD COLUMN IF NOT EXISTS `phone_secondary` VARCHAR(20) DEFAULT NULL AFTER `phone_norm`,
+  ADD COLUMN IF NOT EXISTS `phone_secondary_norm` VARCHAR(20) DEFAULT NULL AFTER `phone_secondary`;
 CREATE INDEX IF NOT EXISTS `idx_residents_phone_norm` ON `residents` (`phone_norm`);
+CREATE INDEX IF NOT EXISTS `idx_residents_phone_sec_norm` ON `residents` (`phone_secondary_norm`);
 
 -- Asal order QRIS (web vs whatsapp)
 ALTER TABLE `payment_gateway_orders`

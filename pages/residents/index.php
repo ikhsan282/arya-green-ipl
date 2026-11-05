@@ -124,7 +124,12 @@ include __DIR__ . '/../../includes/sidebar.php';
                 </td>
                 <td><?= e($r['block'].'-'.$r['unit_number']) ?></td>
                 <td><?= e($r['type_name']) ?></td>
-                <td><?= e($r['phone']) ?></td>
+                <td>
+                  <div><i class="bi bi-whatsapp text-success me-1"></i><?= e($r['phone']) ?></div>
+                  <?php if (!empty($r['phone_secondary'])): ?>
+                    <small class="text-muted"><i class="bi bi-telephone-plus me-1"></i><?= e($r['phone_secondary']) ?></small>
+                  <?php endif; ?>
+                </td>
                 <td><?= e($r['email'] ?? '-') ?></td>
                 <td><?= $r['is_active'] ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>' ?></td>
                 <td>

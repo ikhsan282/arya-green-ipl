@@ -81,7 +81,7 @@ function wa_event_payment_verified(int $paymentId): int
         $st = $db->prepare(
             'SELECT p.id, p.bill_id, p.amount_paid, p.payment_date, p.payment_method, p.reference_no, p.verified_at,
                     bp.label AS period, u.unit_number, u.block,
-                    r.name AS resident_name, r.phone AS resident_phone,
+                    r.name AS resident_name, r.phone AS resident_phone, r.phone_secondary AS resident_phone_secondary,
                     pm.name AS method_name
                FROM payments p
                JOIN bills b ON b.id = p.bill_id
@@ -119,6 +119,11 @@ function wa_event_payment_verified(int $paymentId): int
         $queued = 0;
         if (wa_enqueue('payment.verified', $pay['resident_phone'] ?? null, 'resident', 'payment', $paymentId, $common) !== null) {
             $queued++;
+        }
+        if (!empty($pay['resident_phone_secondary'])) {
+            if (wa_enqueue('payment.verified', $pay['resident_phone_secondary'], 'resident', 'payment', $paymentId, $common) !== null) {
+                $queued++;
+            }
         }
 
         $staffPayload = $common + [

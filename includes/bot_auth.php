@@ -108,11 +108,31 @@ function bot_verify_request(array $server, string $body, ?int $now = null): arra
 }
 
 /**
- * Isi residents.phone_norm yang belum diproses. '' = sudah diproses tapi bukan nomor
- * seluler valid (mis. placeholder TEMP-xx), supaya tidak diproses ulang tiap request.
+ * Isi residents.phone_norm dan phone_secondary_norm yang belum diproses.
  */
 function bot_backfill_phone_norm(mysqli $db): int
 {
+    // Cek keberadaan kolom phone_secondary_norm secara aman
+    $hasSec = false;
+    try {
+        $chk = $db->query("SHOW COLUMNS FROM residents LIKE 'phone_secondary_norm'")->fetch_assoc();
+        $hasSec = !empty($chk);
+    } catch (Throwable) {}
+
+    if ($hasSec) {
+        $rows = $db->query('SELECT id, phone, phone_secondary FROM residents WHERE phone_norm IS NULL OR phone_secondary_norm IS NULL')->fetch_all(MYSQLI_ASSOC);
+        if (!$rows) return 0;
+        $st = $db->prepare('UPDATE residents SET phone_norm=?, phone_secondary_norm=? WHERE id=?');
+        foreach ($rows as $r) {
+            $norm = phone_normalize($r['phone']) ?? '';
+            $normSec = !empty($r['phone_secondary']) ? (phone_normalize($r['phone_secondary']) ?? '') : '';
+            $id = (int) $r['id'];
+            $st->bind_param('ssi', $norm, $normSec, $id);
+            $st->execute();
+        }
+        return count($rows);
+    }
+
     $rows = $db->query('SELECT id, phone FROM residents WHERE phone_norm IS NULL')->fetch_all(MYSQLI_ASSOC);
     if (!$rows) return 0;
     $st = $db->prepare('UPDATE residents SET phone_norm=? WHERE id=?');
@@ -128,24 +148,43 @@ function bot_backfill_phone_norm(mysqli $db): int
 /**
  * Identitas pemilik nomor WhatsApp.
  * Satu nomor bisa sekaligus pengurus dan warga, dan bisa memiliki beberapa unit.
+ * Mendukung nomor HP utama (suami) maupun nomor kedua (istri/pasangan).
  */
 function bot_resolve_actor(mysqli $db, string $phone): array
 {
     bot_backfill_phone_norm($db);
 
-    $st = $db->prepare(
-        'SELECT r.id, r.name, r.phone, r.status, u.id AS unit_id, u.block, u.unit_number
-           FROM residents r JOIN units u ON u.id = r.unit_id
-          WHERE r.phone_norm = ? AND r.is_active = 1
-          ORDER BY u.block, u.unit_number'
-    );
-    $st->bind_param('s', $phone);
+    // Cek kolom phone_secondary_norm
+    $hasSec = false;
+    try {
+        $chk = $db->query("SHOW COLUMNS FROM residents LIKE 'phone_secondary_norm'")->fetch_assoc();
+        $hasSec = !empty($chk);
+    } catch (Throwable) {}
+
+    if ($hasSec) {
+        $st = $db->prepare(
+            'SELECT r.id, r.name, r.phone, r.phone_secondary, r.status, u.id AS unit_id, u.block, u.unit_number
+               FROM residents r JOIN units u ON u.id = r.unit_id
+              WHERE (r.phone_norm = ? OR r.phone_secondary_norm = ?) AND r.is_active = 1
+              ORDER BY u.block, u.unit_number'
+        );
+        $st->bind_param('ss', $phone, $phone);
+    } else {
+        $st = $db->prepare(
+            'SELECT r.id, r.name, r.phone, r.status, u.id AS unit_id, u.block, u.unit_number
+               FROM residents r JOIN units u ON u.id = r.unit_id
+              WHERE r.phone_norm = ? AND r.is_active = 1
+              ORDER BY u.block, u.unit_number'
+        );
+        $st->bind_param('s', $phone);
+    }
     $st->execute();
     $residents = [];
     foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        // Pertahanan berlapis: phone_norm bisa basi bila ada jalur tulis yang lupa
-        // memperbaruinya. Cocokkan ulang dari kolom phone asli.
-        if (phone_normalize($r['phone']) !== $phone) continue;
+        // Pertahanan berlapis: cocokkan ulang dari kolom phone asli
+        $p1 = phone_normalize($r['phone'] ?? null);
+        $p2 = !empty($r['phone_secondary']) ? phone_normalize($r['phone_secondary']) : null;
+        if ($p1 !== $phone && $p2 !== $phone) continue;
         $residents[] = [
             'resident_id' => (int) $r['id'],
             'name'        => $r['name'],
