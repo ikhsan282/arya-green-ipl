@@ -45,19 +45,38 @@ Dokumen ini adalah panduan operasional, spesifikasi API, aturan bisnis, template
 
 ## 3. Spesifikasi Autentikasi API (Hermes $\rightarrow$ IPL)
 
-Semua endpoint berada di bawah `https://aryagreenpamulang.my.id/api/bot/` dan menggunakan tanda tangan **HMAC-SHA256**.
+Semua endpoint berada di bawah `https://aryagreenpamulang.my.id/api/bot/`. Sistem mendukung dua cara autentikasi:
 
-### 3.1 Header Wajib di Setiap Request HTTP
+### 3.1 Metode 1: Simple Secret / Bearer (Direkomendasikan untuk AI Agent Hermes)
+Hermes tidak perlu menghitung tanda tangan HMAC. Cukup sertakan secret key dan nomor pengirim WhatsApp:
+
+**Opsi A (Via URL Query Parameter — Paling Praktis untuk HTTP Tool Hermes):**
+Tambahkan parameter `?secret=...&phone=...` pada setiap URL request:
+```text
+https://aryagreenpamulang.my.id/api/bot/me.php?secret=mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w&phone=6281398461650
+```
+
+**Opsi B (Via Header HTTP):**
+```http
+Authorization: Bearer mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w
+X-Bot-Phone: 6281398461650
+```
+*(Atau menggunakan header `X-Bot-Secret: mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w`)*
+
+---
+
+### 3.2 Metode 2: HMAC-SHA256 Signature (Untuk Postman & Script Python)
+Jika memanggil via script Python atau Postman yang memiliki fungsi pre-request script:
+
 | Header | Nilai |
 |---|---|
 | `Content-Type` | `application/json` |
-| `X-Bot-Key` | ID kunci API (contoh: `hermes-prod`) |
+| `X-Bot-Key` | ID kunci API (`hermes-prod`) |
 | `X-Bot-Timestamp` | Unix timestamp detik saat ini (toleransi $\pm 300\text{ detik}$) |
 | `X-Bot-Phone` | Nomor WhatsApp pengirim (contoh: `6281398461650`) |
 | `X-Bot-Signature` | Hex lowercase dari `HMAC-SHA256(secret, canonical_string)` |
 
-### 3.2 Format `canonical_string`
-Gabungkan 5 baris berikut dengan pemisah newline (`\n`):
+Format `canonical_string` (5 baris dipisah `\n`):
 ```text
 {X-Bot-Timestamp}
 {HTTP_METHOD_UPPERCASE}
@@ -65,10 +84,6 @@ Gabungkan 5 baris berikut dengan pemisah newline (`\n`):
 {X-Bot-Phone}
 {SHA256_HEX_OF_RAW_REQUEST_BODY}
 ```
-> **Catatan Penting:**
-> - `REQUEST_URI_WITH_QUERY` harus persis sama dengan path + query string yang dipanggil (contoh: `/api/bot/bills.php` atau `/api/bot/qris_status.php?order_id=IPL-15-261105-a1b2`).
-> - Untuk request `GET` tanpa body, `SHA256_HEX_OF_RAW_REQUEST_BODY` adalah SHA-256 dari string kosong `""`, yaitu:
->   `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
 
 ### 3.3 Kode Referensi Pemanggil API (Python)
 ```python
