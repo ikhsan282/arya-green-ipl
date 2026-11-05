@@ -277,20 +277,50 @@ Memeriksa status pembayaran QRIS secara langsung ke provider dan memfinalisasi o
 ---
 
 ### 4.5 `get_cash_summary` $\rightarrow$ `GET /api/bot/cash_summary.php`
-Mengambil ringkasan transparansi kas lingkungan.
+Mengambil ringkasan transparansi kas lingkungan dan detail pengeluaran untuk warga.
+- **Query Params Opsional:**
+  - `year` (integer): tahun (default: tahun berjalan)
+  - `month` (integer, 1–12): bulan (default: bulan berjalan)
+  - `limit` (integer, default `5`): jumlah daftar pengeluaran terbaru
+- **Contoh URL:** `/api/bot/cash_summary.php?secret=...&phone=...` atau `/api/bot/cash_summary.php?year=2026&month=11&limit=5&secret=...&phone=...`
 - **Respons Sukses:**
   ```json
   {
     "ok": true,
     "data": {
-      "as_of": "2026-11-05 02:15",
+      "as_of": "2026-11-05 23:15",
       "balance": { "value": 15200000, "text": "Rp 15.200.000" },
       "month_label": "November 2026",
       "month_income": { "value": 4200000, "text": "Rp 4.200.000" },
-      "month_expense": { "value": 1500000, "text": "Rp 1.500.000" }
+      "month_expense": { "value": 1500000, "text": "Rp 1.500.000" },
+      "month_expenses_by_category": [
+        { "category": "Keamanan & Satpam", "count": 1, "total": { "value": 1000000, "text": "Rp 1.000.000" } },
+        { "category": "Kebersihan & Sampah", "count": 1, "total": { "value": 400000, "text": "Rp 400.000" } },
+        { "category": "Fasilitas & PJU", "count": 1, "total": { "value": 100000, "text": "Rp 100.000" } }
+      ],
+      "recent_expenses": [
+        {
+          "date": "2026-11-04",
+          "category": "Fasilitas & PJU",
+          "description": "Penggantian lampu penerangan Blok B",
+          "amount": { "value": 100000, "text": "Rp 100.000" }
+        },
+        {
+          "date": "2026-11-02",
+          "category": "Keamanan & Satpam",
+          "description": "Honor petugas keamanan periode awal bulan",
+          "amount": { "value": 1000000, "text": "Rp 1.000.000" }
+        }
+      ]
     }
   }
   ```
+- **Perilaku Hermes:**
+  - Jika warga bertanya **saldo kas umum** (misal *"Berapa saldo kas RT saat ini?"*): jawab dengan `balance.text`, `month_income.text`, dan `month_expense.text`.
+  - Jika warga bertanya **detail pengeluaran** (misal *"Kas dipakai buat apa saja bulan ini?"*, *"Cek rincian pengeluaran"*):
+    Sajikan rincian per kategori (`month_expenses_by_category`) dan sebutkan beberapa pengeluaran terbaru dari `recent_expenses` (tanggal, deskripsi kegiatan, nominal).
+  - Berikan tautan transparansi portal: `https://aryagreenpamulang.my.id/#transparansi`.
+  - ⚠️ **PENTING:** Rincian pengeluaran kas lingkungan sepenuhnya bersifat terbuka/transparan. Namun rincian setoran/pemasukan per orang TIDAK BOLEH dibocorkan (cukup sebutkan total pemasukan secara agregat).
 
 ---
 
