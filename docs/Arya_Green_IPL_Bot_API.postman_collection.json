@@ -1,0 +1,219 @@
+{
+	"info": {
+		"_postman_id": "arya-green-ipl-bot-api",
+		"name": "Arya Green Pamulang — Hermes Bot API",
+		"description": "Koleksi Postman untuk menguji endpoint Bot API (/api/bot/*) sistem Arya Green IPL lengkap dengan kalkulasi HMAC-SHA256 otomatis di Pre-request Script.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// 1. Ambil variabel environment",
+					"const botKey = pm.collectionVariables.get('bot_key') || 'hermes-prod';",
+					"const secret = pm.collectionVariables.get('bot_secret') || '';",
+					"const phone = pm.collectionVariables.get('sender_phone') || '6281398461650';",
+					"",
+					"// 2. Generate Timestamp unix detik",
+					"const ts = Math.floor(Date.now() / 1000).toString();",
+					"",
+					"// 3. Ambil method & request path + query",
+					"const method = pm.request.method.toUpperCase();",
+					"const urlPath = '/' + pm.request.url.getPath().join('/');",
+					"const queryString = pm.request.url.getQueryString();",
+					"const fullUri = queryString ? `${urlPath}?${queryString}` : urlPath;",
+					"",
+					"// 4. Hitung SHA-256 dari Body (atau string kosong jika GET/tanpa body)",
+					"let bodyStr = '';",
+					"if (pm.request.body && pm.request.body.raw) {",
+					"    bodyStr = pm.request.body.raw;",
+					"}",
+					"const bodySha256 = CryptoJS.SHA256(bodyStr).toString(CryptoJS.enc.Hex);",
+					"",
+					"// 5. Susun Canonical String (5 baris)",
+					"const canonical = `${ts}\\n${method}\\n${fullUri}\\n${phone}\\n${bodySha256}`;",
+					"",
+					"// 6. Hitung HMAC-SHA256",
+					"const signature = CryptoJS.HmacSHA256(canonical, secret).toString(CryptoJS.enc.Hex);",
+					"",
+					"// 7. Inject Headers ke Request",
+					"pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });",
+					"pm.request.headers.upsert({ key: 'X-Bot-Key', value: botKey });",
+					"pm.request.headers.upsert({ key: 'X-Bot-Timestamp', value: ts });",
+					"pm.request.headers.upsert({ key: 'X-Bot-Phone', value: phone });",
+					"pm.request.headers.upsert({ key: 'X-Bot-Signature', value: signature });"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://aryagreenpamulang.my.id",
+			"type": "string"
+		},
+		{
+			"key": "bot_key",
+			"value": "hermes-prod",
+			"type": "string"
+		},
+		{
+			"key": "bot_secret",
+			"value": "mj52qt4B68sJzw8mw8NLM6GG5H6CfFnJJrOoX3-e72w",
+			"type": "string"
+		},
+		{
+			"key": "sender_phone",
+			"value": "6281398461650",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Identitas Warga (me.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/me.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "me.php"]
+				},
+				"description": "Mengecek apakah nomor WhatsApp terdaftar, nama pemilik, dan unit rumah yang dimiliki."
+			}
+		},
+		{
+			"name": "2. Cek Tagihan Aktif & Riwayat (bills.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/bills.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "bills.php"]
+				},
+				"description": "Mengambil daftar tagihan belum lunas, denda, dan riwayat pembayaran unit sendiri."
+			}
+		},
+		{
+			"name": "3. Buat QRIS Dinamis (qris_create.php)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"bill_id\": 1\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/bot/qris_create.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "qris_create.php"]
+				},
+				"description": "Membuat order pembayaran QRIS dinamis + kode unik acak. Ganti bill_id sesuai tagihan aktif."
+			}
+		},
+		{
+			"name": "4. Cek Status Order QRIS (qris_status.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/qris_status.php?order_id=IPL-1-261105000000-xxxx",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "qris_status.php"],
+					"query": [
+						{
+							"key": "order_id",
+							"value": "IPL-1-261105000000-xxxx"
+						}
+					]
+				},
+				"description": "Mengecek apakah order QRIS sudah PAID atau masih PENDING. Jika PAID, akan muncul link kwitansi publik bertanda tangan."
+			}
+		},
+		{
+			"name": "5. Saldo Kas Lingkungan (cash_summary.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/cash_summary.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "cash_summary.php"]
+				},
+				"description": "Mengambil saldo kas lingkungan, pemasukan, dan pengeluaran bulan ini (agregat publik)."
+			}
+		},
+		{
+			"name": "6. Buat Aduan Warga (complaints.php)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\": \"Lampu PJU Padam\",\n    \"description\": \"Lampu jalan di depan rumah mati sejak tadi malam.\",\n    \"category\": \"fasilitas\",\n    \"priority\": \"sedang\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/bot/complaints.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "complaints.php"]
+				},
+				"description": "Mengirimkan tiket pengaduan baru dari chat warga ke sistem pengurus."
+			}
+		},
+		{
+			"name": "7. Agenda Kegiatan Warga (events.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/events.php?limit=5",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "events.php"],
+					"query": [
+						{
+							"key": "limit",
+							"value": "5"
+						}
+					]
+				},
+				"description": "Mengambil jadwal rapat atau kerja bakti lingkungan terdekat."
+			}
+		},
+		{
+			"name": "8. Rekap Pengurus (staff_summary.php)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/staff_summary.php",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "staff_summary.php"]
+				},
+				"description": "Khusus nomor pengurus (Ketua, Bendahara, Sekretaris). Menampilkan rekap penerimaan kas hari ini dan jumlah yang belum bayar."
+			}
+		},
+		{
+			"name": "9. Ambil Antrean Outbox (outbox.php - GET)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/bot/outbox.php?limit=10",
+					"host": ["{{base_url}}"],
+					"path": ["api", "bot", "outbox.php"],
+					"query": [
+						{
+							"key": "limit",
+							"value": "10"
+						}
+					]
+				},
+				"description": "Mode PULL: Hermes mengambil antrean notifikasi pembayaran lunas untuk dikirim ke WA."
+			}
+		}
+	]
+}
+

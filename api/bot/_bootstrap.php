@@ -113,6 +113,7 @@ function bot_actor_unit_ids(array $actor): array
 
 set_exception_handler(static function (Throwable $e): void {
     error_log('bot api ' . ($GLOBALS['BOT_CTX']['endpoint'] ?? '?') . ': ' . $e->getMessage());
-    bot_error(500, 'INTERNAL_ERROR', 'Terjadi gangguan pada sistem. Silakan coba beberapa saat lagi.');
+    $msg = (defined('APP_DEBUG') && APP_DEBUG) ? $e->getMessage() : 'Terjadi gangguan pada sistem. Silakan coba beberapa saat lagi.';
+    bot_error(500, 'INTERNAL_ERROR', $msg);
 });
 

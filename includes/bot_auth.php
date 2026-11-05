@@ -31,7 +31,7 @@ function bot_verify_request(array $server, string $body, ?int $now = null): arra
     $fail = static fn(int $status, string $code): array =>
         ['ok' => false, 'status' => $status, 'code' => $code, 'key_id' => null, 'phone' => null];
 
-    if (!BOT_API_KEYS) return $fail(503, 'BOT_API_DISABLED');
+    if (!defined('BOT_API_KEYS') || !BOT_API_KEYS) return $fail(503, 'BOT_API_DISABLED');
 
     $keyId = (string) ($server['HTTP_X_BOT_KEY'] ?? '');
     $ts    = (string) ($server['HTTP_X_BOT_TIMESTAMP'] ?? '');
