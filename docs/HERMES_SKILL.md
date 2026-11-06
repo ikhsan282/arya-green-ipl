@@ -299,45 +299,48 @@ Mengambil ringkasan transparansi kas lingkungan dan detail pengeluaran untuk war
     "ok": true,
     "data": {
       "as_of": "2026-11-06 08:00",
-      "balance": { "value": 2056000, "text": "Rp 2.056.000" },
+      "current_balance": { "value": 2056000, "text": "Rp 2.056.000" },
+      "opening_balance": { "value": 0, "text": "Rp 0" },
+      "closing_balance": { "value": 525000, "text": "Rp 525.000" },
+      "balance": { "value": 525000, "text": "Rp 525.000" },
+      "net_cashflow": { "value": 525000, "text": "Rp 525.000" },
       "is_custom_filter": true,
-      "period": { "year": 2026, "month": 10, "label": "Oktober 2026" },
-      "month_label": "Oktober 2026",
-      "month_income": { "value": 3300000, "text": "Rp 3.300.000" },
-      "month_expense": { "value": 1769000, "text": "Rp 1.769.000" },
+      "period": { "year": 2026, "month": 9, "label": "September 2026" },
+      "month_label": "September 2026",
+      "month_income": { "value": 3950000, "text": "Rp 3.950.000" },
+      "month_expense": { "value": 3425000, "text": "Rp 3.425.000" },
       "month_expenses_by_category": [
-        { "category": "Token lampu", "count": 3, "total": { "value": 609000, "text": "Rp 609.000" } },
-        { "category": "Sampah", "count": 1, "total": { "value": 601000, "text": "Rp 601.000" } },
-        { "category": "Kas Warga 15k/kk", "count": 2, "total": { "value": 257000, "text": "Rp 257.000" } },
-        { "category": "Kopi Security", "count": 1, "total": { "value": 151000, "text": "Rp 151.000" } }
+        { "category": "Pembayaran poldur", "count": 1, "total": { "value": 1201000, "text": "Rp 1.201.000" } },
+        { "category": "Potong Rumput", "count": 1, "total": { "value": 601000, "text": "Rp 601.000" } },
+        { "category": "Token lampu", "count": 3, "total": { "value": 510000, "text": "Rp 510.000" } },
+        { "category": "Sampah", "count": 1, "total": { "value": 451000, "text": "Rp 451.000" } }
       ],
       "expenses": [
         {
-          "date": "2026-10-31",
-          "category": "Sampah",
-          "description": "Pembayaran armada sampah 12 blok",
-          "amount": { "value": 601000, "text": "Rp 601.000" }
-        },
-        {
-          "date": "2026-10-27",
+          "date": "2026-09-27",
           "category": "Token lampu",
-          "description": "Token listrik penerangan jalan 200k",
+          "description": "token 200k",
           "amount": { "value": 203000, "text": "Rp 203.000" }
         }
       ],
-      "expense_count": 2,
+      "expense_count": 9,
       "recent_expenses": [...]
     }
   }
   ```
 
 - **Perilaku Hermes:**
-  - Jika warga bertanya **saldo kas umum** (misal: *"Berapa saldo kas sekarang?"*): Jawab dengan `balance.text`, `month_income.text`, dan `month_expense.text` bulan berjalan.
-  - Jika warga bertanya **pengeluaran bulan tertentu** (misal: *"Pengeluaran bulan Oktober kemarin apa saja?"*):
-    Panggil API dengan parameter `?month=oktober&year=2026` (atau bulan yang diminta). Sebutkan total pengeluaran bulan tersebut, rincian per kategori (`month_expenses_by_category`), dan daftar transaksinya dari `expenses` (tanggal, uraian/deskripsi, nominal).
+  - Jika warga bertanya **saldo kas umum saat ini** (misal: *"Berapa saldo kas sekarang?"*): Jawab dengan `current_balance.text`, serta pemasukan/pengeluaran bulan berjalan.
+  - Jika warga bertanya **keuangan bulan lalu / custom bulan** (misal: *"Bagaimana keuangan bulan September 2026?"*):
+    Panggil API dengan parameter `?month=september&year=2026`.
+    Sampaikan rincian akuntansinya secara terstruktur:
+    * Saldo Awal September: `opening_balance.text`
+    * Pemasukan September: `month_income.text`
+    * Pengeluaran September: `month_expense.text`
+    * **Saldo Akhir Penutupan September:** `closing_balance.text`
+    * Saldo Kas Terkini Hari Ini: `current_balance.text`
   - Jika warga bertanya **pengeluaran barang tertentu** (misal: *"Berapa biaya beli lampu/sampah?"*):
     Panggil API dengan parameter `?q=lampu` atau `?q=sampah`.
-  - Jika bulan yang diminta belum memiliki pengeluaran (misal bulan baru mulai): Beritahu bahwa bulan tersebut belum ada pengeluaran yang dicatat, lalu tampilkan pengeluaran terakhir dari `recent_expenses`.
   - ⚠️ **PENTING:** Rincian pengeluaran kas lingkungan sepenuhnya bersifat terbuka untuk warga. Namun rincian setoran perorangan TIDAK BOLEH dibocorkan (cukup sebutkan total pemasukan secara agregat).
 
 ---

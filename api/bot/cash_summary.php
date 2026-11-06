@@ -3,13 +3,24 @@
  * GET /api/bot/cash_summary.php
  * Ringkasan kas lingkungan dan rincian pengeluaran untuk transparansi warga.
  *
- * Mendukung kustomisasi bulan & tahun:
- * - year   (int/string): tahun (contoh: 2026)
- * - month  (int/string): bulan angka 1-12 ATAU nama bulan (contoh: 10, "oktober", "october", "okt")
- * - period (string): format gabungan (contoh: "2026-10", "Oktober 2026")
- * - q      (string): kata kunci pencarian pengeluaran (contoh: "lampu", "sampah", "satpam")
+ * Mendukung kustomisasi bulan & tahun serta perhitungan saldo akuntansi:
+ * - opening_balance: Saldo kas pada awal bulan tersebut
+ * - closing_balance: Saldo kas pada akhir penutupan bulan tersebut
+ * - current_balance: Saldo kas riil saat ini (hari ini)
+ * - balance: Saldo akhir periode yang diminta (atau saldo saat ini bila bulan berjalan)
+ * - month_income: Total uang masuk pada bulan tersebut
+ * - month_expense: Total pengeluaran pada bulan tersebut
+ * - net_cashflow: Selisih arus kas bersih (masuk - keluar)
+ * - month_expenses_by_category: Rincian pengeluaran per kategori bulan tersebut
+ * - expenses: Daftar transaksi pengeluaran riil pada bulan tersebut
+ *
+ * Query params opsional:
+ * - year     (int/string): tahun (contoh: 2026)
+ * - month    (int/string): bulan angka 1-12 ATAU nama bulan (contoh: 9, 10, "september", "oktober")
+ * - period   (string): format gabungan (contoh: "2026-09", "Oktober 2026")
+ * - q        (string): kata kunci pencarian pengeluaran (contoh: "lampu", "sampah", "satpam")
  * - category (string): filter kategori pengeluaran
- * - limit  (int): batas jumlah item pengeluaran (default: 30, max: 100)
+ * - limit    (int): batas jumlah item pengeluaran (default: 30, max: 100)
  */
 require __DIR__ . '/_bootstrap.php';
 
@@ -22,6 +33,7 @@ $all = $db->query(
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
        FROM cash_book'
 )->fetch_assoc();
+$currentBalance = (float) $all['masuk'] - (float) $all['keluar'];
 
 // Normalisasi bulan dan tahun yang fleksibel (bisa angka atau teks)
 function bot_parse_filter_period(?string $rawMonth, ?string $rawYear, ?string $rawPeriod): array
@@ -93,7 +105,21 @@ $q = trim((string) ($_GET['q'] ?? ''));
 $category = trim((string) ($_GET['category'] ?? ''));
 $limit = max(1, min(100, (int) ($_GET['limit'] ?? 30)));
 
-// 1. Arus kas (pemasukan & pengeluaran) pada periode yang dipilih
+// Tanggal awal dan akhir bulan yang dipilih
+$firstDay = sprintf('%04d-%02d-01', $y, $m);
+$lastDay = date('Y-m-t', strtotime($firstDay));
+
+// 1. Saldo Awal (sebelum tanggal 1 bulan yang diminta)
+$stOpen = $db->prepare(
+    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0)
+          - COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS b
+       FROM cash_book WHERE trx_date < ?'
+);
+$stOpen->bind_param('s', $firstDay);
+$stOpen->execute();
+$openingBalance = (float) $stOpen->get_result()->fetch_assoc()['b'];
+
+// 2. Arus kas (pemasukan & pengeluaran) pada bulan yang dipilih
 $st = $db->prepare(
     'SELECT COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
@@ -102,8 +128,20 @@ $st = $db->prepare(
 $st->bind_param('ii', $y, $m);
 $st->execute();
 $monthTotals = $st->get_result()->fetch_assoc();
+$monthIn = (float) $monthTotals['masuk'];
+$monthOut = (float) $monthTotals['keluar'];
 
-// 2. Rincian pengeluaran per kategori untuk periode yang dipilih
+// 3. Saldo Akhir Periode (kumulatif sampai akhir hari terakhir bulan yang diminta)
+$stClose = $db->prepare(
+    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0)
+          - COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS b
+       FROM cash_book WHERE trx_date <= ?'
+);
+$stClose->bind_param('s', $lastDay);
+$stClose->execute();
+$closingBalance = (float) $stClose->get_result()->fetch_assoc()['b'];
+
+// 4. Rincian pengeluaran per kategori untuk periode yang dipilih
 $catSql = 'SELECT category, SUM(amount) AS total, COUNT(*) AS count
              FROM cash_book
             WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?';
@@ -137,7 +175,7 @@ while ($row = $resCat->fetch_assoc()) {
     ];
 }
 
-// 3. Daftar transaksi pengeluaran pada periode yang dipilih
+// 5. Daftar transaksi pengeluaran pada periode yang dipilih
 $expSql = 'SELECT id, category, amount, description, trx_date
              FROM cash_book
             WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?';
@@ -174,8 +212,7 @@ while ($row = $resExp->fetch_assoc()) {
     ];
 }
 
-// 4. Fallback jika periode yang dipilih belum memiliki pengeluaran (misal bulan berjalan baru mulai),
-// sertakan 5 pengeluaran terakhir dari bulan sebelumnya agar bot tetap informatif
+// 6. Fallback jika periode yang dipilih belum memiliki pengeluaran
 $recentFallback = [];
 if (empty($periodExpenses)) {
     $stRec = $db->prepare(
@@ -199,9 +236,16 @@ if (empty($periodExpenses)) {
 
 $hasCustomFilter = isset($_GET['year']) || isset($_GET['month']) || isset($_GET['period']) || isset($_GET['q']) || isset($_GET['category']);
 
+// Jika user meminta bulan tertentu (misal September), 'balance' menampilkan saldo akhir bulan September tersebut
+$displayBalance = $hasCustomFilter ? $closingBalance : $currentBalance;
+
 bot_reply(200, [
     'as_of'                      => date('Y-m-d H:i'),
-    'balance'                    => bot_money((float) $all['masuk'] - (float) $all['keluar']),
+    'current_balance'            => bot_money($currentBalance),
+    'opening_balance'            => bot_money($openingBalance),
+    'closing_balance'            => bot_money($closingBalance),
+    'balance'                    => bot_money($displayBalance),
+    'net_cashflow'               => bot_money($monthIn - $monthOut),
     'is_custom_filter'           => $hasCustomFilter,
     'period'                     => [
         'year'  => $y,
@@ -209,8 +253,8 @@ bot_reply(200, [
         'label' => period_label($y, $m),
     ],
     'month_label'                => period_label($y, $m),
-    'month_income'               => bot_money((float) $monthTotals['masuk']),
-    'month_expense'              => bot_money((float) $monthTotals['keluar']),
+    'month_income'               => bot_money($monthIn),
+    'month_expense'              => bot_money($monthOut),
     'month_expenses_by_category' => $expensesByCategory,
     'expenses'                   => $periodExpenses,
     'expense_count'              => count($periodExpenses),
