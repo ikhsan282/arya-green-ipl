@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/_cli_only.php';
-$schema = file_get_contents(__DIR__ . '/../database/schema.sql');
-$dashboard = file_get_contents(__DIR__ . '/../pages/dashboard.php');
+$schema = str_replace("\r\n", "\n", file_get_contents(__DIR__ . '/../database/schema.sql'));
+$dashboard = str_replace("\r\n", "\n", file_get_contents(__DIR__ . '/../pages/dashboard.php'));
 $assert = static function (bool $ok, string $message): void {
     if (!$ok) { fwrite(STDERR, "FAIL: {$message}\n"); exit(1); }
 };

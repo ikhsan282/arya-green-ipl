@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__ . '/_cli_only.php';
 // Regression self-check. Run: php -d zend.assertions=1 tests/send_reminders_test.php
-$page = file_get_contents(__DIR__ . '/../pages/billing/send_reminders.php');
-assert($page !== false, 'reminder page readable');
+$rawPage = file_get_contents(__DIR__ . '/../pages/billing/send_reminders.php');
+assert($rawPage !== false, 'reminder page readable');
+$page = str_replace("\r\n", "\n", $rawPage);
 
 assert(str_contains($page, "require_permission('billing.send_reminder')"), 'permission remains enforced');
 assert(str_contains($page, 'csrf_verify()'), 'POST remains CSRF protected');
