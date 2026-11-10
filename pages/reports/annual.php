@@ -23,15 +23,17 @@ $ipl->bind_param('i', $f_year); $ipl->execute();
 $ipl_rows = $ipl->get_result()->fetch_all(MYSQLI_ASSOC);
 $ipl_map  = array_column($ipl_rows, null, 'm');
 
-// Kas per bulan
+// Kas per bulan (SARGable range scan pada idx_cashbook_trx_date)
+$year_start = sprintf('%04d-01-01', $f_year);
+$year_end   = sprintf('%04d-12-31', $f_year);
 $kas = $db->prepare(
     'SELECT MONTH(trx_date) AS m,
             COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
-     FROM cash_book WHERE YEAR(trx_date)=?
+     FROM cash_book WHERE trx_date >= ? AND trx_date <= ?
      GROUP BY MONTH(trx_date)'
 );
-$kas->bind_param('i', $f_year); $kas->execute();
+$kas->bind_param('ss', $year_start, $year_end); $kas->execute();
 $kas_map = array_column($kas->get_result()->fetch_all(MYSQLI_ASSOC), null, 'm');
 
 // Total tahunan

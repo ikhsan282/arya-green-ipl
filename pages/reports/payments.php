@@ -51,16 +51,18 @@ foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
 // Dicocokkan lewat periode tagihan, BUKAN created_at: order yang dibuat akhir bulan
 // bisa melunasi tagihan bulan berikutnya, dan sebaliknya. Order tanpa bill_id
 // (tagihan sudah dihapus) tetap dihitung lewat tanggalnya agar tidak hilang.
+$m_start = sprintf('%04d-%02d-01 00:00:00', $f_year, $f_month);
+$m_end   = date('Y-m-t 23:59:59', strtotime(sprintf('%04d-%02d-01', $f_year, $f_month)));
 $st = $db->prepare(
     'SELECT o.status, COUNT(*) AS cnt, COALESCE(SUM(COALESCE(o.total_amount,o.amount)),0) AS total
      FROM payment_gateway_orders o
      LEFT JOIN bills b ON b.id=o.bill_id
      LEFT JOIN billing_periods bp ON bp.id=b.billing_period_id
      WHERE (bp.period_year=? AND bp.period_month=?)
-        OR (o.bill_id IS NULL AND YEAR(o.created_at)=? AND MONTH(o.created_at)=?)
+        OR (o.bill_id IS NULL AND o.created_at >= ? AND o.created_at <= ?)
      GROUP BY o.status'
 );
-$st->bind_param('iiii', $f_year, $f_month, $f_year, $f_month);
+$st->bind_param('iiss', $f_year, $f_month, $m_start, $m_end);
 $st->execute();
 $orders = ['PENDING' => ['cnt' => 0, 'total' => 0.0], 'PAID' => ['cnt' => 0, 'total' => 0.0],
            'EXPIRED' => ['cnt' => 0, 'total' => 0.0], 'FAILED' => ['cnt' => 0, 'total' => 0.0]];

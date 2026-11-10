@@ -40,7 +40,6 @@ $cnt = $db->prepare(
      JOIN bills b ON b.id=p.bill_id
      JOIN units u ON u.id=b.unit_id
      LEFT JOIN residents r ON r.id=b.resident_id
-     LEFT JOIN payment_methods pm ON pm.id=p.payment_method_id
      WHERE {$wsql}"
 );
 if ($params) $cnt->bind_param($types, ...$params);

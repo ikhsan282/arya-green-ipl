@@ -16,7 +16,7 @@ require_once __DIR__ . '/../includes/wa_outbox.php';
 function run_qris_poll(): array
 {
     $db    = db();
-    $stats = ['checked' => 0, 'paid' => 0, 'expired' => 0, 'errors' => 0];
+    $stats = ['checked' => 0, 'paid' => 0, 'expired' => 0, 'reminded' => 0, 'errors' => 0];
 
     // 1. Tandai order PENDING yang sudah melewati expired_at (atau >35 menit bila expired_at kosong)
     $expRows = $db->query(
@@ -47,7 +47,7 @@ function run_qris_poll(): array
     )->fetch_all(MYSQLI_ASSOC);
 
     foreach ($expSoonRows as $esr) {
-        wa_event_qris_expiring_soon((string) $esr['order_id']);
+        $stats['reminded'] += wa_event_qris_expiring_soon((string) $esr['order_id']);
     }
 
     // 3. Periksa order PENDING yang masih aktif (maks 30 terbaru)
@@ -99,7 +99,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     $lock = cron_acquire_lock('qris_poll');
     if (!$lock) exit(0);
     $res = run_qris_poll();
-    if ($res['paid'] > 0 || $res['expired'] > 0) {
+    if ($res['paid'] > 0 || $res['expired'] > 0 || $res['reminded'] > 0) {
         wa_dispatch_batch(50);
     }
     echo json_encode($res) . PHP_EOL;

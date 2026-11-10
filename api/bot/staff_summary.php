@@ -16,17 +16,26 @@ if (!$actor['is_staff']) {
     bot_error(403, 'STAFF_ONLY', 'Informasi rekapitulasi ini hanya dapat diakses oleh Pengurus.');
 }
 
-// Penerimaan hari ini (verified)
-$todayRow = $db->query(
-    'SELECT COUNT(*) AS cnt, COALESCE(SUM(amount_paid),0) AS total
-       FROM payments WHERE status="verified" AND DATE(COALESCE(verified_at, payment_date)) = CURDATE()'
+// Penerimaan hari ini & kemarin (verified) dalam 1 single-pass query
+$verRow = $db->query(
+    'SELECT
+        COALESCE(SUM(CASE WHEN DATE(COALESCE(verified_at, payment_date)) = CURDATE() THEN 1 ELSE 0 END), 0) AS today_cnt,
+        COALESCE(SUM(CASE WHEN DATE(COALESCE(verified_at, payment_date)) = CURDATE() THEN amount_paid ELSE 0 END), 0) AS today_total,
+        COALESCE(SUM(CASE WHEN DATE(COALESCE(verified_at, payment_date)) = DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 ELSE 0 END), 0) AS yesterday_cnt,
+        COALESCE(SUM(CASE WHEN DATE(COALESCE(verified_at, payment_date)) = DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN amount_paid ELSE 0 END), 0) AS yesterday_total
+       FROM payments
+      WHERE status="verified"
+        AND (verified_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) OR payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY))'
 )->fetch_assoc();
 
-// Penerimaan kemarin (verified)
-$yesterdayRow = $db->query(
-    'SELECT COUNT(*) AS cnt, COALESCE(SUM(amount_paid),0) AS total
-       FROM payments WHERE status="verified" AND DATE(COALESCE(verified_at, payment_date)) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)'
-)->fetch_assoc();
+$todayRow = [
+    'cnt'   => (int) ($verRow['today_cnt'] ?? 0),
+    'total' => (float) ($verRow['today_total'] ?? 0),
+];
+$yesterdayRow = [
+    'cnt'   => (int) ($verRow['yesterday_cnt'] ?? 0),
+    'total' => (float) ($verRow['yesterday_total'] ?? 0),
+];
 
 // Pembayaran manual menunggu verifikasi
 $pendingCount = (int) $db->query('SELECT COUNT(*) FROM payments WHERE status="pending"')->fetch_row()[0];

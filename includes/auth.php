@@ -60,7 +60,14 @@ function load_permissions(int $role_id): void {
 }
 
 function can(string $permission): bool {
-    return in_array($permission, $_SESSION['permissions'] ?? [], true);
+    static $cached_source = null;
+    static $perm_map = [];
+    $perms = $_SESSION['permissions'] ?? [];
+    if ($cached_source !== $perms) {
+        $cached_source = $perms;
+        $perm_map = array_flip($perms);
+    }
+    return isset($perm_map[$permission]);
 }
 
 function require_permission(string $permission): void {
