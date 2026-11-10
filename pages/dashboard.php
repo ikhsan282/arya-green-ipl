@@ -114,77 +114,83 @@ if ($_role === 'warga') {
         'SELECT title, type, event_date, location FROM events
          WHERE event_date >= NOW() ORDER BY event_date ASC LIMIT 5'
     )->fetch_all(MYSQLI_ASSOC);
+    $chart_labels = $chart_lunas = $chart_nunggak = $cf_labels = $cf_masuk = $cf_keluar = $top_expenses = [];
+    $saldo_kas = 0.0;
+    $saldo_data = ['total_in' => 0, 'total_out' => 0];
+    $total_expense = 0.0;
+} else {
+    $trend_stmt = $db->prepare(
+        'SELECT bp.period_month AS m,
+                COALESCE(SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount END),0) AS terkumpul,
+                COALESCE(SUM(CASE WHEN b.status IN ("belum_bayar","terlambat") THEN b.total_amount END),0) AS tunggakan
+         FROM billing_periods bp
+         LEFT JOIN bills b ON b.billing_period_id=bp.id
+         WHERE bp.period_year=?
+         GROUP BY bp.period_month ORDER BY bp.period_month'
+    );
+    $trend_stmt->bind_param('i', $year);
+    $trend_stmt->execute();
+    $trend_rows = $trend_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $trend_map  = array_column($trend_rows, null, 'm');
+
+    $chart_labels  = [];
+    $chart_lunas   = [];
+    $chart_nunggak = [];
+    for ($m = 1; $m <= 12; $m++) {
+        $chart_labels[]  = substr(bulan_indo($m), 0, 3);
+        $chart_lunas[]   = (float)($trend_map[$m]['terkumpul'] ?? 0);
+        $chart_nunggak[] = (float)($trend_map[$m]['tunggakan'] ?? 0);
+    }
+
+    // ── Real-time Financial Dashboard Data ────────────────────────────────────
+    // 1. Saldo kas terkini
+    $saldo_stmt = $db->query(
+        'SELECT 
+            COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS total_in,
+            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS total_out
+         FROM cash_book'
+    );
+    $saldo_data = $saldo_stmt->fetch_assoc();
+    $saldo_kas = (float)$saldo_data['total_in'] - (float)$saldo_data['total_out'];
+
+    // 2. Cash flow 7 hari terakhir
+    $cashflow_stmt = $db->query(
+        'SELECT trx_date AS tanggal,
+                COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS masuk,
+                COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS keluar
+         FROM cash_book
+         WHERE trx_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         GROUP BY trx_date
+         ORDER BY tanggal ASC'
+    );
+    $cashflow_rows = $cashflow_stmt->fetch_all(MYSQLI_ASSOC);
+    $cashflow_map = array_column($cashflow_rows, null, 'tanggal');
+    $cf_labels = [];
+    $cf_masuk = [];
+    $cf_keluar = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $cf_labels[] = date('d M', strtotime($date));
+        $cf_masuk[] = (float)($cashflow_map[$date]['masuk'] ?? 0);
+        $cf_keluar[] = (float)($cashflow_map[$date]['keluar'] ?? 0);
+    }
+
+    // 3. Top 5 pengeluaran bulan ini (SARGable via idx_cashbook_trx_date)
+    $first_day = sprintf('%04d-%02d-01', $year, $month);
+    $last_day  = date('Y-m-t', strtotime($first_day));
+    $expense_stmt = $db->prepare(
+        'SELECT category, SUM(amount) AS total
+         FROM cash_book
+         WHERE type="pengeluaran" AND trx_date >= ? AND trx_date <= ?
+         GROUP BY category
+         ORDER BY total DESC
+         LIMIT 5'
+    );
+    $expense_stmt->bind_param('ss', $first_day, $last_day);
+    $expense_stmt->execute();
+    $top_expenses = $expense_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $total_expense = array_sum(array_column($top_expenses, 'total'));
 }
-
-$trend_stmt = $db->prepare(
-    'SELECT bp.period_month AS m,
-            COALESCE(SUM(CASE WHEN b.status="sudah_bayar" THEN b.total_amount END),0) AS terkumpul,
-            COALESCE(SUM(CASE WHEN b.status IN ("belum_bayar","terlambat") THEN b.total_amount END),0) AS tunggakan
-     FROM billing_periods bp
-     LEFT JOIN bills b ON b.billing_period_id=bp.id
-     WHERE bp.period_year=?
-     GROUP BY bp.period_month ORDER BY bp.period_month'
-);
-$trend_stmt->bind_param('i', $year);
-$trend_stmt->execute();
-$trend_rows = $trend_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$trend_map  = array_column($trend_rows, null, 'm');
-
-$chart_labels  = [];
-$chart_lunas   = [];
-$chart_nunggak = [];
-for ($m = 1; $m <= 12; $m++) {
-    $chart_labels[]  = substr(bulan_indo($m), 0, 3);
-    $chart_lunas[]   = (float)($trend_map[$m]['terkumpul'] ?? 0);
-    $chart_nunggak[] = (float)($trend_map[$m]['tunggakan'] ?? 0);
-}
-
-// ── Real-time Financial Dashboard Data ────────────────────────────────────
-// 1. Saldo kas terkini
-$saldo_stmt = $db->query(
-    'SELECT 
-        COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS total_in,
-        COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS total_out
-     FROM cash_book'
-);
-$saldo_data = $saldo_stmt->fetch_assoc();
-$saldo_kas = (float)$saldo_data['total_in'] - (float)$saldo_data['total_out'];
-
-// 2. Cash flow 7 hari terakhir
-$cashflow_stmt = $db->query(
-    'SELECT DATE(trx_date) AS tanggal,
-            COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE 0 END), 0) AS masuk,
-            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount ELSE 0 END), 0) AS keluar
-     FROM cash_book
-     WHERE trx_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-     GROUP BY DATE(trx_date)
-     ORDER BY tanggal ASC'
-);
-$cashflow_rows = $cashflow_stmt->fetch_all(MYSQLI_ASSOC);
-$cashflow_map = array_column($cashflow_rows, null, 'tanggal');
-$cf_labels = [];
-$cf_masuk = [];
-$cf_keluar = [];
-for ($i = 6; $i >= 0; $i--) {
-    $date = date('Y-m-d', strtotime("-$i days"));
-    $cf_labels[] = date('d M', strtotime($date));
-    $cf_masuk[] = (float)($cashflow_map[$date]['masuk'] ?? 0);
-    $cf_keluar[] = (float)($cashflow_map[$date]['keluar'] ?? 0);
-}
-
-// 3. Top 5 pengeluaran bulan ini
-$expense_stmt = $db->prepare(
-    'SELECT category, SUM(amount) AS total
-     FROM cash_book
-     WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?
-     GROUP BY category
-     ORDER BY total DESC
-     LIMIT 5'
-);
-$expense_stmt->bind_param('ii', $year, $month);
-$expense_stmt->execute();
-$top_expenses = $expense_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$total_expense = array_sum(array_column($top_expenses, 'total'));
 
 $page_title = 'Dashboard';
 include __DIR__ . '/../includes/header.php';
@@ -479,6 +485,7 @@ include __DIR__ . '/../includes/sidebar.php';
     <?php endif; // end role-specific dashboard layout ?>
 
   </div><!-- /.main-content -->
+<?php if ($_role !== 'warga'): ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
 // Tren Pembayaran Tahunan
@@ -514,7 +521,6 @@ new Chart(document.getElementById('dashChart'), {
   }
 });
 
-<?php if ($_role !== 'warga'): ?>
 // Arus Kas 7 Hari
 new Chart(document.getElementById('cashFlowChart'), {
   type: 'line',
@@ -563,6 +569,6 @@ new Chart(document.getElementById('cashFlowChart'), {
     }
   }
 });
-<?php endif; ?>
 </script>
+<?php endif; ?>
 <?php include __DIR__ . '/../includes/footer.php'; ?>

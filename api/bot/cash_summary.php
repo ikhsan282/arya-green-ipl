@@ -27,14 +27,6 @@ require __DIR__ . '/_bootstrap.php';
 $ctx = bot_boot(['GET']);
 $db  = $ctx['db'];
 
-// Saldo kumulatif kas sepanjang masa
-$all = $db->query(
-    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
-            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
-       FROM cash_book'
-)->fetch_assoc();
-$currentBalance = (float) $all['masuk'] - (float) $all['keluar'];
-
 // Normalisasi bulan dan tahun yang fleksibel (bisa angka atau teks)
 function bot_parse_filter_period(?string $rawMonth, ?string $rawYear, ?string $rawPeriod): array
 {
@@ -109,44 +101,30 @@ $limit = max(1, min(100, (int) ($_GET['limit'] ?? 30)));
 $firstDay = sprintf('%04d-%02d-01', $y, $m);
 $lastDay = date('Y-m-t', strtotime($firstDay));
 
-// 1. Saldo Awal (sebelum tanggal 1 bulan yang diminta)
-$stOpen = $db->prepare(
-    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0)
-          - COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS b
-       FROM cash_book WHERE trx_date < ?'
+// 1-3. Hitung Saldo Saat Ini, Saldo Awal, Pemasukan/Pengeluaran Bulan Ini, dan Saldo Akhir dalam 1 query tunggal
+$stSum = $db->prepare(
+    'SELECT
+        COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE -amount END), 0) AS current_bal,
+        COALESCE(SUM(CASE WHEN trx_date < ? THEN (CASE WHEN type="pemasukan" THEN amount ELSE -amount END) END), 0) AS open_bal,
+        COALESCE(SUM(CASE WHEN trx_date >= ? AND trx_date <= ? AND type="pemasukan"   THEN amount END), 0) AS month_in,
+        COALESCE(SUM(CASE WHEN trx_date >= ? AND trx_date <= ? AND type="pengeluaran" THEN amount END), 0) AS month_out
+       FROM cash_book'
 );
-$stOpen->bind_param('s', $firstDay);
-$stOpen->execute();
-$openingBalance = (float) $stOpen->get_result()->fetch_assoc()['b'];
+$stSum->bind_param('sssss', $firstDay, $firstDay, $lastDay, $firstDay, $lastDay);
+$stSum->execute();
+$sumRow         = $stSum->get_result()->fetch_assoc();
+$currentBalance = (float) ($sumRow['current_bal'] ?? 0);
+$openingBalance = (float) ($sumRow['open_bal'] ?? 0);
+$monthIn        = (float) ($sumRow['month_in'] ?? 0);
+$monthOut       = (float) ($sumRow['month_out'] ?? 0);
+$closingBalance = $openingBalance + $monthIn - $monthOut;
 
-// 2. Arus kas (pemasukan & pengeluaran) pada bulan yang dipilih
-$st = $db->prepare(
-    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
-            COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
-       FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?'
-);
-$st->bind_param('ii', $y, $m);
-$st->execute();
-$monthTotals = $st->get_result()->fetch_assoc();
-$monthIn = (float) $monthTotals['masuk'];
-$monthOut = (float) $monthTotals['keluar'];
-
-// 3. Saldo Akhir Periode (kumulatif sampai akhir hari terakhir bulan yang diminta)
-$stClose = $db->prepare(
-    'SELECT COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0)
-          - COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS b
-       FROM cash_book WHERE trx_date <= ?'
-);
-$stClose->bind_param('s', $lastDay);
-$stClose->execute();
-$closingBalance = (float) $stClose->get_result()->fetch_assoc()['b'];
-
-// 4. Rincian pengeluaran per kategori untuk periode yang dipilih
+// 4. Rincian pengeluaran per kategori untuk periode yang dipilih (SARGable via idx_cashbook_trx_date)
 $catSql = 'SELECT category, SUM(amount) AS total, COUNT(*) AS count
              FROM cash_book
-            WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?';
-$catParams = [$y, $m];
-$catTypes = 'ii';
+            WHERE type="pengeluaran" AND trx_date >= ? AND trx_date <= ?';
+$catParams = [$firstDay, $lastDay];
+$catTypes = 'ss';
 
 if ($category !== '') {
     $catSql .= ' AND category = ?';
@@ -175,12 +153,12 @@ while ($row = $resCat->fetch_assoc()) {
     ];
 }
 
-// 5. Daftar transaksi pengeluaran pada periode yang dipilih
+// 5. Daftar transaksi pengeluaran pada periode yang dipilih (SARGable via idx_cashbook_trx_date)
 $expSql = 'SELECT id, category, amount, description, trx_date
              FROM cash_book
-            WHERE type="pengeluaran" AND YEAR(trx_date)=? AND MONTH(trx_date)=?';
-$expParams = [$y, $m];
-$expTypes = 'ii';
+            WHERE type="pengeluaran" AND trx_date >= ? AND trx_date <= ?';
+$expParams = [$firstDay, $lastDay];
+$expTypes = 'ss';
 
 if ($category !== '') {
     $expSql .= ' AND category = ?';

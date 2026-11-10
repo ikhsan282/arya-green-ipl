@@ -108,16 +108,28 @@ function bot_verify_request(array $server, string $body, ?int $now = null): arra
 }
 
 /**
- * Isi residents.phone_norm dan phone_secondary_norm yang belum diproses.
+ * Cek apakah kolom phone_secondary_norm tersedia di tabel residents (di-cache per request).
  */
-function bot_backfill_phone_norm(mysqli $db): int
+function bot_has_secondary_phone_col(mysqli $db): bool
 {
-    // Cek keberadaan kolom phone_secondary_norm secara aman
+    static $hasSec = null;
+    if ($hasSec !== null) {
+        return $hasSec;
+    }
     $hasSec = false;
     try {
         $chk = $db->query("SHOW COLUMNS FROM residents LIKE 'phone_secondary_norm'")->fetch_assoc();
         $hasSec = !empty($chk);
     } catch (Throwable) {}
+    return $hasSec;
+}
+
+/**
+ * Isi residents.phone_norm dan phone_secondary_norm yang belum diproses.
+ */
+function bot_backfill_phone_norm(mysqli $db): int
+{
+    $hasSec = bot_has_secondary_phone_col($db);
 
     if ($hasSec) {
         $rows = $db->query('SELECT id, phone, phone_secondary FROM residents WHERE phone_norm IS NULL OR phone_secondary_norm IS NULL')->fetch_all(MYSQLI_ASSOC);
@@ -152,36 +164,39 @@ function bot_backfill_phone_norm(mysqli $db): int
  */
 function bot_resolve_actor(mysqli $db, string $phone): array
 {
-    bot_backfill_phone_norm($db);
     $normPhone = phone_normalize($phone) ?? $phone;
+    $hasSec = bot_has_secondary_phone_col($db);
 
-    // Cek kolom phone_secondary_norm
-    $hasSec = false;
-    try {
-        $chk = $db->query("SHOW COLUMNS FROM residents LIKE 'phone_secondary_norm'")->fetch_assoc();
-        $hasSec = !empty($chk);
-    } catch (Throwable) {}
+    $queryResidents = static function () use ($db, $hasSec, $normPhone, $phone): array {
+        if ($hasSec) {
+            $st = $db->prepare(
+                'SELECT r.id, r.name, r.phone, r.phone_secondary, r.status, u.id AS unit_id, u.block, u.unit_number
+                   FROM residents r JOIN units u ON u.id = r.unit_id
+                  WHERE (r.phone_norm IN (?, ?) OR r.phone_secondary_norm IN (?, ?)) AND r.is_active = 1
+                  ORDER BY u.block, u.unit_number'
+            );
+            $st->bind_param('ssss', $normPhone, $phone, $normPhone, $phone);
+        } else {
+            $st = $db->prepare(
+                'SELECT r.id, r.name, r.phone, r.status, u.id AS unit_id, u.block, u.unit_number
+                   FROM residents r JOIN units u ON u.id = r.unit_id
+                  WHERE r.phone_norm IN (?, ?) AND r.is_active = 1
+                  ORDER BY u.block, u.unit_number'
+            );
+            $st->bind_param('ss', $normPhone, $phone);
+        }
+        $st->execute();
+        return $st->get_result()->fetch_all(MYSQLI_ASSOC);
+    };
 
-    if ($hasSec) {
-        $st = $db->prepare(
-            'SELECT r.id, r.name, r.phone, r.phone_secondary, r.status, u.id AS unit_id, u.block, u.unit_number
-               FROM residents r JOIN units u ON u.id = r.unit_id
-              WHERE (r.phone_norm IN (?, ?) OR r.phone_secondary_norm IN (?, ?)) AND r.is_active = 1
-              ORDER BY u.block, u.unit_number'
-        );
-        $st->bind_param('ssss', $normPhone, $phone, $normPhone, $phone);
-    } else {
-        $st = $db->prepare(
-            'SELECT r.id, r.name, r.phone, r.status, u.id AS unit_id, u.block, u.unit_number
-               FROM residents r JOIN units u ON u.id = r.unit_id
-              WHERE r.phone_norm IN (?, ?) AND r.is_active = 1
-              ORDER BY u.block, u.unit_number'
-        );
-        $st->bind_param('ss', $normPhone, $phone);
+    $rows = $queryResidents();
+    if (!$rows && bot_backfill_phone_norm($db) > 0) {
+        // Lazy backfill: hanya jalankan backfill jika lookup pertama kosong dan ada baris baru yang belum dinormalisasi
+        $rows = $queryResidents();
     }
-    $st->execute();
+
     $residents = [];
-    foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+    foreach ($rows as $r) {
         // Pertahanan berlapis: cocokkan ulang dari kolom phone asli
         $p1 = phone_normalize($r['phone'] ?? null);
         $p2 = !empty($r['phone_secondary']) ? phone_normalize($r['phone_secondary']) : null;

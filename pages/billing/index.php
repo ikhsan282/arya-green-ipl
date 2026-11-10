@@ -93,13 +93,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $type_components[$tc['unit_type_id']][] = $tc;
     }
 
+    // Pre-fetch unit_id yang sudah memiliki tagihan di periode ini (hindari N+1 query di dalam loop)
+    $existing_units = [];
+    $chk = $db->prepare('SELECT unit_id FROM bills WHERE billing_period_id=?');
+    $chk->bind_param('i', $period_id);
+    $chk->execute();
+    $chk_res = $chk->get_result();
+    while ($er = $chk_res->fetch_assoc()) {
+        $existing_units[(int)$er['unit_id']] = true;
+    }
+
+    // Prepare statement sekali di luar loop
+    $ins = $db->prepare(
+        'INSERT INTO bills (billing_period_id,unit_id,resident_id,amount,fine_amount,total_amount,due_date)
+         VALUES (?,?,?,?,0,?,?)'
+    );
+    $bc = $db->prepare('INSERT INTO bill_components (bill_id,component_id,component_name,amount) VALUES (?,?,?,?)');
+
     $generated = 0; $skipped = 0;
     while ($u = $units_res->fetch_assoc()) {
         // Skip if bill already exists
-        $chk = $db->prepare('SELECT id FROM bills WHERE billing_period_id=? AND unit_id=?');
-        $chk->bind_param('ii', $period_id, $u['unit_id']);
-        $chk->execute();
-        if ($chk->get_result()->fetch_row()) { $skipped++; continue; }
+        if (isset($existing_units[(int)$u['unit_id']])) { $skipped++; continue; }
 
         // Komponen yang berlaku untuk tipe unit ini
         $all_comps = $type_components[$u['unit_type_id']] ?? [];
@@ -115,21 +129,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         if ($amount == 0) { $skipped++; continue; } // Skip jika tidak ada komponen berlaku
 
         $db->begin_transaction();
-        $ins = $db->prepare(
-            'INSERT INTO bills (billing_period_id,unit_id,resident_id,amount,fine_amount,total_amount,due_date)
-             VALUES (?,?,?,?,0,?,?)'
-        );
         $ins->bind_param('iiidds', $period_id, $u['unit_id'], $u['resident_id'], $amount, $amount, $due);
         $ins->execute();
         $bill_id = $db->insert_id;
 
         // Insert breakdown komponen
-        $bc = $db->prepare('INSERT INTO bill_components (bill_id,component_id,component_name,amount) VALUES (?,?,?,?)');
         foreach ($applicable as $c) {
             $bc->bind_param('iisd', $bill_id, $c['id'], $c['name'], $c['amount']);
             $bc->execute();
         }
         $db->commit();
+        $existing_units[(int)$u['unit_id']] = true;
         $generated++;
     }
     log_activity('generate', 'billing', "Generated {$generated} bills for {$label}" . ($only_mapped ? ' (only mapped units)' : ''));

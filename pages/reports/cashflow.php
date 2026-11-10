@@ -6,18 +6,20 @@ require_permission('reports.view');
 
 $db     = db();
 $f_year = (int)($_GET['year'] ?? date('Y'));
+$year_start = sprintf('%04d-01-01', $f_year);
+$year_end   = sprintf('%04d-12-31', $f_year);
 
-// Arus kas bulanan gabungan dari cash_book
+// Arus kas bulanan gabungan dari cash_book (SARGable range scan pada idx_cashbook_trx_date)
 $stmt = $db->prepare(
     'SELECT MONTH(trx_date) AS m,
             COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END), 0) AS masuk,
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END), 0) AS keluar
      FROM cash_book
-     WHERE YEAR(trx_date) = ?
+     WHERE trx_date >= ? AND trx_date <= ?
      GROUP BY MONTH(trx_date)
      ORDER BY m'
 );
-$stmt->bind_param('i', $f_year);
+$stmt->bind_param('ss', $year_start, $year_end);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $by_month = array_column($rows, null, 'm');
@@ -30,10 +32,10 @@ $total_keluar = array_sum(array_column($rows, 'keluar'));
 $cat_stmt = $db->prepare(
     'SELECT category, SUM(amount) AS total
      FROM cash_book
-     WHERE type="pengeluaran" AND YEAR(trx_date)=?
+     WHERE type="pengeluaran" AND trx_date >= ? AND trx_date <= ?
      GROUP BY category ORDER BY total DESC LIMIT 10'
 );
-$cat_stmt->bind_param('i', $f_year);
+$cat_stmt->bind_param('ss', $year_start, $year_end);
 $cat_stmt->execute();
 $by_category = $cat_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -41,10 +43,10 @@ $by_category = $cat_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $inc_stmt = $db->prepare(
     'SELECT category, SUM(amount) AS total
      FROM cash_book
-     WHERE type="pemasukan" AND YEAR(trx_date)=?
+     WHERE type="pemasukan" AND trx_date >= ? AND trx_date <= ?
      GROUP BY category ORDER BY total DESC LIMIT 10'
 );
-$inc_stmt->bind_param('i', $f_year);
+$inc_stmt->bind_param('ss', $year_start, $year_end);
 $inc_stmt->execute();
 $by_inc_category = $inc_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 

@@ -87,6 +87,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $rows = 0;
         $ut_id = $db->query('SELECT id FROM unit_types ORDER BY id ASC LIMIT 1')->fetch_row()[0] ?? 1;
+        $u_stmt   = $db->prepare('SELECT id FROM units WHERE unit_number=? AND block=?');
+        $ins_stmt = $db->prepare('INSERT INTO units (unit_type_id,unit_number,block,status) VALUES (?,?,?,?)');
+        $r_stmt   = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,phone_norm,email,status) VALUES (?,?,?,?,?,?)');
+        $s2       = 'dihuni';
+
+        $db->begin_transaction();
         foreach ($preview as $p) {
             $unit_num = $p['unit_number'];
             $block = $p['block'];
@@ -94,22 +100,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $phone = $p['phone'];
             $email = $p['email'];
             $status = $p['status'];
-            $u = $db->prepare('SELECT id FROM units WHERE unit_number=? AND block=?');
-            $u->bind_param('ss', $unit_num, $block); $u->execute();
-            $unit = $u->get_result()->fetch_row();
+            $u_stmt->bind_param('ss', $unit_num, $block);
+            $u_stmt->execute();
+            $unit = $u_stmt->get_result()->fetch_row();
             if (!$unit) {
-                $s2 = 'dihuni';
-                $ins = $db->prepare('INSERT INTO units (unit_type_id,unit_number,block,status) VALUES (?,?,?,?)');
-                $ins->bind_param('isss', $ut_id, $unit_num, $block, $s2); $ins->execute();
+                $ins_stmt->bind_param('isss', $ut_id, $unit_num, $block, $s2);
+                $ins_stmt->execute();
                 $unit_id = $db->insert_id;
             } else {
                 $unit_id = $unit[0];
             }
             $phone_norm = phone_normalize($phone) ?? '';
-            $r = $db->prepare('INSERT IGNORE INTO residents (unit_id,name,phone,phone_norm,email,status) VALUES (?,?,?,?,?,?)');
-            $r->bind_param('isssss', $unit_id, $name, $phone, $phone_norm, $email, $status);
-            if ($r->execute()) $rows++;
+            $r_stmt->bind_param('isssss', $unit_id, $name, $phone, $phone_norm, $email, $status);
+            if ($r_stmt->execute()) $rows++;
         }
+        $db->commit();
         log_activity('import', 'onboarding', "Import {$rows} warga dari CSV");
         flash('success', "Berhasil mengimpor {$rows} warga.");
         redirect(APP_URL.'/pages/onboarding/index.php?step=3');

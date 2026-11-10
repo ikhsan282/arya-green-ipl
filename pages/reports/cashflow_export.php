@@ -6,17 +6,19 @@ require_permission('reports.view');
 
 $db     = db();
 $f_year = (int)($_GET['year'] ?? date('Y'));
+$year_start = sprintf('%04d-01-01', $f_year);
+$year_end   = sprintf('%04d-12-31', $f_year);
 
 $stmt = $db->prepare(
     'SELECT MONTH(trx_date) AS m,
             COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END), 0) AS masuk,
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END), 0) AS keluar
      FROM cash_book
-     WHERE YEAR(trx_date) = ?
+     WHERE trx_date >= ? AND trx_date <= ?
      GROUP BY MONTH(trx_date)
      ORDER BY m'
 );
-$stmt->bind_param('i', $f_year);
+$stmt->bind_param('ss', $year_start, $year_end);
 $stmt->execute();
 $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $by_month = array_column($rows, null, 'm');

@@ -115,18 +115,20 @@ $search  = clean($_GET['q']     ?? '');
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $per     = 20;
 
-$where  = ['YEAR(trx_date)=?', 'MONTH(trx_date)=?'];
-$params = [$f_year, $f_month];
-$types  = 'ii';
+$first_day = sprintf('%04d-%02d-01', $f_year, $f_month);
+$last_day  = date('Y-m-t', strtotime($first_day));
+$where  = ['cb.trx_date >= ?', 'cb.trx_date <= ?'];
+$params = [$first_day, $last_day];
+$types  = 'ss';
 
-if ($f_type)  { $where[] = 'type=?';           $params[] = $f_type;  $types .= 's'; }
-if ($search)  { $where[] = '(category LIKE ? OR description LIKE ?)';
+if ($f_type)  { $where[] = 'cb.type=?';           $params[] = $f_type;  $types .= 's'; }
+if ($search)  { $where[] = '(cb.category LIKE ? OR cb.description LIKE ?)';
                 $like = "%{$search}%";
                 $params[] = $like; $params[] = $like; $types .= 'ss'; }
 $wsql = implode(' AND ', $where);
 
 // Total count
-$cnt = $db->prepare("SELECT COUNT(*) FROM cash_book WHERE {$wsql}");
+$cnt = $db->prepare("SELECT COUNT(*) FROM cash_book cb WHERE {$wsql}");
 $cnt->bind_param($types, ...$params);
 $cnt->execute();
 $total = $cnt->get_result()->fetch_row()[0];
@@ -152,22 +154,24 @@ $sum = $db->prepare(
        COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END), 0) AS total_masuk,
        COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END), 0) AS total_keluar,
        COUNT(*) AS total_entri
-     FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?'
+     FROM cash_book WHERE trx_date >= ? AND trx_date <= ?'
 );
-$sum->bind_param('ii', $f_year, $f_month);
+$sum->bind_param('ss', $first_day, $last_day);
 $sum->execute();
 $summary = $sum->get_result()->fetch_assoc();
 $saldo = (float)$summary['total_masuk'] - (float)$summary['total_keluar'];
 
 // Yearly balance trend
+$year_start = sprintf('%04d-01-01', $f_year);
+$year_end   = sprintf('%04d-12-31', $f_year);
 $trend = $db->prepare(
     'SELECT MONTH(trx_date) AS m,
             COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
             COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
-     FROM cash_book WHERE YEAR(trx_date)=?
+     FROM cash_book WHERE trx_date >= ? AND trx_date <= ?
      GROUP BY MONTH(trx_date) ORDER BY m'
 );
-$trend->bind_param('i', $f_year);
+$trend->bind_param('ss', $year_start, $year_end);
 $trend->execute();
 $trend_rows = $trend->get_result()->fetch_all(MYSQLI_ASSOC);
 
