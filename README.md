@@ -340,20 +340,22 @@ Kedua provider ini membuat QRIS dinamis sendiri dari string QRIS statis merchant
 
 ### Bot WhatsApp & Integrasi AI (Hermes AI Assistant)
 Sistem dilengkapi API RESTful mandiri di bawah `/api/bot/*` untuk integrasi dengan chatbot WhatsApp AI (seperti Nous Research Hermes Agent) atau webhook automation:
-- **Identifikasi Warga Otomatis via No. WhatsApp (`me.php`)** — tanpa perlu login, sistem langsung mengenali unit rumah warga dari nomor HP pengirim chat WhatsApp.
+- **Identifikasi Warga & Sapaan Personal (`me.php`)** — tanpa perlu login, sistem langsung mengenali unit rumah warga dari nomor HP pengirim chat WhatsApp, menyapa dengan format resmi *"Halo Bpk/Ibu [Nama] (Unit [Unit])"*, dan menyuguhkan **Quick Menu Interaktif** (1: Cek Tagihan & QRIS, 2: Cek Kas Cluster, 3: Lapor Aduan, 4: Agenda & Kontak Pengurus).
 - **Dukungan Pasangan (Suami & Istri)** — mendukung nomor HP utama dan nomor HP kedua di Data Warga dan Laporan Data Unit (`occupancy.php`); suami dan istri dapat sama-sama mengakses informasi rumah yang sama dari WhatsApp masing-masing.
 - **Cek Tagihan & Riwayat Pembayaran (`bills.php`)** — rincian tagihan belum lunas, denda keterlambatan, rincian komponen IPL, dan riwayat pembayaran sebelumnya.
 - **Generate QRIS Dinamis Instan (`qris_create.php`)** — pembuatan order QRIS dinamis lengkap dengan gambar QR code dan kode unik acak, langsung di chat WhatsApp.
 - **Cek Status Bayar & Kwitansi Digital (`qris_status.php`)** — pengecekan status bayar real-time; bila lunas, bot otomatis memberikan tautan kwitansi digital resmi (`receipt_public.php`) bertanda tangan HMAC yang aman dibuka warga selama 30 hari tanpa perlu login.
-- **Transparansi Kas & Rincian Pengeluaran (`cash_summary.php`)** — saldo kas saat ini, total pemasukan/pengeluaran bulan berjalan, breakdown pengeluaran per kategori, dan daftar 5 transaksi pengeluaran riil terbaru (mendukung filter `year` dan `month`).
+- **Transparansi Kas & Rincian Pengeluaran (`cash_summary.php`)** — saldo kas saat ini, total pemasukan/pengeluaran bulan berjalan, breakdown pengeluaran per kategori, dan daftar pengeluaran riil (mendukung filter `year`, `month`, dan pencarian kata kunci `q`).
 - **Pengaduan Fasilitas Lingkungan (`complaints.php`)** — warga dapat membuat tiket pengaduan baru dan memantau status aduan langsung dari chat WhatsApp.
-- **Agenda Kegiatan Warga (`events.php`)** — menampilkan jadwal rapat warga, kerja bakti, atau kegiatan sosial lingkungan terdekat.
-- **Rekapitulasi Pengurus RT (`staff_summary.php`)** — fitur khusus nomor pengurus (Ketua, Bendahara, Sekretaris, Admin) untuk melihat rekapitulasi setoran kas hari ini dan jumlah warga yang belum bayar.
+- **Agenda Kegiatan & Kontak Darurat (`events.php`)** — menampilkan jadwal rapat warga, kerja bakti, kontak resmi pengurus (Ketua RT, Bendahara, Sekretaris dengan tautan chat WA), serta nomor darurat lingkungan (Pos Satpam 24 Jam, Polsek Pamulang, RSUD Tangsel, Damkar).
+- **Morning Briefing Proaktif Khusus Pengurus (`staff_summary.php`)** — ringkasan eksekutif harian setiap pukul 08:00 WIB untuk Ketua RT, Bendahara, dan Sekretaris (menyajikan saldo kas riil terkini, penerimaan kemarin, persentase ketercapaian IPL, pembayaran pending, aduan aktif, agenda terdekat, dan tautan langsung ke dashboard).
 - **Notifikasi Outbound Otomatis (Transactional Outbox Queue — `outbox.php`)**:
   - Konfirmasi pembayaran lunas + link kwitansi otomatis dikirimkan ke WhatsApp warga (suami dan istri).
   - Laporan dana kas masuk dikirimkan ke WhatsApp Ketua, Bendahara, dan Sekretaris.
   - Laporan transfer manual baru dikirimkan ke Bendahara untuk diverifikasi.
+  - Pengingat ramah sebelum QRIS kedaluwarsa (10 menit sebelum kedaluwarsa via event `qris.expiring_soon`).
   - Pengingat jatuh tempo tagihan IPL (H-3 dan hari H).
+  - Seluruh pengiriman terlindungi kunci unik anti-duplikasi (`uq_wa_dedup`), dijamin tidak pernah mengirim pesan ganda.
 - **Dukungan 2 Mode Autentikasi API**:
   1. *Simple Secret / Bearer Token* (`?secret=...&phone=...` atau `Authorization: Bearer <secret>`): Sangat ramah untuk AI Agent (LLM) yang tidak memiliki engine kriptografi lokal.
   2. *HMAC-SHA256 Signature*: Tanda tangan 5 baris kanonikal dengan toleransi waktu 300 detik (anti-replay) untuk integrasi webhook & Postman.
