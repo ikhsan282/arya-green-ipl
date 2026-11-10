@@ -104,8 +104,8 @@ $lastDay = date('Y-m-t', strtotime($firstDay));
 // 1-3. Hitung Saldo Saat Ini, Saldo Awal, Pemasukan/Pengeluaran Bulan Ini, dan Saldo Akhir dalam 1 query tunggal
 $stSum = $db->prepare(
     'SELECT
-        COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount ELSE -amount END), 0) AS current_bal,
-        COALESCE(SUM(CASE WHEN trx_date < ? THEN (CASE WHEN type="pemasukan" THEN amount ELSE -amount END) END), 0) AS open_bal,
+        COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount WHEN type="pengeluaran" THEN -amount END), 0) AS current_bal,
+        COALESCE(SUM(CASE WHEN trx_date < ? THEN (CASE WHEN type="pemasukan" THEN amount WHEN type="pengeluaran" THEN -amount END) END), 0) AS open_bal,
         COALESCE(SUM(CASE WHEN trx_date >= ? AND trx_date <= ? AND type="pemasukan"   THEN amount END), 0) AS month_in,
         COALESCE(SUM(CASE WHEN trx_date >= ? AND trx_date <= ? AND type="pengeluaran" THEN amount END), 0) AS month_out
        FROM cash_book'

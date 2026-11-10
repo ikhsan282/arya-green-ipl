@@ -142,21 +142,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'gene
         $existing_units[(int)$u['unit_id']] = true;
         $generated++;
     }
-    unset($_SESSION['_overdue_checked_date']);
     log_activity('generate', 'billing', "Generated {$generated} bills for {$label}" . ($only_mapped ? ' (only mapped units)' : ''));
     flash('success', "Berhasil generate {$generated} tagihan untuk {$label}" . ($only_mapped ? " (hanya unit dengan warga aktif)" : "") . "." . ($skipped ? " {$skipped} sudah ada/dilewati." : ''));
     redirect(APP_URL . '/pages/billing/index.php');
 }
 
-// ── Update overdue status (maksimal 1x per hari per sesi agar tidak lock tabel di setiap page load) ──
-$today_str = date('Y-m-d');
-if (($_SESSION['_overdue_checked_date'] ?? '') !== $today_str) {
-    $db->query(
-        'UPDATE bills SET status="terlambat"
-         WHERE status="belum_bayar" AND due_date < CURDATE()'
-    );
-    $_SESSION['_overdue_checked_date'] = $today_str;
-}
+// ── Update overdue status ──────────────────────────────────────────────────
+$db->query(
+    'UPDATE bills SET status="terlambat"
+     WHERE status="belum_bayar" AND due_date < CURDATE()'
+);
 
 // ── Filters ────────────────────────────────────────────────────────────────
 $f_year   = (int)($_GET['year']   ?? date('Y'));
