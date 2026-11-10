@@ -72,6 +72,7 @@ $callBot = static function (string $method, string $path, string $phone, ?array 
 $cleanup = static function () use ($db): void {
     $db->query("DELETE FROM wa_outbox WHERE payload LIKE '%TESTBOT%' OR ref_type='complaint'");
     $db->query("DELETE k FROM cash_book k JOIN payments p ON p.id=k.ref_payment_id JOIN bills b ON b.id=p.bill_id WHERE b.notes='TESTBOT'");
+    $db->query("DELETE FROM bot_request_logs WHERE phone IN ('081398461650','6281398461650')");
     $db->query("DELETE p FROM payments p JOIN bills b ON b.id=p.bill_id WHERE b.notes='TESTBOT'");
     $db->query("DELETE o FROM payment_gateway_orders o JOIN bills b ON b.id=o.bill_id WHERE b.notes='TESTBOT'");
     $db->query("DELETE FROM bills WHERE notes='TESTBOT'");

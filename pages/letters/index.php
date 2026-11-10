@@ -18,8 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body    = clean($_POST['body'] ?? '');
         $rid     = (int)($_POST['resident_id'] ?? 0) ?: null;
         $date    = clean($_POST['issued_date'] ?? date('Y-m-d'));
-        // Auto-generate nomor surat: urutan/RT/bulan/tahun
-        $count   = $db->query('SELECT COUNT(*)+1 FROM letters WHERE YEAR(issued_date)=YEAR(NOW())')->fetch_row()[0];
+        // Auto-generate nomor surat: urutan/RT/bulan/tahun (SARGable range scan)
+        $year_start = date('Y-01-01');
+        $year_end   = date('Y-12-31');
+        $cnt_stmt   = $db->prepare('SELECT COUNT(*)+1 FROM letters WHERE issued_date >= ? AND issued_date <= ?');
+        $cnt_stmt->bind_param('ss', $year_start, $year_end);
+        $cnt_stmt->execute();
+        $count   = $cnt_stmt->get_result()->fetch_row()[0];
         $number  = sprintf('%03d/RT/%s/%d', $count, date('m'), date('Y'));
 
         if (!$purpose || !$body) {

@@ -72,11 +72,14 @@ $total_tunggakan = array_sum(array_column($bills, 'total_amount'));
 // Ringkasan kas lingkungan (bulan berjalan) — transparansi warga, tanpa detail transaksi.
 $cur_year = (int) date('Y');
 $cur_month = (int) date('n');
+$cur_start = sprintf('%04d-%02d-01', $cur_year, $cur_month);
+$cur_end   = date('Y-m-t', strtotime($cur_start));
+
 $ks = $db->prepare('SELECT
     COALESCE(SUM(CASE WHEN type="pemasukan"   THEN amount END),0) AS masuk,
     COALESCE(SUM(CASE WHEN type="pengeluaran" THEN amount END),0) AS keluar
-  FROM cash_book WHERE YEAR(trx_date)=? AND MONTH(trx_date)=?');
-$ks->bind_param('ii', $cur_year, $cur_month); $ks->execute();
+  FROM cash_book WHERE trx_date >= ? AND trx_date <= ?');
+$ks->bind_param('ss', $cur_start, $cur_end); $ks->execute();
 $kas_bulan = $ks->get_result()->fetch_assoc() ?: ['masuk' => 0, 'keluar' => 0];
 $saldo_total_row = $db->query('SELECT
     COALESCE(SUM(CASE WHEN type="pemasukan" THEN amount END),0) -
