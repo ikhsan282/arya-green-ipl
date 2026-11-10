@@ -362,8 +362,41 @@ Mengambil ringkasan transparansi kas lingkungan dan detail pengeluaran untuk war
 ---
 
 ### 4.7 `get_events` $\rightarrow$ `GET /api/bot/events.php`
-Mengambil agenda kegiatan warga terdekat (rapat, kerja bakti, sosial).
+Mengambil agenda kegiatan warga terdekat serta **daftar kontak resmi pengurus cluster dan nomor darurat**.
 - **Query Params Opsional:** `limit` (default `5`).
+- **Respons Sukses:**
+  ```json
+  {
+    "ok": true,
+    "data": {
+      "events": [
+        {
+          "event_id": 1,
+          "title": "Kerja Bakti Bersama",
+          "description": "Pembersihan saluran air dan taman",
+          "type": "kerja_bakti",
+          "event_date": "2026-11-15",
+          "location": "Taman Utama",
+          "is_mandatory": false
+        }
+      ],
+      "contacts": [
+        { "role": "Ketua RT", "name": "Bpk. ...", "phone": "0812xxxx", "wa_link": "https://wa.me/62812xxxx" },
+        { "role": "Bendahara", "name": "Bpk/Ibu ...", "phone": "0813xxxx", "wa_link": "https://wa.me/62813xxxx" },
+        { "role": "Sekretaris", "name": "Bpk/Ibu ...", "phone": "0815xxxx", "wa_link": "https://wa.me/62815xxxx" }
+      ],
+      "emergency_contacts": [
+        { "name": "Pos Security / Satpam", "phone": "Pos Gerbang Utama", "notes": "Siaga 24 Jam" },
+        { "name": "Polsek Pamulang", "phone": "(021) 7401110", "notes": "Kantor Polisi Terdekat" },
+        { "name": "RSUD Tangsel (Pamulang)", "phone": "(021) 74718440", "notes": "Rumah Sakit Umum" },
+        { "name": "Damkar Tangsel / Call 112", "phone": "112 / (021) 7443113", "notes": "Darurat Kebakaran & Evakuasi" }
+      ]
+    }
+  }
+  ```
+- **Perilaku Hermes:**
+  - Jika warga meminta **Kontak Pengurus** atau memilih **Menu 4**: Tampilkan daftar kontak pengurus aktif (Ketua, Bendahara, Sekretaris) beserta nomor/tautan WhatsApp, serta nomor darurat lingkungan (Pos Satpam, Polsek, RSUD, Damkar). Gunakan sapaan resmi **"Bpk/Ibu"**.
+  - Jika ada agenda terdekat: Tampilkan agenda terdekat di atas daftar kontak.
 
 ---
 

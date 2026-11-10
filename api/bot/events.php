@@ -32,5 +32,37 @@ foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $e) {
     ];
 }
 
-bot_reply(200, ['events' => $events]);
+// Ambil kontak pengurus aktif (Ketua, Bendahara, Sekretaris)
+$stStaff = $db->query(
+    "SELECT u.name, u.phone, r.name AS role, r.label AS role_label
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+      WHERE u.is_active = 1 AND r.name IN ('ketua', 'bendahara', 'sekretaris')
+      ORDER BY FIELD(r.name, 'ketua', 'bendahara', 'sekretaris')"
+);
+$contacts = [];
+if ($stStaff) {
+    while ($row = $stStaff->fetch_assoc()) {
+        $norm = phone_normalize($row['phone']);
+        $contacts[] = [
+            'role'       => $row['role_label'] ?: ucfirst($row['role']),
+            'name'       => $row['name'],
+            'phone'      => $row['phone'] ?: null,
+            'wa_link'    => $norm ? 'https://wa.me/' . $norm : null,
+        ];
+    }
+}
+
+$emergency = [
+    ['name' => 'Pos Security / Satpam',   'phone' => 'Pos Gerbang Utama', 'notes' => 'Siaga 24 Jam'],
+    ['name' => 'Polsek Pamulang',          'phone' => '(021) 7401110',      'notes' => 'Kantor Polisi Terdekat'],
+    ['name' => 'RSUD Tangsel (Pamulang)',  'phone' => '(021) 74718440',     'notes' => 'Rumah Sakit Umum'],
+    ['name' => 'Damkar Tangsel / Call 112','phone' => '112 / (021) 7443113', 'notes' => 'Darurat Kebakaran & Evakuasi'],
+];
+
+bot_reply(200, [
+    'events'             => $events,
+    'contacts'           => $contacts,
+    'emergency_contacts' => $emergency,
+]);
 
