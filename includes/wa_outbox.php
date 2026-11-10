@@ -266,6 +266,44 @@ function wa_event_qris_expired(string $orderId): int
     }
 }
 
+/** Antre notifikasi pengingat ramah saat order QRIS WhatsApp tersisa <= 10 menit sebelum kedaluwarsa. */
+function wa_event_qris_expiring_soon(string $orderId): int
+{
+    try {
+        $db = db();
+        $st = $db->prepare(
+            'SELECT o.id, o.order_id, o.bill_id, o.total_amount, o.source, o.expired_at,
+                    bp.label AS period, u.unit_number, r.name AS resident_name, r.phone AS resident_phone
+               FROM payment_gateway_orders o
+               JOIN bills b ON b.id = o.bill_id
+               JOIN billing_periods bp ON bp.id = b.billing_period_id
+               JOIN units u ON u.id = b.unit_id
+               LEFT JOIN residents r ON r.id = b.resident_id
+              WHERE o.order_id = ? AND o.status = "PENDING" LIMIT 1'
+        );
+        $st->bind_param('s', $orderId);
+        $st->execute();
+        $ord = $st->get_result()->fetch_assoc();
+        if (!$ord || ($ord['source'] ?? 'web') !== 'whatsapp') return 0;
+
+        $amt = (float) $ord['total_amount'];
+        $id = wa_enqueue('qris.expiring_soon', $ord['resident_phone'] ?? null, 'resident', 'qris_order', (int) $ord['id'], [
+            'order_id'      => $ord['order_id'],
+            'bill_id'       => (int) $ord['bill_id'],
+            'resident_name' => $ord['resident_name'] ?? 'Warga',
+            'unit'          => $ord['unit_number'],
+            'period'        => $ord['period'],
+            'total'         => (int) round($amt),
+            'total_text'    => idr($amt),
+            'expires_at'    => $ord['expired_at'] ? date('H:i', strtotime($ord['expired_at'])) : '30 menit',
+        ]);
+        return $id !== null ? 1 : 0;
+    } catch (Throwable $e) {
+        error_log('wa_event_qris_expiring_soon: ' . $e->getMessage());
+        return 0;
+    }
+}
+
 /** Antre notifikasi ke warga saat aduannya dibalas atau diperbarui pengurus. */
 function wa_event_complaint_replied(int $complaintId, int $refReplyId, string $message, string $authorName, string $status): int
 {

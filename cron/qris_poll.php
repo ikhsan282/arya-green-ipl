@@ -35,7 +35,22 @@ function run_qris_poll(): array
         }
     }
 
-    // 2. Periksa order PENDING yang masih aktif (maks 30 terbaru)
+    // 2. Order WhatsApp PENDING yang akan kedaluwarsa dalam <= 10 menit (pengingat ramah 1x via uq_wa_dedup)
+    $expSoonRows = $db->query(
+        'SELECT order_id FROM payment_gateway_orders
+          WHERE status="PENDING"
+            AND source="whatsapp"
+            AND expired_at IS NOT NULL
+            AND expired_at > NOW()
+            AND expired_at <= DATE_ADD(NOW(), INTERVAL 10 MINUTE)
+          LIMIT 50'
+    )->fetch_all(MYSQLI_ASSOC);
+
+    foreach ($expSoonRows as $esr) {
+        wa_event_qris_expiring_soon((string) $esr['order_id']);
+    }
+
+    // 3. Periksa order PENDING yang masih aktif (maks 30 terbaru)
     $pending = $db->query(
         'SELECT o.*, c.api_key, c.merchant_id, c.config, c.mode, c.provider
            FROM payment_gateway_orders o

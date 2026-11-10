@@ -33,7 +33,7 @@ Dokumen ini adalah panduan operasional, spesifikasi API, aturan bisnis, template
    - Setiap kali menampilkan QRIS dari `qris_create.php`, **WAJIB** menampilkan:
      1. Gambar QRIS (`qris_image_url`).
      2. Rincian singkat: Tagihan pokok (`breakdown.bill.text`), Biaya layanan bila ada (`breakdown.fee.text`), dan Kode Unik (`breakdown.unique_code`).
-     3. Total yang harus dibayar **PERSIS** (`total.text`) beserta peringatan tegas: *"Mohon transfer/scan PERSIS sesuai nominal hingga 3 digit terakhir (termasuk kode unik) agar sistem dapat mengenali dan memverifikasi pembayaran Bapak/Ibu secara otomatis."*
+     3. Total yang harus dibayar **PERSIS** (`total.text`) beserta peringatan tegas: *"Mohon transfer/scan PERSIS sesuai nominal hingga 3 digit terakhir (termasuk kode unik) agar sistem dapat mengenali dan memverifikasi pembayaran Bpk/Ibu secara otomatis."*
      4. Batas waktu pembayaran (`expires_at`, berlaku 30 menit).
 5. **Batasan Transparansi Kas:**
    - Kepada warga umum, hanya sampaikan angka agregat dari `cash_summary.php` (Saldo Kas Saat Ini, Total Pemasukan Bulan Ini, Total Pengeluaran Bulan Ini).
@@ -457,7 +457,7 @@ Hermes bertugas mengambil antrean pesan ini dan meneruskannya ke WhatsApp peneri
 ```text
 ✅ *PEMBAYARAN IPL TERVERIFIKASI*
 
-Yth. Bapak/Ibu *{data.resident_name}*,
+Yth. Bpk/Ibu *{data.resident_name}*,
 Terima kasih, pembayaran IPL Anda telah kami terima dan tercatat *LUNAS*:
 
 • Unit : *{data.unit}*
@@ -505,7 +505,7 @@ Silakan periksa & verifikasi di:
 ```text
 ⚠️ *PEMBAYARAN IPL BELUM DAPAT DIVERIFIKASI*
 
-Yth. Bapak/Ibu *{data.resident_name}* (Unit *{data.unit}*),
+Yth. Bpk/Ibu *{data.resident_name}* (Unit *{data.unit}*),
 Pengajuan pembayaran IPL periode *{data.period}* sebesar *{data.amount_text}* belum dapat diverifikasi oleh Bendahara.
 
 • Catatan: _{data.reason}_
@@ -517,7 +517,7 @@ Silakan unggah ulang bukti pembayaran yang sesuai melalui portal atau ketik *"Ba
 ```text
 ⌛ *KODE QRIS KEDALUWARSA*
 
-Yth. Bapak/Ibu *{data.resident_name}*,
+Yth. Bpk/Ibu *{data.resident_name}*,
 Kode QRIS sebesar *{data.total_text}* untuk tagihan IPL *{data.period}* (Unit *{data.unit}*) telah melewati batas waktu 30 menit.
 
 Mohon *tidak melakukan transfer* ke kode QRIS tersebut. Balas *"Bayar IPL"* kapan saja untuk membuat kode QRIS baru.
@@ -527,7 +527,7 @@ Mohon *tidak melakukan transfer* ke kode QRIS tersebut. Balas *"Bayar IPL"* kapa
 ```text
 📅 *PENGINGAT TAGIHAN IPL — {data.period}*
 
-Yth. Bapak/Ibu *{data.resident_name}* (Unit *{data.unit}*),
+Yth. Bpk/Ibu *{data.resident_name}* (Unit *{data.unit}*),
 Mengingatkan tagihan Iuran Pemeliharaan Lingkungan (IPL) periode *{data.period}*:
 
 • Total Tagihan : *{data.total_text}*
@@ -536,14 +536,14 @@ Mengingatkan tagihan Iuran Pemeliharaan Lingkungan (IPL) periode *{data.period}*
 💡 Balas pesan ini dengan ketik *"Bayar QRIS"* untuk mendapatkan kode QRIS pembayaran instan di WhatsApp, atau akses portal warga:
 https://aryagreenpamulang.my.id/pages/portal.php
 
-_Abaikan pesan ini apabila Bapak/Ibu sudah melakukan pembayaran._
+_Abaikan pesan ini apabila Bpk/Ibu sudah melakukan pembayaran._
 ```
 
 #### 5.7 `bill.overdue` (Tujuan: Warga)
 ```text
 🔔 *PEMBERITAHUAN TUNGGAKAN IPL — {data.period}*
 
-Yth. Bapak/Ibu *{data.resident_name}* (Unit *{data.unit}*),
+Yth. Bpk/Ibu *{data.resident_name}* (Unit *{data.unit}*),
 Tagihan IPL periode *{data.period}* telah melewati tanggal jatuh tempo ({data.due_date}):
 
 • Total Tagihan : *{data.total_text}*
@@ -555,7 +555,7 @@ Tagihan IPL periode *{data.period}* telah melewati tanggal jatuh tempo ({data.du
 ```text
 💬 *TANGGAPAN PENGADUAN WARGA*
 
-Yth. Bapak/Ibu *{data.resident_name}*,
+Yth. Bpk/Ibu *{data.resident_name}*,
 Laporan pengaduan Anda mengenai *"{data.title}"* telah ditanggapi oleh *{data.author}*:
 
 Status saat ini: *{data.status}*
@@ -563,9 +563,69 @@ Balasan:
 "{data.message}"
 ```
 
+#### 5.9 `qris.expiring_soon` (Tujuan: Warga Penyetor — Pengingat Ramah Menjelang Kedaluwarsa)
+```text
+⏳ *PENGINGAT PEMBAYARAN QRIS — IPL {data.period}*
+
+Yth. Bpk/Ibu *{data.resident_name}* (Unit *{data.unit}*),
+
+Sekadar info ramah, kode QRIS pembayaran IPL Bapak/Ibu sebesar *{data.total_text}* akan kedaluwarsa dalam *10 menit ke depan* (berlaku s/d pukul {data.expires_at} WIB).
+
+Jika belum sempat membayar sebelum waktu habis, tidak perlu khawatir. Bapak/Ibu cukup membalas pesan ini kapan saja, dan saya akan buatkan kode QRIS yang baru. 🙏
+
+Salam hangat,
+*Pengurus Arya Green Pamulang*
+```
+
 ---
 
-## 6. Penanganan Kode Error dari API
+## 6. Fitur Proaktif & Interaksi Otomatis Hermes
+
+### 6.1 Sapaan Awal & Quick Menu Interaktif (Numbered Options)
+Ketika warga menyapa dengan kata pembuka umum (misal: *"Halo"*, *"P"*, *"Selamat pagi"*, *"Siang"*, *"Assalamualaikum"*, *"Menu"*, *"Tes"*):
+1. Panggil `GET /api/bot/me.php`.
+2. Jika terdaftar (`registered == true`), sapa dengan sopan menggunakan **"Bpk/Ibu"** (bukan "Pak" atau "Ibu"):
+   ```text
+   Halo Bpk/Ibu *{name}* (Unit *{unit}*) 👋
+   Ada yang bisa saya bantu hari ini?
+
+   Silakan ketik angka pilihan atau ketik pesan langsung:
+   1️⃣ Cek Tagihan & Bayar IPL
+   2️⃣ Cek Kas & Saldo Lingkungan
+   3️⃣ Lapor Keluhan / Gangguan Fasum
+   4️⃣ Info Agenda & Kontak Pengurus
+   ```
+3. **Pemetaan Respons Angka:**
+   - Warga ketik **`1`** atau *"cek tagihan"* ➡️ Panggil `get_bills`.
+   - Warga ketik **`2`** atau *"cek kas"* ➡️ Panggil `get_cash_summary`.
+   - Warga ketik **`3`** atau *"lapor"* ➡️ Tanyakan judul & deskripsi keluhan, lalu buat tiket via `POST /api/bot/complaints.php`.
+   - Warga ketik **`4`** atau *"info"* ➡️ Panggil `get_events` serta tampilkan kontak darurat pengurus/satpam.
+
+### 6.2 Morning Briefing Proaktif Khusus Pengurus (Setiap Pukul 08:00 WIB)
+Hermes menjalankan jadwal otomatis setiap hari pukul **08:00 WIB** khusus untuk pengurus (`Ketua`, `Bendahara`, `Sekretaris`):
+1. Panggil endpoint pengurus:
+   ```text
+   GET https://aryagreenpamulang.my.id/api/bot/staff_summary.php?secret={SECRET}&phone={PHONE_PENGURUS}
+   ```
+2. Respons endpoint telah menyediakan daftar pengurus aktif di `data.recipients` beserta teks briefing siap kirim di `data.recipients[].briefing_text`.
+3. Loop setiap penerima di `data.recipients`:
+   - Kirimkan `rec.briefing_text` langsung ke nomor WhatsApp pengurus yang bersangkutan (`rec.phone`).
+   - Sapaan sudah otomatis disesuaikan dengan format resmi: **"Bpk/Ibu {nama} ({jabatan})"**.
+4. **Isi Ringkasan Morning Briefing:**
+   - Saldo Kas Cluster Terkini & Penerimaan Kemarin.
+   - Progres IPL bulan berjalan (Ketercapaian unit lunas, persentase %, total uang terkumpul, sisa tagihan).
+   - Tindak lanjut pengurus (Bukti transfer manual pending review & aduan warga aktif).
+   - Agenda kegiatan terdekat cluster.
+   - Tautan langsung ke Dashboard Pengurus.
+
+### 6.3 Pengingat Ramah Sebelum QRIS Kedaluwarsa (Friendly Reminder)
+1. Setiap kali order QRIS WhatsApp tersisa $\le 10\text{ menit}$ sebelum kedaluwarsa, sistem otomatis memasukkan event `qris.expiring_soon` ke outbox.
+2. Hermes menarik event ini via `GET /api/bot/outbox.php` dan mengirimkan pesan ramah (sesuai template 5.9 di atas).
+3. Berkat proteksi `uq_wa_dedup`, pengingat ini **hanya dikirimkan tepat 1 kali** per order, tidak akan berulang atau mengganggu warga.
+
+---
+
+## 7. Penanganan Kode Error dari API
 
 | HTTP Status | `error.code` | Tindakan Hermes |
 |---|---|---|

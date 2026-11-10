@@ -153,6 +153,7 @@ function bot_backfill_phone_norm(mysqli $db): int
 function bot_resolve_actor(mysqli $db, string $phone): array
 {
     bot_backfill_phone_norm($db);
+    $normPhone = phone_normalize($phone) ?? $phone;
 
     // Cek kolom phone_secondary_norm
     $hasSec = false;
@@ -165,18 +166,18 @@ function bot_resolve_actor(mysqli $db, string $phone): array
         $st = $db->prepare(
             'SELECT r.id, r.name, r.phone, r.phone_secondary, r.status, u.id AS unit_id, u.block, u.unit_number
                FROM residents r JOIN units u ON u.id = r.unit_id
-              WHERE (r.phone_norm = ? OR r.phone_secondary_norm = ?) AND r.is_active = 1
+              WHERE (r.phone_norm IN (?, ?) OR r.phone_secondary_norm IN (?, ?)) AND r.is_active = 1
               ORDER BY u.block, u.unit_number'
         );
-        $st->bind_param('ss', $phone, $phone);
+        $st->bind_param('ssss', $normPhone, $phone, $normPhone, $phone);
     } else {
         $st = $db->prepare(
             'SELECT r.id, r.name, r.phone, r.status, u.id AS unit_id, u.block, u.unit_number
                FROM residents r JOIN units u ON u.id = r.unit_id
-              WHERE r.phone_norm = ? AND r.is_active = 1
+              WHERE r.phone_norm IN (?, ?) AND r.is_active = 1
               ORDER BY u.block, u.unit_number'
         );
-        $st->bind_param('s', $phone);
+        $st->bind_param('ss', $normPhone, $phone);
     }
     $st->execute();
     $residents = [];
@@ -184,7 +185,7 @@ function bot_resolve_actor(mysqli $db, string $phone): array
         // Pertahanan berlapis: cocokkan ulang dari kolom phone asli
         $p1 = phone_normalize($r['phone'] ?? null);
         $p2 = !empty($r['phone_secondary']) ? phone_normalize($r['phone_secondary']) : null;
-        if ($p1 !== $phone && $p2 !== $phone) continue;
+        if ($p1 !== $normPhone && $p2 !== $normPhone && ($r['phone'] ?? '') !== $phone && ($r['phone_secondary'] ?? '') !== $phone) continue;
         $residents[] = [
             'resident_id' => (int) $r['id'],
             'name'        => $r['name'],
@@ -199,10 +200,10 @@ function bot_resolve_actor(mysqli $db, string $phone): array
     $st = $db->prepare(
         "SELECT u.id, u.name, r.name AS role, r.label AS role_label, u.wa_notify
            FROM users u JOIN roles r ON r.id = u.role_id
-          WHERE u.phone = ? AND u.is_active = 1 AND r.name IN ($placeholders)
+          WHERE (u.phone IN (?, ?)) AND u.is_active = 1 AND r.name IN ($placeholders)
           ORDER BY u.role_id LIMIT 1"
     );
-    $params = array_merge([$phone], BOT_STAFF_ROLES);
+    $params = array_merge([$normPhone, $phone], BOT_STAFF_ROLES);
     $st->bind_param(str_repeat('s', count($params)), ...$params);
     $st->execute();
     $staffRow = $st->get_result()->fetch_assoc();
@@ -216,7 +217,7 @@ function bot_resolve_actor(mysqli $db, string $phone): array
 
     return [
         'phone'      => $phone,
-        'registered' => $residents || $staff,
+        'registered' => !empty($residents) || $staff !== null,
         'is_staff'   => $staff !== null,
         'staff'      => $staff,
         'residents'  => $residents,

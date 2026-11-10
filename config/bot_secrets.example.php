@@ -12,9 +12,11 @@
  *   php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
  */
 if (!defined('BOT_API_KEYS')) {
-    define('BOT_API_KEYS', [
+    $envKeys = json_decode((string) getenv('IPL_BOT_KEYS'), true);
+    $defaultKeys = [
         'hermes-prod' => 'GANTI_DENGAN_SECRET_KEY_MINIMAL_32_KARAKTER',
-    ]);
+    ];
+    define('BOT_API_KEYS', is_array($envKeys) ? array_merge($defaultKeys, $envKeys) : $defaultKeys);
 }
 if (!defined('BOT_WEBHOOK_URL'))    define('BOT_WEBHOOK_URL',     '');
 if (!defined('BOT_WEBHOOK_SECRET')) define('BOT_WEBHOOK_SECRET',  'GANTI_DENGAN_SECRET_KEY_MINIMAL_32_KARAKTER');
